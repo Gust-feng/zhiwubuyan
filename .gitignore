@@ -1,0 +1,58 @@
+# Local AI collaboration rules
+/AGENTS.md
+/agent.md
+
+# Local API credentials
+.env
+.env.*
+!.env.example
+
+# Dependencies and build output
+node_modules/
+dist/
+release/
+.tmp/
+
+# Generated previews, installer demos and screenshots
+/output/
+/backup/
+
+# Runtime database and lock files
+/data/
+
+# Scratch logs, probes and downloaded artifacts
+/tmp/
+
+# Raw design source material kept locally
+/看山三视图/
+
+# Local agent and tooling state
+/.box-agent/
+/.box-agent-scratch/
+/.playwright-mcp/
+/.workbuddy/
+/.zcode/
+/.codex/
+
+# Ad-hoc design scratch and duplicate root screenshots
+/Untitled.make
+/welcome-initial.png
+/welcome-before-hover.png
+
+# Duplicate archives and superseded front-end snapshots kept locally
+/etc/
+
+# Unreferenced design source boards and exported brand packages kept locally
+/设计图/
+/zhiwubuyan-logo-package-v1.zip
+
+# External research input kept locally, not part of the project
+/调研/
+
+# Temporary OAuth demo, regenerable from the local skill snapshot
+/hackathon-hello-world/
+
+# Product documentation kept locally, not part of the source tree
+/docs/
+/README.md
+/设计思路.md

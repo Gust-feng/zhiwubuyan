@@ -1,0 +1,121 @@
+{
+  "name": "zhihu",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "知无不言本地知识研究工作台。",
+  "main": "dist/desktop/main.cjs",
+  "engines": {
+    "node": ">=22.13.0"
+  },
+  "scripts": {
+    "brief": "node src/cli/research-brief.ts",
+    "verify:mvp": "node src/cli/verify-mvp.ts",
+    "dev": "node src/cli/dev.ts",
+    "dev:api": "node --use-system-ca --watch src/server/http-server.ts",
+    "dev:workbench": "vite --config vite.config.workbench.ts",
+    "dev:welcome": "vite --config vite.config.welcome.ts",
+    "dev:web": "vite --config vite.config.web.ts",
+    "build": "vite build --config vite.config.workbench.ts",
+    "build:web": "vite build --config vite.config.web.ts",
+    "vercel-build": "pnpm build:web",
+    "build:workbench": "vite build --config vite.config.workbench.ts",
+    "build:welcome": "pnpm exec tsc --noEmit -p src/welcome/tsconfig.json && vite build --config vite.config.welcome.ts",
+    "build:backend": "vite build --config vite.config.backend.ts",
+    "typecheck:backend": "tsc --noEmit -p tsconfig.backend.json",
+    "build:desktop:runtime": "vite build --config vite.config.desktop.ts",
+    "build:desktop": "pnpm build:workbench && pnpm build:backend && pnpm build:desktop:runtime",
+    "dev:installer": "vite --config vite.config.installer.ts --open /mock.html",
+    "build:installer": "pnpm exec tsc --noEmit -p packaging/windows/installer-shell/tsconfig.json && vite build --config vite.config.installer.ts",
+    "build:installer-demo": "pnpm build:installer && powershell -NoProfile -ExecutionPolicy Bypass -File packaging/windows/installer-shell/demo/build-demo.ps1",
+    "desktop": "pnpm build:desktop && pnpm exec electron .",
+    "dist:win": "pnpm build:desktop && pnpm exec electron-builder --win nsis",
+    "start": "node --use-system-ca src/server/http-server.ts",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.workbench.json",
+    "verify:research": "node src/cli/verify-research-core.ts"
+  },
+  "dependencies": {
+    "@fontsource-variable/noto-sans-sc": "^5.3.0",
+    "@fontsource-variable/noto-serif-sc": "^5.3.0",
+    "@libsql/client": "0.18.0",
+    "@mastra/core": "1.66.0",
+    "@mastra/libsql": "1.22.5",
+    "@mastra/memory": "1.29.0",
+    "@tanstack/react-query": "5.101.2",
+    "@tiptap/extension-image": "^3.29.1",
+    "@tiptap/extension-link": "^3.29.1",
+    "@tiptap/extension-placeholder": "^3.29.1",
+    "@tiptap/extension-table": "^3.29.1",
+    "@tiptap/extension-task-item": "^3.29.1",
+    "@tiptap/extension-task-list": "^3.29.1",
+    "@tiptap/pm": "^3.29.1",
+    "@tiptap/react": "^3.29.1",
+    "@tiptap/starter-kit": "^3.29.1",
+    "@upstash/redis": "^1.38.4",
+    "diff": "9.0.0",
+    "docx-preview": "0.4.0",
+    "lowlight": "^3.3.0",
+    "lucide-react": "^1.44.0",
+    "motion": "^12.23.24",
+    "proper-lockfile": "4.1.2",
+    "react": "^19.3.0",
+    "react-dnd": "16.0.1",
+    "react-dnd-html5-backend": "16.0.1",
+    "react-dom": "^19.3.0",
+    "react-markdown": "^10.1.0",
+    "read-excel-file": "9.3.1",
+    "remark-gfm": "^4.0.1",
+    "split.js": "1.6.5",
+    "tiptap-markdown": "^0.9.0",
+    "tw-animate-css": "1.3.8",
+    "unpdf": "1.6.2",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "4.3.0",
+    "@types/node": "^22.20.2",
+    "@types/proper-lockfile": "4.1.4",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.1.1",
+    "electron": "36.9.5",
+    "electron-builder": "26.15.3",
+    "tailwindcss": "4.3.0",
+    "typescript": "^7.0.2",
+    "vite": "^8.2.2"
+  },
+  "build": {
+    "appId": "com.zhihu.zhiwubuyan",
+    "productName": "知无不言",
+    "artifactName": "${productName}-Installer-${version}-${arch}.${ext}",
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
+    "files": [
+      "dist/workbench/**",
+      "dist/desktop/**"
+    ],
+    "win": {
+      "icon": "build/icon.ico",
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowElevation": true,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "知无不言",
+      "uninstallDisplayName": "知无不言"
+    }
+  }
+}

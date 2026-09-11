@@ -1,0 +1,41 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "useDefineForClassFields": true,
+    "lib": ["DOM", "DOM.Iterable", "ES2022"],
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "strict": true,
+    "forceConsistentCasingInFileNames": true,
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "jsx": "react-jsx",
+    "paths": {
+      "@ui/*": ["./src/workbench/src/*"],
+      "@api-contracts/*": ["./src/workbench/api-contracts/*"],
+      "@contracts/*": ["./src/contracts/*"]
+    },
+    "types": ["vite/client", "node"]
+  },
+  "include": [
+    "src/workbench/src/**/*.ts",
+    "src/workbench/src/**/*.tsx",
+    "src/workbench/api-contracts/**/*.ts",
+    "src/workbench/domain/**/*.ts",
+    "src/workbench/kernel/**/*.ts",
+    "src/workbench/text-projection/**/*.ts",
+    "src/workbench/agent-notes/**/*.ts",
+    "src/workbench/ordinary-agent/**/*.ts",
+    "src/workbench/path-dependencies/**/*.ts",
+    "src/workbench/memory/**/*.ts",
+    "src/workbench/model-runtime/**/*.ts",
+    "src/web/**/*.ts",
+    "src/web/**/*.tsx",
+    "vite.config.workbench.ts",
+    "vite.config.web.ts"
+  ]
+}
