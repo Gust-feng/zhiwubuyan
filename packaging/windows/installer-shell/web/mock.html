@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" /><title>知无不言安装器预览</title></head>
+  <body>
+    <div id="root"></div>
+    <script>
+      (() => {
+        const listeners = new Set();
+        const location = { installParentPath: "C:\\Users\\Demo\\AppData\\Local", installPath: "C:\\Users\\Demo\\AppData\\Local\\知无不言", requiredBytes: 214 * 1024 * 1024, availableBytes: 18.4 * 1024 * 1024 * 1024 };
+        const host = { postMessage(message) { if (message.type === "shell.ready") emit({ type: "host.ready", payload: location }); if (message.type === "directory.browse") emit({ type: "directory.selected", payload: location }); if (message.type === "install.start") run(); if (message.type === "app.open" || message.type === "window.close") document.body.dataset.closed = "true"; }, addEventListener(_type, listener) { listeners.add(listener); }, removeEventListener(_type, listener) { listeners.delete(listener); } };
+        function emit(data) { listeners.forEach((listener) => listener({ data })); }
+        function run() {
+          const steps = [
+            { id: "prepare", label: "准备安装资源", state: "active" },
+            { id: "install", label: "写入应用文件", state: "pending" },
+            { id: "verify", label: "校验应用文件", state: "pending" },
+            { id: "register", label: "注册卸载信息", state: "pending" },
+            { id: "shortcuts", label: "创建快捷方式", state: "pending" },
+          ];
+          const publish = () => emit({ type: "install.activities", payload: { activities: steps.map((step) => ({ ...step })) } });
+          const activate = (index) => {
+            steps.forEach((step, stepIndex) => { step.state = stepIndex < index ? "completed" : stepIndex === index ? "active" : "pending"; });
+            publish();
+          };
+          emit({ type: "install.phase", payload: { phase: "preparing" } });
+          publish();
+          setTimeout(() => {
+            activate(1);
+            emit({ type: "install.phase", payload: { phase: "installing" } });
+            let written = 0;
+            const total = 214 * 1024 * 1024;
+            const timer = setInterval(() => {
+              written = Math.min(total, written + total / 14);
+              emit({ type: "install.progress", payload: { written, total } });
+              if (written < total) return;
+              clearInterval(timer);
+              activate(2);
+              setTimeout(() => { activate(3); setTimeout(() => { activate(4); setTimeout(() => { steps.forEach((step) => { step.state = "completed"; }); publish(); emit({ type: "install.phase", payload: { phase: "completed" } }); }, 460); }, 520); }, 620);
+            }, 180);
+          }, 760);
+        }
+        window.__zhiwubuyanInstallerMock = host;
+      })();
+    </script>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

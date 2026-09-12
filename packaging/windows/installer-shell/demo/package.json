@@ -1,0 +1,7 @@
+{
+  "name": "zhiwubuyan-installer-demo",
+  "version": "1.0.0",
+  "private": true,
+  "description": "知无不言 Windows 安装器界面演示。",
+  "main": "main.cjs"
+}

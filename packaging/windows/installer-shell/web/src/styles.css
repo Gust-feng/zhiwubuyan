@@ -1,0 +1,709 @@
+:root {
+  --installer-canvas: #edf0f4;
+  --installer-artwork-surface: #e0e8f2;
+  --installer-surface: #ffffff;
+  --installer-surface-muted: #f7f9fc;
+  --installer-surface-hover: #f1f6ff;
+  --installer-title: #1a1ccc;
+  --installer-primary: #0b6ff5;
+  --installer-primary-strong: #0866ed;
+  --installer-primary-soft: #eaf3ff;
+  --installer-text: #26344a;
+  --installer-text-secondary: #5a6b80;
+  --installer-text-tertiary: #8a94a6;
+  --installer-border: #e4e9f0;
+  --installer-border-strong: #d4dce7;
+  --installer-danger: #b53b42;
+  --installer-danger-soft: #fff4f4;
+  --installer-danger-border: #f1cfd2;
+  --installer-focus: rgba(11, 91, 234, 0.28);
+  --installer-shadow: 0 8px 26px rgba(30, 67, 116, 0.08);
+  --font-sans: "Segoe UI Variable", "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
+  --font-serif: "Noto Serif SC", "Source Han Serif CN", "Songti SC", "STSong", "SimSun", serif;
+  color: var(--installer-text);
+  background: var(--installer-canvas);
+  font-family: var(--font-sans);
+  font-synthesis: none;
+  color-scheme: light;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  width: 100%;
+  height: 100%;
+}
+
+body {
+  min-width: 760px;
+  min-height: 540px;
+  margin: 0;
+  overflow: hidden;
+  background: var(--installer-canvas);
+  -webkit-font-smoothing: antialiased;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+button,
+input {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: default;
+  opacity: 0.46;
+}
+
+button:focus-visible,
+input:focus-visible + .custom-check {
+  outline: 3px solid var(--installer-focus);
+  outline-offset: 2px;
+}
+
+.installer-shell {
+  display: grid;
+  grid-template-columns: minmax(270px, 38.9%) minmax(0, 61.1%);
+  width: 100vw;
+  height: 100vh;
+  min-height: 540px;
+  overflow: hidden;
+  background: var(--installer-surface);
+}
+
+.installer-aside {
+  position: relative;
+  min-width: 0;
+  overflow: hidden;
+  background: var(--installer-artwork-surface);
+}
+
+.installer-aside::after {
+  position: absolute;
+  z-index: 1;
+  top: 0;
+  right: 0;
+  width: clamp(28px, 4vw, 48px);
+  height: 100%;
+  background: linear-gradient(to right, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0.62));
+  content: "";
+  pointer-events: none;
+}
+
+.artwork-slot {
+  position: absolute;
+  inset: 0;
+  background: var(--installer-artwork-surface);
+}
+
+.artwork-slot img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 61.2% center;
+  pointer-events: none;
+  -webkit-user-drag: none;
+  user-select: none;
+}
+
+.installer-main {
+  position: relative;
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--installer-surface);
+}
+
+.installer-main::before {
+  position: absolute;
+  top: -170px;
+  right: -90px;
+  width: 440px;
+  height: 440px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(218, 237, 255, 0.5) 0%, rgba(238, 247, 255, 0.2) 54%, rgba(255, 255, 255, 0) 74%);
+  content: "";
+  pointer-events: none;
+}
+
+.installer-header {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  height: 72px;
+  flex: 0 0 72px;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 0 clamp(24px, 4vw, 40px);
+  -webkit-app-region: drag;
+}
+
+.installer-header button {
+  -webkit-app-region: no-drag;
+}
+
+.close-button {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  place-items: center;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--installer-text-tertiary);
+  transition: background-color 160ms ease, color 160ms ease;
+}
+
+.close-button:not(:disabled):hover {
+  background: var(--installer-surface-hover);
+  color: var(--installer-text);
+}
+
+.installer-content {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  width: min(430px, calc(100% - 72px));
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
+  justify-content: center;
+  margin: 0 auto;
+  padding: 24px 0 34px;
+}
+
+.title-block {
+  min-height: 59px;
+  margin-bottom: 28px;
+}
+
+.title-block h1 {
+  margin: 0;
+  color: var(--installer-title);
+  font-family: var(--font-serif);
+  font-size: clamp(34px, 4.2vw, 48px);
+  font-weight: 560;
+  letter-spacing: 0.035em;
+  line-height: 1.22;
+}
+
+.configure-panel,
+.progress-panel {
+  min-height: 0;
+}
+
+.progress-panel {
+  display: flex;
+  min-height: 362px;
+  flex-direction: column;
+}
+
+.field-label,
+.shortcut-options legend {
+  display: block;
+  margin: 0 0 9px;
+  padding: 0;
+  color: var(--installer-text-secondary);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+.path-field {
+  display: flex;
+  min-height: 52px;
+  align-items: center;
+  gap: 11px;
+  border: 1px solid var(--installer-border);
+  border-radius: 12px;
+  padding: 0 10px 0 15px;
+  background: var(--installer-surface);
+  box-shadow: var(--installer-shadow);
+}
+
+.path-field > svg {
+  flex: 0 0 auto;
+  color: var(--installer-text-tertiary);
+}
+
+.path-field input {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--installer-text);
+  font-family: Consolas, "Cascadia Mono", monospace;
+  font-size: 10px;
+  text-overflow: ellipsis;
+  caret-color: transparent;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.path-field button {
+  display: inline-flex;
+  min-height: 32px;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 5px;
+  border: 0;
+  border-radius: 8px;
+  padding: 0 10px;
+  background: var(--installer-primary-soft);
+  color: var(--installer-primary-strong);
+  font-size: 11px;
+  font-weight: 600;
+  transition: background-color 160ms ease;
+}
+
+.path-field button:not(:disabled):hover {
+  background: #dcecff;
+}
+
+.storage-note {
+  margin: 8px 2px 0;
+  color: var(--installer-text-tertiary);
+  font-family: Consolas, "Cascadia Mono", monospace;
+  font-size: 9px;
+  line-height: 1.5;
+}
+
+.inline-error {
+  margin: 8px 2px 0;
+  color: var(--installer-danger);
+  font-size: 10px;
+  line-height: 1.45;
+}
+
+.shortcut-options {
+  display: grid;
+  margin: 21px 0 0;
+  border: 0;
+  padding: 0;
+}
+
+.check-row {
+  position: relative;
+  display: flex;
+  min-height: 37px;
+  align-items: center;
+  gap: 10px;
+  border-bottom: 1px solid var(--installer-border);
+  color: var(--installer-text-secondary);
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.check-row:first-of-type {
+  border-top: 1px solid var(--installer-border);
+}
+
+.check-row-fixed {
+  cursor: default;
+}
+
+.check-row input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+
+.custom-check {
+  position: relative;
+  display: grid;
+  width: 17px;
+  height: 17px;
+  flex: 0 0 17px;
+  place-items: center;
+  border: 1px solid var(--installer-border-strong);
+  border-radius: 5px;
+  background: var(--installer-surface);
+  transition: border-color 160ms ease, background-color 160ms ease;
+}
+
+.custom-check::after {
+  width: 6px;
+  height: 3px;
+  border-bottom: 1.8px solid #ffffff;
+  border-left: 1.8px solid #ffffff;
+  content: "";
+  opacity: 0;
+  transform: translateY(-1px) rotate(-45deg);
+}
+
+.check-row input:checked + .custom-check {
+  border-color: var(--installer-primary);
+  background: var(--installer-primary);
+}
+
+.check-row input:checked + .custom-check::after {
+  opacity: 1;
+}
+
+.action-row {
+  display: flex;
+  margin-top: 24px;
+}
+
+.primary-button {
+  position: relative;
+  display: inline-flex;
+  width: 100%;
+  min-height: 52px;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 12px;
+  padding: 0 46px 0 18px;
+  background: linear-gradient(90deg, #1c82ff, var(--installer-primary-strong));
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 600;
+  box-shadow: 0 10px 22px rgba(8, 102, 237, 0.2);
+  transition: filter 180ms ease, transform 180ms ease;
+}
+
+.primary-button > svg {
+  position: absolute;
+  right: 18px;
+}
+
+.primary-button:not(:disabled):hover {
+  filter: brightness(1.06);
+}
+
+.primary-button:not(:disabled):active {
+  transform: scale(0.992);
+}
+
+.progress-track {
+  height: 6px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #e8edf4;
+}
+
+.progress-status {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 11px;
+  color: var(--installer-text-secondary);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.progress-status strong {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--installer-text);
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.progress-status span {
+  flex: 0 0 auto;
+  color: var(--installer-text-tertiary);
+  font-family: Consolas, "Cascadia Mono", monospace;
+  font-size: 9px;
+}
+
+.progress-fill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #1c82ff, var(--installer-primary-strong));
+  transition: width 420ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.progress-track.is-indeterminate .progress-fill {
+  width: 34% !important;
+  animation: progress-sweep 1.35s ease-in-out infinite;
+}
+
+.progress-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 15px;
+  margin-top: 10px;
+  color: var(--installer-text-tertiary);
+  font-family: Consolas, "Cascadia Mono", monospace;
+  font-size: 9px;
+  line-height: 1.5;
+}
+
+.progress-meta span:last-child {
+  max-width: 76%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.runtime-details {
+  display: flex;
+  height: 204px;
+  flex: 0 0 204px;
+  flex-direction: column;
+  margin-top: 21px;
+  overflow: hidden;
+  border: 1px solid var(--installer-border);
+  border-radius: 12px;
+  background: var(--installer-surface-muted);
+}
+
+.runtime-details-heading {
+  display: flex;
+  min-height: 38px;
+  flex: 0 0 38px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  border-bottom: 1px solid var(--installer-border);
+  padding: 0 13px 0 14px;
+  color: var(--installer-text-secondary);
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.runtime-details-heading span:last-child {
+  color: var(--installer-text-tertiary);
+  font-family: Consolas, "Cascadia Mono", monospace;
+  font-size: 9px;
+  font-weight: 400;
+}
+
+.runtime-log {
+  display: flex;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
+  justify-content: flex-start;
+  padding: 7px 13px 8px;
+}
+
+.runtime-line {
+  display: grid;
+  grid-template-columns: 14px 32px minmax(0, 1fr);
+  min-height: 19px;
+  align-items: center;
+  gap: 6px;
+  color: var(--installer-text-tertiary);
+  line-height: 19px;
+}
+
+.runtime-line.is-running {
+  color: var(--installer-primary-strong);
+}
+
+.runtime-state {
+  display: grid;
+  place-items: center;
+  color: currentColor;
+}
+
+.runtime-action {
+  font-size: 9px;
+  font-weight: 600;
+}
+
+.runtime-line code {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--installer-text-secondary);
+  font-family: Consolas, "Cascadia Mono", monospace;
+  font-size: 9px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.runtime-line.is-running code {
+  color: var(--installer-primary-strong);
+}
+
+.result-slot {
+  display: flex;
+  min-height: 52px;
+  flex: 0 0 52px;
+  align-items: stretch;
+  margin-top: 18px;
+}
+
+.failure-card {
+  display: flex;
+  min-height: 50px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  width: 100%;
+  margin-top: 0;
+  border: 1px solid var(--installer-danger-border);
+  border-radius: 10px;
+  padding: 9px 10px 9px 13px;
+  background: var(--installer-danger-soft);
+  color: var(--installer-danger);
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+.failure-card span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.failure-card button {
+  min-height: 30px;
+  flex: 0 0 auto;
+  border: 1px solid var(--installer-danger-border);
+  border-radius: 7px;
+  padding: 0 10px;
+  background: var(--installer-surface);
+  color: var(--installer-danger);
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.progress-action-row {
+  width: 100%;
+  margin-top: 0;
+}
+
+.installer-footer {
+  min-height: 18px;
+  flex: 0 0 18px;
+}
+
+.spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes progress-sweep {
+  from {
+    transform: translateX(-110%);
+  }
+
+  to {
+    transform: translateX(300%);
+  }
+}
+
+@media (max-width: 900px) {
+  .installer-shell {
+    grid-template-columns: minmax(270px, 36%) minmax(0, 64%);
+  }
+
+  .installer-content {
+    width: calc(100% - 54px);
+  }
+
+  .installer-header {
+    padding-right: 26px;
+    padding-left: 26px;
+  }
+
+  .title-block h1 {
+    font-size: 34px;
+  }
+}
+
+@media (max-height: 600px) {
+  .installer-header {
+    height: 60px;
+    flex-basis: 60px;
+  }
+
+  .installer-content {
+    padding-top: 12px;
+    padding-bottom: 16px;
+  }
+
+  .title-block {
+    min-height: 39px;
+    margin-bottom: 18px;
+  }
+
+  .title-block h1 {
+    font-size: 32px;
+  }
+
+  .path-field {
+    min-height: 48px;
+  }
+
+  .shortcut-options {
+    margin-top: 14px;
+  }
+
+  .check-row {
+    min-height: 32px;
+  }
+
+  .action-row {
+    margin-top: 16px;
+  }
+
+  .primary-button {
+    min-height: 46px;
+  }
+
+  .progress-panel {
+    min-height: 319px;
+  }
+
+  .runtime-details {
+    height: 170px;
+    flex-basis: 170px;
+    margin-top: 14px;
+  }
+
+  .runtime-log {
+    padding-top: 5px;
+    padding-bottom: 5px;
+  }
+
+  .runtime-line {
+    min-height: 15px;
+    line-height: 15px;
+  }
+
+  .result-slot {
+    min-height: 46px;
+    flex-basis: 46px;
+    margin-top: 12px;
+  }
+
+  .installer-footer {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

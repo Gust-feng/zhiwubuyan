@@ -1,0 +1,20 @@
+appId: com.zhihu.zhiwubuyan.installer.demo
+productName: 知无不言安装器演示
+artifactName: 知无不言-安装器-Demo-${arch}.${ext}
+directories:
+  output: ../../../../output/installer-demo-portable
+  buildResources: ../../../../build
+compression: normal
+files:
+  - main.cjs
+  - preload.cjs
+  - package.json
+extraResources:
+  - from: ../../../../dist/installer
+    to: installer
+win:
+  icon: ../../../../build/icon.ico
+  target:
+    - target: portable
+      arch:
+        - x64

@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1617" height="512" viewBox="0 0 1617 512" role="img" aria-label="知无不言 Logo">
+  <g transform="translate(48 48) scale(0.82)">
+    <rect x="236" y="50" width="40" height="40" rx="8" fill="#1772F6"/>
+    <rect x="96" y="120" width="320" height="42" rx="8" fill="#17191C"/>
+    <rect x="146" y="205" width="220" height="30" rx="6" fill="#17191C"/>
+    <rect x="126" y="269" width="258" height="30" rx="6" fill="#17191C"/>
+    <path d="M142 344 H370 Q380 344 380 354 V446 Q380 456 370 456 H142 Q132 456 132 446 V354 Q132 344 142 344 Z M177 378 H335 V424 H177 Z" fill="#17191C" fill-rule="evenodd"/>
+  </g>
+  <path d="M55 207 74 202 63 174H121V155H90L86 106H126V87H84L81 68L128 24L115 5L76 47Q64 9 28 -21L12 -7Q57 28 64 87H16V106H67L71 155H54Q42 134 26 119L13 134Q41 164 55 207ZM234 186V-9H215V8H162V-10H143V186ZM162 26H215V168H162Z" transform="translate(430.00 360.00) scale(1.05000 -1.05000)" fill="#17191C" stroke="#17191C" stroke-width="3.2" stroke-linejoin="round" paint-order="stroke"/>
+  <path d="M30 195H226V176H134L129 120H238V101H154V7Q154 0 177 0Q206 0 213.0 3.5Q220 7 221 33L242 27Q240 -3 231.0 -11.0Q222 -19 177 -19Q150 -19 142.0 -14.5Q134 -10 134 1V101H125Q108 24 28 -24L14 -8Q87 36 103 101H18V120H108L114 176H30Z" transform="translate(716.80 360.00) scale(1.05000 -1.05000)" fill="#17191C" stroke="#17191C" stroke-width="3.2" stroke-linejoin="round" paint-order="stroke"/>
+  <path d="M19 195H236V175H151L134 147V-23H112V118Q74 70 26 36L11 51Q78 97 128 175H19ZM163 132Q205 98 245 51L229 35Q194 78 147 121Z" transform="translate(1003.60 360.00) scale(1.05000 -1.05000)" fill="#17191C" stroke="#17191C" stroke-width="3.2" stroke-linejoin="round" paint-order="stroke"/>
+  <path d="M13 178H119L110 202L130 208Q137 195 141 178H244V160H13ZM37 140H219V121H37ZM37 101H219V82H37ZM215 63V-23H195V-10H58V-23H38V63ZM58 9H195V44H58Z" transform="translate(1290.40 360.00) scale(1.05000 -1.05000)" fill="#17191C" stroke="#17191C" stroke-width="3.2" stroke-linejoin="round" paint-order="stroke"/>
+</svg>
