@@ -1,0 +1,332 @@
+import { useEffect, useRef, useState } from 'react'
+import { AnimatePresence, motion } from 'motion/react'
+import { ArrowUp, ChevronDown, FileText, Plus, X } from 'lucide-react'
+import type { ChatInputProps } from '@ui/contracts/composer'
+import { formatCompactTokenCount, formatContextUsagePercent } from '@ui/features/conversations/context-window-usage'
+import { ModelOptionPicker } from '@ui/features/settings/model/option-picker'
+import { composerSurface } from './tokens'
+import { QueuedMessageList } from './QueuedMessageList'
+import { MOTION_EASING, MOTION_TIMING, useMotionEnabled } from '@ui/shell/motion-system'
+
+interface ConversationComposerProps {
+  readonly input: ChatInputProps
+  readonly onCompositionChange?: (composing: boolean) => void
+}
+
+export function ConversationComposer({ input, onCompositionChange }: ConversationComposerProps) {
+  const [focused, setFocused] = useState(false)
+  const ref = useRef<HTMLTextAreaElement>(null)
+  const canEdit = !input.busy || input.allowInputWhileBusy === true
+  const motionEnabled = useMotionEnabled()
+  const canSend = input.value.trim().length > 0 && canEdit
+
+  useEffect(() => {
+    const textarea = ref.current
+    if (textarea === null) return
+    textarea.style.height = 'auto'
+    textarea.style.height = `${Math.min(textarea.scrollHeight, 128)}px`
+  }, [input.value])
+
+  useEffect(() => {
+    if (input.autoFocus === true) ref.current?.focus()
+  }, [input.autoFocus])
+
+  useEffect(() => {
+    const textarea = ref.current
+    if (textarea === null) return
+    let previousWidth = textarea.clientWidth
+    const observer = new ResizeObserver(() => {
+      if (textarea.clientWidth === previousWidth) return
+      previousWidth = textarea.clientWidth
+      textarea.style.height = 'auto'
+      textarea.style.height = `${Math.min(textarea.scrollHeight, 128)}px`
+    })
+    observer.observe(textarea)
+    return () => observer.disconnect()
+  }, [])
+
+  const submit = (): void => {
+    if (canSend) input.onSubmit()
+  }
+
+  return (
+    <div className="ui-conversation-composer" style={composerSurface(focused)}>
+      {input.queuedMessages !== undefined && input.queuedMessages.length > 0 && (
+        <QueuedMessageList
+          messages={input.queuedMessages}
+          onRemove={input.onRemoveQueuedMessage ?? (() => undefined)}
+          onUpdate={input.onUpdateQueuedMessage ?? (() => undefined)}
+          onGuide={input.onGuideQueuedMessage ?? (async () => false)}
+        />
+      )}
+      {input.attachments.length > 0 && (
+        <div className="flex flex-wrap gap-1.5 px-3 pt-3">
+          <AnimatePresence initial={false}>
+            {input.attachments.map((attachment) => (
+              <motion.span
+                key={attachment.attachmentId}
+                className="flex max-w-full items-center gap-1.5 rounded-md px-2 py-1 text-[11px]"
+                style={{ background: 'var(--ui-surface-hover)', color: 'var(--ui-text-2)' }}
+                initial={motionEnabled ? { opacity: 0, y: 4, scale: 0.96 } : false}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={motionEnabled ? { opacity: 0, y: -3, scale: 0.96 } : undefined}
+                transition={{ duration: MOTION_TIMING.interaction, ease: MOTION_EASING.premium }}
+              >
+                <FileText size={11} className="shrink-0" />
+                <span className="truncate">{attachment.title}</span>
+                <button
+                  type="button"
+                  onClick={() => input.onRemoveAttachment(attachment.attachmentId)}
+                  className="shrink-0 hover:opacity-70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-accent)]"
+                  aria-label={`移除${attachment.title}`}
+                >
+                  <X size={11} />
+                </button>
+              </motion.span>
+            ))}
+          </AnimatePresence>
+        </div>
+      )}
+      <textarea
+        ref={ref}
+        value={input.value}
+        onChange={(event) => input.onChange(event.target.value)}
+        onFocus={() => setFocused(true)}
+        onBlur={() => setFocused(false)}
+        onCompositionStart={() => onCompositionChange?.(true)}
+        onCompositionEnd={() => onCompositionChange?.(false)}
+        onKeyDown={(event) => {
+          if (event.nativeEvent.isComposing) return
+          if (event.key === 'Enter' && !event.shiftKey) {
+            event.preventDefault()
+            submit()
+          }
+        }}
+        placeholder={input.placeholder ?? runningPlaceholder(input)}
+        rows={1}
+        spellCheck={false}
+        disabled={!canEdit}
+        className="ui-conversation-composer__input w-full resize-none px-3 pt-2 pb-1 outline-none disabled:cursor-not-allowed"
+        style={{ color: 'var(--ui-text-1)', background: 'transparent', lineHeight: 1.5 }}
+      />
+      <div className="ui-conversation-composer__toolbar">
+        <div className="ui-conversation-composer__toolbar-left">
+          <button
+            type="button"
+            onClick={input.onSelectAttachment}
+            className="ui-conversation-composer__icon-button"
+            style={{ color: 'var(--ui-text-3)' }}
+            aria-label="添加引用"
+          >
+            <Plus size={17} strokeWidth={1.8} aria-hidden="true" />
+          </button>
+        </div>
+        <div className="ui-conversation-composer__toolbar-right">
+          {input.contextUsage !== undefined && <ComposerContextUsage usage={input.contextUsage} />}
+          <ComposerModelSelect input={input} />
+          {input.running && input.onCancel !== undefined && (
+            <button
+              type="button"
+              onClick={input.onCancel}
+              className="rounded-md px-2 py-1 text-[11px] font-medium transition-colors"
+              style={{ background: 'rgba(200,64,64,0.1)', color: 'var(--ui-status-error)' }}
+            >
+              {input.cancelLabel ?? '停止'}
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={submit}
+            disabled={!canSend}
+            aria-label="发送"
+            className="ui-conversation-composer__send disabled:cursor-not-allowed"
+            data-active={canSend}
+          >
+            <ArrowUp size={17} strokeWidth={2.2} aria-hidden="true" />
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function runningPlaceholder(input: ChatInputProps): string {
+  if (!input.running) return '继续对话…';
+  return '运行中，继续输入…';
+}
+
+function ComposerModelSelect({ input }: { readonly input: ChatInputProps }) {
+  return (
+    <ModelOptionPicker
+      options={input.models}
+      selectedId={input.selectedModelId}
+      onSelect={input.onModelSelect}
+      emptyLabel="配置模型"
+      onEmptyAction={input.onOpenSettings}
+      ariaLabel="选择模型"
+      variant="composer"
+      placement="top"
+    />
+  )
+}
+
+function ComposerContextUsage({ usage }: { readonly usage: NonNullable<ChatInputProps['contextUsage']> }) {
+  const progressColor = usage.tone === 'danger'
+    ? 'var(--ui-status-error)'
+    : usage.tone === 'warning'
+      ? 'var(--ui-status-wait)'
+      : usage.tone === 'muted'
+        ? 'var(--ui-border)'
+        : 'var(--ui-accent)'
+  const progress = Math.min(100, Math.max(0, usage.ringPercent))
+  const [open, setOpen] = useState(false)
+  const popoverRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    const handlePointerDown = (event: MouseEvent) => {
+      if (!popoverRef.current?.contains(event.target as Node)) setOpen(false)
+    }
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setOpen(false)
+    }
+    document.addEventListener('mousedown', handlePointerDown)
+    document.addEventListener('keydown', handleKeyDown)
+    return () => {
+      document.removeEventListener('mousedown', handlePointerDown)
+      document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [open])
+
+  return (
+    <div ref={popoverRef} className="ui-context-usage relative hidden shrink-0 sm:block">
+      <button
+        type="button"
+        className="ui-context-usage__trigger flex h-7 w-7 items-center justify-center rounded-md transition-colors hover:bg-[var(--ui-hover-tint)] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--ui-accent)]"
+        aria-haspopup="dialog"
+        aria-expanded={open}
+        aria-label={usage.label}
+        onClick={() => setOpen((current) => !current)}
+      >
+        <ContextUsageRing progress={progress} color={progressColor} />
+      </button>
+      {open && <ContextUsagePopover usage={usage} onClose={() => setOpen(false)} />}
+    </div>
+  )
+}
+
+function ContextUsagePopover({
+  usage,
+  onClose,
+}: {
+  readonly usage: NonNullable<ChatInputProps['contextUsage']>
+  readonly onClose: () => void
+}) {
+  const percent = usage.percent === undefined ? undefined : formatContextUsagePercent(usage.percent)
+  const used = usage.usedTokens === undefined ? undefined : formatCompactTokenCount(usage.usedTokens)
+  const max = formatCompactTokenCount(usage.maxTokens)
+  const tone = usage.tone === 'danger' ? 'danger' : usage.tone === 'warning' ? 'warning' : 'normal'
+  return (
+    <div
+      role="dialog"
+      aria-label="上下文用量"
+      aria-labelledby="ui-context-usage-title"
+      className="ui-context-usage__popover absolute bottom-[calc(100%+8px)] right-0 z-30 rounded-xl p-3.5"
+    >
+      <div className="flex items-center justify-between gap-3">
+        <strong id="ui-context-usage-title" className="text-sm font-medium" style={{ color: 'var(--ui-text-1)' }}>上下文用量</strong>
+        <div className="flex items-center gap-2">
+          <span className="ui-context-usage__popover-percent" data-tone={tone}>
+            {percent === undefined ? '--' : `${percent}%`}
+          </span>
+          <button
+            type="button"
+            aria-label="关闭上下文用量"
+            className="flex h-6 w-6 items-center justify-center rounded-md transition-colors hover:bg-[var(--ui-hover-tint)]"
+            style={{ color: 'var(--ui-text-3)' }}
+            onClick={onClose}
+          >
+            <X size={14} aria-hidden="true" />
+          </button>
+        </div>
+      </div>
+      <div className="mt-2 flex items-baseline justify-between gap-3">
+        <span className="text-[11px]" style={{ color: 'var(--ui-text-3)' }}>
+          {used === undefined ? '暂无用量' : `已使用 ${used} / ${max}`}
+        </span>
+        <span className="text-[11px]" style={{ color: 'var(--ui-text-3)' }}>
+          {usage.source === 'provider_usage' ? '输入上下文' : '等待用量'}
+        </span>
+      </div>
+      <div
+        className="mt-3 h-1.5 overflow-hidden rounded-full"
+        role="progressbar"
+        aria-label="上下文已用比例"
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={usage.percent === undefined ? undefined : Math.round(usage.percent)}
+        style={{ background: 'var(--ui-surface-hover)' }}
+      >
+        <span
+          className="block h-full rounded-full transition-[width,background-color] duration-200"
+          style={{
+            width: `${Math.min(100, Math.max(0, usage.ringPercent))}%`,
+            background: tone === 'danger' ? 'var(--ui-status-error)' : tone === 'warning' ? 'var(--ui-status-wait)' : 'var(--ui-accent)',
+          }}
+        />
+      </div>
+    </div>
+  )
+}
+
+function ContextUsageRing({ progress, color }: { readonly progress: number; readonly color: string }) {
+  const radius = 6
+  const circumference = 2 * Math.PI * radius
+  const offset = circumference * (1 - progress / 100)
+  return (
+    <svg
+      className="ui-context-usage__ring"
+      viewBox="0 0 16 16"
+      width="16"
+      height="16"
+      aria-hidden="true"
+    >
+      <circle className="ui-context-usage__ring-track" cx="8" cy="8" r={radius} fill="none" strokeWidth="2" />
+      <circle
+        className="ui-context-usage__ring-value"
+        cx="8"
+        cy="8"
+        r={radius}
+        fill="none"
+        stroke={color}
+        strokeWidth="2"
+        strokeDasharray={circumference}
+        strokeDashoffset={offset}
+        strokeLinecap="round"
+        transform="rotate(-90 8 8)"
+      />
+    </svg>
+  )
+}
+
+function ComposerReasoningSelect({ input }: { readonly input: ChatInputProps }) {
+  return (
+    <label className="relative shrink-0">
+      <span className="sr-only">推理力度</span>
+      <select
+        aria-label="推理力度"
+        value={input.reasoningEffort}
+        onChange={(event) => input.onReasoningEffortChange(event.target.value as ChatInputProps['reasoningEffort'])}
+        className="h-6 appearance-none rounded-md bg-transparent py-0 pl-2 pr-6 text-[11px] outline-none transition-colors hover:bg-[var(--ui-hover-tint)] focus-visible:ring-1 focus-visible:ring-[var(--ui-accent)]"
+        style={{ color: 'var(--ui-text-2)' }}
+      >
+        <option value="">自动</option>
+        <option value="low">轻量</option>
+        <option value="medium">标准</option>
+        <option value="high">深入</option>
+      </select>
+      <ChevronDown size={10} className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2" style={{ color: 'var(--ui-text-3)' }} aria-hidden="true" />
+    </label>
+  )
+}
+

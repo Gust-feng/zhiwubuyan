@@ -1,0 +1,380 @@
+/* 首页采用知乎式视觉：白卡、发丝线、蓝做标点、灰蓝元信息。
+   颜色走工作台 --ui-* 令牌，跟随明/暗主题整体切换。 */
+.ui-home {
+  position: relative;
+  isolation: isolate;
+  min-height: 0;
+  flex: 1;
+  overflow-y: auto;
+  background: var(--ui-canvas);
+  color: var(--ui-text-1);
+  font-family: inherit;
+}
+
+.ui-home__frame {
+  width: min(1080px, 100%);
+  margin: 0 auto;
+  padding: 28px 28px 56px;
+}
+
+/* ── 刊头：时辰问候 + 日期 ─────────────────────────────────── */
+
+.ui-home__masthead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 2px 2px 14px;
+}
+
+.ui-home__greeting {
+  margin: 0;
+  color: var(--ui-text-1);
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1.5;
+  text-wrap: pretty;
+}
+
+.ui-home__date {
+  flex: 0 0 auto;
+  color: var(--ui-text-3);
+  font-size: 13px;
+}
+
+/* ── 知乎式搜索框：全局入口，但不是唯一主角 ────────────────── */
+
+.ui-home__search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 42px;
+  padding: 0 14px;
+  border: 1px solid var(--ui-border);
+  border-radius: 8px;
+  background: var(--ui-surface);
+  transition: border-color 140ms ease, box-shadow 140ms ease;
+}
+
+.ui-home__search:focus-within {
+  border-color: color-mix(in srgb, var(--ui-accent) 55%, transparent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--ui-accent) 12%, transparent);
+}
+
+.ui-home__search-icon {
+  flex: 0 0 auto;
+  color: var(--ui-text-3);
+}
+
+.ui-home__search-input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  color: var(--ui-text-1);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.ui-home__search-input::placeholder {
+  color: var(--ui-text-3);
+}
+
+.ui-home__search-input:focus {
+  outline: none;
+}
+
+.ui-home__search-input::-webkit-search-cancel-button {
+  display: none;
+}
+
+.ui-home__search-kbd {
+  flex: 0 0 auto;
+  padding: 2px 6px;
+  border: 1px solid var(--ui-border);
+  border-radius: 4px;
+  background: var(--ui-canvas);
+  color: var(--ui-text-3);
+  font-family: inherit;
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+/* ── 多核网格：四个核心等权切入，谁也不是主角 ───────────────── */
+
+.ui-home__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  align-items: start;
+  margin-top: 16px;
+}
+
+.ui-home__core {
+  border: 1px solid var(--ui-border);
+  border-radius: 8px;
+  background: var(--ui-surface);
+  overflow: hidden;
+}
+
+.ui-home__core-head {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--ui-border);
+}
+
+.ui-home__core-glyph {
+  flex: 0 0 auto;
+  color: var(--ui-text-3);
+}
+
+.ui-home__core-glyph.is-accent {
+  color: var(--ui-status-error);
+}
+
+.ui-home__core-name {
+  margin: 0;
+  color: var(--ui-text-1);
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.ui-home__core-role {
+  color: var(--ui-text-3);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.ui-home__core-meta {
+  margin-left: auto;
+  color: var(--ui-text-3);
+  font-size: 12px;
+}
+
+.ui-home__core-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* 行：标题一行截断，元信息一行；有链接的行整行可点 */
+.ui-home__row {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: 2px 12px;
+  padding: 10px 42px 10px 16px;
+  border-bottom: 1px solid var(--ui-border);
+  color: inherit;
+  text-decoration: none;
+  transition: background-color 140ms ease;
+}
+
+.ui-home__core-list li:last-child .ui-home__row {
+  border-bottom: 0;
+}
+
+a.ui-home__row {
+  cursor: pointer;
+}
+
+a.ui-home__row:hover {
+  background: var(--ui-surface-hover);
+}
+
+a.ui-home__row:hover .ui-home__row-title {
+  color: var(--ui-accent);
+}
+
+.ui-home__row-open {
+  position: absolute;
+  top: 50%;
+  right: 16px;
+  transform: translateY(-50%);
+  width: 13px;
+  height: 13px;
+  align-self: center;
+  color: var(--ui-text-3);
+  transition: color 140ms ease;
+}
+
+a.ui-home__row:hover .ui-home__row-open {
+  color: var(--ui-accent);
+}
+
+/* 热榜行：排名 + 标题 */
+.ui-home__row--ranked {
+  grid-template-columns: 22px minmax(0, 1fr);
+  align-items: start;
+}
+
+.ui-home__rank {
+  align-self: start;
+  color: var(--ui-text-3);
+  font-size: 13.5px;
+  font-weight: 600;
+  font-style: italic;
+  line-height: 1.55;
+  text-align: center;
+}
+
+.ui-home__rank[data-rank='1'] { color: var(--ui-status-error); }
+.ui-home__rank[data-rank='2'] { color: var(--ui-status-wait); }
+.ui-home__rank[data-rank='3'] { color: var(--ui-status-wait); }
+
+.ui-home__row-title {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--ui-text-1);
+  font-size: 13.5px;
+  font-weight: 500;
+  line-height: 1.55;
+  transition: color 140ms ease;
+}
+
+.ui-home__row-meta {
+  grid-column: 1 / 3;
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--ui-text-3);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+/* 关注行：头像 + 名字签名 + 关注者数 */
+.ui-home__row--followee {
+  grid-template-columns: 28px minmax(0, 1fr) auto;
+  align-items: center;
+  padding-right: 48px;
+}
+
+.ui-home__avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  object-fit: cover;
+  background: var(--ui-surface-hover);
+}
+
+.ui-home__avatar--initial {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ui-text-3);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.ui-home__followee {
+  display: block;
+  min-width: 0;
+}
+
+.ui-home__followee .ui-home__row-meta {
+  grid-column: auto;
+}
+
+.ui-home__followers {
+  flex: 0 0 auto;
+  color: var(--ui-text-3);
+  font-size: 12px;
+}
+
+.ui-home__skeleton {
+  padding: 4px 16px 12px;
+}
+
+.ui-home__skeleton-row {
+  height: 40px;
+  margin: 8px 0;
+  border-radius: 6px;
+  background: linear-gradient(90deg, var(--ui-surface-hover), var(--ui-surface-active), var(--ui-surface-hover));
+  animation: ui-home-skeleton 1.4s ease infinite;
+}
+
+@keyframes ui-home-skeleton {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+.ui-home__core-notice {
+  padding: 22px 16px;
+  color: var(--ui-text-3);
+  font-size: 12.5px;
+  line-height: 1.6;
+  text-align: center;
+}
+
+.ui-home__core-notice button {
+  margin-left: 10px;
+  padding: 0 10px;
+  border: 1px solid var(--ui-border);
+  border-radius: 6px;
+  background: var(--ui-surface);
+  color: var(--ui-accent);
+  font-size: 12px;
+  line-height: 24px;
+  cursor: pointer;
+}
+
+.ui-home__core-notice button:hover {
+  border-color: color-mix(in srgb, var(--ui-accent) 45%, transparent);
+}
+
+/* ── 提问入口：降为第二动作，紧凑条 ───────────────────────── */
+
+.ui-home__composer {
+  margin-top: 16px;
+  border: 1px solid var(--ui-border);
+  border-radius: 8px;
+  background: var(--ui-surface);
+  overflow: hidden;
+}
+
+.ui-home__composer .ui-conversation-composer__input {
+  min-height: 48px;
+  padding: 12px 14px 6px;
+}
+
+.ui-home__composer .ui-conversation-composer__input::placeholder {
+  color: var(--ui-text-3);
+  opacity: 0.9;
+}
+
+.ui-home__context-row {
+  display: flex;
+  min-height: 28px;
+  align-items: center;
+  margin-top: 6px;
+  padding-left: 2px;
+}
+
+@media (max-width: 860px) {
+  .ui-home__grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 720px) {
+  .ui-home__frame {
+    padding: 20px 16px 40px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ui-home *,
+  .ui-home *::before,
+  .ui-home *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}

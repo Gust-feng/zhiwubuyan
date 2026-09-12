@@ -1,0 +1,24 @@
+.kanshan-flight {
+  position: fixed;
+  z-index: 9999;
+  pointer-events: none;
+  transform-origin: bottom center;
+  will-change: transform;
+}
+
+.kanshan-flight__bob {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  will-change: transform;
+}
+
+.kanshan-flight__video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: bottom center;
+}

@@ -1,0 +1,58 @@
+/* 提问入口上方的种子内容（官方问题推荐）。
+   它给提问起头，但主角仍是提问卡片：这里用更轻的容器（有描边没有阴影、更紧的行高），
+   条数收敛、无额外动作，避免信息多的用户被这层内容占满首屏。 */
+.dr-seeds {
+  margin: 0 0 26px;
+  padding: 12px 14px 9px;
+  border: 1px solid var(--ui-border);
+  border-radius: var(--dr-radius-card);
+  background: var(--ui-surface);
+}
+.dr-seeds__head { display: flex; align-items: center; gap: 7px; padding-bottom: 6px; }
+.dr-seeds__head > svg { flex-shrink: 0; color: var(--ui-accent); }
+.dr-seeds__head h2 { margin: 0; color: var(--ui-text-1); font-size: 12px; font-weight: 600; }
+.dr-seeds__meta { margin-left: auto; color: var(--ui-text-3); font-size: 11px; font-variant-numeric: tabular-nums; }
+.dr-seeds__list { padding: 0; margin: 0; list-style: none; }
+/* `.dr-live button` 的 color: inherit 权重更高，这里的文字色必须提权。 */
+.dr-seed {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 28px;
+  padding: 3px 6px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--ui-text-2) !important;
+  font-size: 13px !important;
+  line-height: 1.6;
+  text-align: left;
+  transition: background var(--motion-duration-quick), color var(--motion-duration-quick);
+}
+.dr-seed:hover, .dr-seed:focus-visible { background: var(--ui-surface-hover); color: var(--ui-text-1) !important; }
+.dr-seed__title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dr-seed__add { flex-shrink: 0; color: var(--ui-text-3); transition: color var(--motion-duration-quick); }
+.dr-seed:hover .dr-seed__add, .dr-seed:focus-visible .dr-seed__add { color: var(--ui-accent); }
+.dr-seeds__notice { display: flex; align-items: center; gap: 8px; margin: 2px 0 6px; color: var(--ui-text-3); font-size: 12px; }
+.dr-seeds__notice > span { flex: 1; min-width: 0; }
+.dr-seeds__notice button {
+  flex-shrink: 0;
+  padding: 2px 9px;
+  border: 1px solid var(--ui-border-strong);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--ui-text-2) !important;
+  font-size: 11px !important;
+}
+.dr-seeds__notice button:hover { background: var(--ui-surface-hover); color: var(--ui-text-1) !important; }
+.dr-seeds__skeleton { display: grid; gap: 9px; padding: 4px 6px 8px; }
+.dr-seeds__skeleton > span { display: block; height: 11px; border-radius: 4px; background: var(--ui-surface-hover); }
+.dr-seeds__skeleton > span:nth-child(2) { width: 84%; }
+.dr-seeds__skeleton > span:nth-child(3) { width: 62%; }
+@container research (max-width: 520px) {
+  .dr-seeds { margin-bottom: 20px; padding: 12px 12px 8px; }
+  .dr-seed { font-size: 12px !important; }
+  /* 窄容器只留最新几条，避免把提问卡片顶到很下面。 */
+  .dr-seeds__list li:nth-child(n + 4) { display: none; }
+}

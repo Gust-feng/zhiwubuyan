@@ -1,0 +1,1 @@
+export type { PanelContextAttachment as ContextAttachment } from "@api-contracts/ordinary-agent";

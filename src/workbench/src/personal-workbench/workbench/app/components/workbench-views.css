@@ -1,0 +1,403 @@
+/* 首页 / 深度研究 / 简报库 三视图共用的知乎式版面。
+   全部走 --ui-* 令牌，跟随明/暗主题切换；发丝线、白卡、蓝做标点。 */
+
+.ui-view {
+  position: relative;
+  min-height: 0;
+  flex: 1;
+  overflow-y: auto;
+  background: var(--ui-canvas);
+  color: var(--ui-text-1);
+}
+
+.ui-view__frame {
+  width: min(1080px, 100%);
+  margin: 0 auto;
+  padding: 28px 28px 64px;
+}
+
+.ui-view__lede {
+  margin: 0 0 4px;
+  color: var(--ui-text-1);
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.ui-view__sub {
+  margin: 0;
+  color: var(--ui-text-3);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.ui-view__head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 2px 2px 20px;
+}
+
+/* ── 区块标题 ─────────────────────────────────────────────── */
+
+.ui-view__section {
+  margin-top: 26px;
+}
+
+.ui-view__section-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  padding: 0 2px;
+}
+
+.ui-view__section-glyph {
+  flex: 0 0 auto;
+  color: var(--ui-text-3);
+}
+
+.ui-view__section-title {
+  margin: 0;
+  color: var(--ui-text-1);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.ui-view__section-count {
+  color: var(--ui-text-3);
+  font-size: 12px;
+}
+
+.ui-view__section-more {
+  margin-left: auto;
+  border: 0;
+  background: transparent;
+  color: var(--ui-accent);
+  font-size: 12.5px;
+  cursor: pointer;
+}
+.ui-view__section-more:hover { text-decoration: underline; }
+
+/* ── 首页：两列核心 ────────────────────────────────────────── */
+
+.ui-dash__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  align-items: start;
+}
+
+.ui-panel {
+  border: 1px solid var(--ui-border);
+  border-radius: 10px;
+  background: var(--ui-surface);
+  overflow: hidden;
+}
+
+.ui-panel__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 13px 16px;
+  border-bottom: 1px solid var(--ui-border);
+}
+
+.ui-panel__glyph {
+  flex: 0 0 auto;
+  color: var(--ui-text-3);
+}
+.ui-panel__glyph.is-accent { color: var(--ui-accent); }
+.ui-panel__glyph.is-warn { color: var(--ui-status-wait); }
+
+.ui-panel__title {
+  margin: 0;
+  color: var(--ui-text-1);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.ui-panel__count {
+  margin-left: auto;
+  padding: 1px 8px;
+  border-radius: 20px;
+  background: var(--ui-accent-bg);
+  color: var(--ui-accent);
+  font-size: 11.5px;
+  font-weight: 600;
+}
+.ui-panel__count.is-plain {
+  background: var(--ui-surface-hover);
+  color: var(--ui-text-3);
+}
+
+.ui-panel__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ui-panel__row {
+  display: block;
+  width: 100%;
+  padding: 12px 16px;
+  border: 0;
+  border-bottom: 1px solid var(--ui-border);
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 140ms ease;
+}
+.ui-panel__list li:last-child .ui-panel__row { border-bottom: 0; }
+.ui-panel__row:hover { background: var(--ui-surface-hover); }
+
+.ui-panel__row-title {
+  display: block;
+  overflow: hidden;
+  color: var(--ui-text-1);
+  font-size: 13.5px;
+  font-weight: 500;
+  line-height: 1.55;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ui-panel__row:hover .ui-panel__row-title { color: var(--ui-accent); }
+
+.ui-panel__row-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 5px;
+  color: var(--ui-text-3);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.ui-panel__empty {
+  padding: 26px 16px;
+  color: var(--ui-text-3);
+  font-size: 12.5px;
+  text-align: center;
+}
+
+/* 进度条：进行中研究 */
+.ui-progress {
+  position: relative;
+  height: 4px;
+  margin-top: 8px;
+  border-radius: 3px;
+  background: var(--ui-surface-active);
+  overflow: hidden;
+}
+.ui-progress__fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: 3px;
+  background: var(--ui-accent);
+}
+
+/* 阶段小徽标 */
+.ui-stage {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 7px;
+  border-radius: 5px;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.6;
+}
+.ui-stage[data-stage='ask']    { background: var(--ui-sky);      color: var(--ui-accent); }
+.ui-stage[data-stage='search'] { background: var(--ui-lavender); color: var(--ui-accent); }
+.ui-stage[data-stage='select'] { background: var(--ui-amber);    color: var(--ui-warn-text); }
+.ui-stage[data-stage='brief']  { background: var(--ui-sage);     color: var(--ui-status-done); }
+
+.ui-dot-sep::before { content: '·'; margin: 0 2px; color: var(--ui-text-3); }
+
+/* ── 深度研究：单栏流水线 ─────────────────────────────────── */
+
+.ui-ask__composer {
+  border: 1px solid var(--ui-border);
+  border-radius: 12px;
+  background: var(--ui-surface);
+  box-shadow: 0 1px 2px rgba(24,26,30,0.04);
+  overflow: hidden;
+}
+
+.ui-ask__field {
+  display: block;
+  width: 100%;
+  min-height: 88px;
+  padding: 16px 18px 8px;
+  border: 0;
+  background: transparent;
+  color: var(--ui-text-1);
+  font: inherit;
+  font-size: 16px;
+  line-height: 1.6;
+  resize: none;
+}
+.ui-ask__field::placeholder { color: var(--ui-text-3); }
+.ui-ask__field:focus { outline: none; }
+
+.ui-ask__toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px 12px;
+}
+
+.ui-scope {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 30px;
+  padding: 0 12px;
+  border: 1px solid var(--ui-border);
+  border-radius: 16px;
+  background: var(--ui-surface);
+  color: var(--ui-text-2);
+  font-size: 12.5px;
+  cursor: pointer;
+  transition: border-color 140ms ease, background 140ms ease, color 140ms ease;
+}
+.ui-scope:hover { color: var(--ui-text-1); }
+.ui-scope[data-on='true'] {
+  border-color: color-mix(in srgb, var(--ui-accent) 30%, transparent);
+  background: var(--ui-accent-bg);
+  color: var(--ui-accent);
+}
+
+.ui-ask__submit {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 34px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 18px;
+  background: var(--ui-accent);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: filter 140ms ease;
+}
+.ui-ask__submit:hover { filter: brightness(1.06); }
+
+/* 流水线阶梯 */
+.ui-flow {
+  margin-top: 26px;
+  display: grid;
+  gap: 12px;
+}
+.ui-flow__step {
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr);
+  gap: 14px;
+  align-items: start;
+}
+.ui-flow__rail {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+.ui-flow__num {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 1px solid var(--ui-border);
+  background: var(--ui-surface);
+  color: var(--ui-text-3);
+  font-size: 12.5px;
+  font-weight: 600;
+}
+.ui-flow__step[data-on='true'] .ui-flow__num {
+  border-color: var(--ui-accent);
+  background: var(--ui-accent);
+  color: #fff;
+}
+.ui-flow__line {
+  flex: 1;
+  width: 1.5px;
+  min-height: 18px;
+  background: var(--ui-border);
+}
+.ui-flow__body { padding-bottom: 6px; }
+.ui-flow__title {
+  margin: 2px 0 3px;
+  color: var(--ui-text-1);
+  font-size: 14px;
+  font-weight: 600;
+}
+.ui-flow__desc {
+  margin: 0;
+  color: var(--ui-text-3);
+  font-size: 12.5px;
+  line-height: 1.6;
+}
+
+/* ── 简报库：已完成研究的报告卡片 ───────────────────────────── */
+
+.ui-briefs__grid {
+  display: grid;
+  gap: 14px;
+}
+
+.ui-brief {
+  display: block;
+  width: 100%;
+  padding: 18px 20px;
+  border: 1px solid var(--ui-border);
+  border-radius: 12px;
+  background: var(--ui-surface);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 140ms ease, box-shadow 140ms ease;
+}
+.ui-brief:hover {
+  border-color: color-mix(in srgb, var(--ui-accent) 24%, transparent);
+  box-shadow: 0 2px 10px rgba(24,26,30,0.05);
+}
+
+.ui-brief__top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.ui-brief__date {
+  margin-left: auto;
+  color: var(--ui-text-3);
+  font-size: 12px;
+}
+
+.ui-brief__title {
+  margin: 0 0 8px;
+  color: var(--ui-text-1);
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+.ui-brief__foot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding-top: 12px;
+  border-top: 1px solid var(--ui-border);
+}
+.ui-brief__foot-meta {
+  margin-left: auto;
+  color: var(--ui-text-3);
+  font-size: 12px;
+}
+

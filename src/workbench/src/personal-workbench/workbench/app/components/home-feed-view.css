@@ -1,0 +1,570 @@
+/* 首页内容流与问答：白卡、发丝线、蓝做标点，颜色全部走工作台 --ui-* 令牌。 */
+
+.uhf {
+  border: 1px solid var(--ui-border);
+  border-radius: 10px;
+  background: var(--ui-surface);
+  overflow: hidden;
+}
+
+.uhf__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--ui-border);
+}
+
+.uhf__glyph {
+  flex: 0 0 auto;
+  display: inline-flex;
+  color: var(--ui-text-3);
+}
+
+.uhf__glyph.is-hot {
+  color: var(--ui-status-error);
+}
+
+.uhf__name {
+  margin: 0;
+  color: var(--ui-text-1);
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.uhf__role,
+.uhf__time {
+  color: var(--ui-text-3);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.uhf__time {
+  margin-left: auto;
+  white-space: nowrap;
+}
+
+.uhf__time--stale {
+  color: var(--ui-status-wait, var(--ui-text-3));
+}
+
+.uhf__filters {
+  display: inline-flex;
+  gap: 2px;
+  margin-left: 4px;
+  padding: 2px;
+  border: 1px solid var(--ui-border);
+  border-radius: 7px;
+  background: var(--ui-canvas);
+}
+
+.uhf__filter {
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--ui-text-3);
+  font-family: inherit;
+  font-size: 12px;
+  line-height: 20px;
+  padding: 0 9px;
+  cursor: pointer;
+  transition: background-color 120ms ease, color 120ms ease;
+}
+
+.uhf__filter:hover {
+  color: var(--ui-text-1);
+}
+
+.uhf__filter.is-active {
+  background: var(--ui-surface);
+  color: var(--ui-accent);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 6%);
+}
+
+.uhf__topic {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 16px;
+  border-bottom: 1px solid var(--ui-border);
+  background: var(--ui-accent-bg);
+  font-size: 12.5px;
+}
+
+.uhf__topic-text {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--ui-text-2, var(--ui-text-1));
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.uhf__topic-clear {
+  flex: 0 0 auto;
+  border: 0;
+  background: transparent;
+  color: var(--ui-accent);
+  font-family: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 5px;
+}
+
+.uhf__topic-clear:hover {
+  background: var(--ui-surface-hover);
+}
+
+.uhf__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.uhf__list > li + li {
+  border-top: 1px solid var(--ui-border);
+}
+
+.uhf__card {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 16px;
+  transition: background-color 140ms ease;
+}
+
+.uhf__card:hover {
+  background: var(--ui-surface-hover);
+}
+
+.uhf__card-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.uhf__card-title {
+  display: block;
+  color: var(--ui-text-1);
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.5;
+  text-decoration: none;
+  text-wrap: pretty;
+}
+
+.uhf__card-title:hover {
+  color: var(--ui-accent);
+}
+
+.uhf__summary {
+  margin: 6px 0 0;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
+  color: var(--ui-text-2, var(--ui-text-1));
+  font-size: 13.5px;
+  line-height: 1.65;
+  text-wrap: pretty;
+}
+
+.uhf__card-foot {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 10px;
+}
+
+.uhf__byline {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--ui-text-3);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.uhf__type {
+  flex: 0 0 auto;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: var(--ui-canvas);
+  color: var(--ui-text-2, var(--ui-text-1));
+}
+
+.uhf__author,
+.uhf__badge,
+.uhf__stat {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.uhf__badge {
+  color: var(--ui-accent);
+}
+
+.uhf__card-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  flex: 0 0 auto;
+}
+
+.uhf__ghost {
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--ui-text-3);
+  font-family: inherit;
+  font-size: 12px;
+  padding: 3px 8px;
+  cursor: pointer;
+}
+
+.uhf__ghost:hover {
+  background: var(--ui-accent-bg);
+  color: var(--ui-accent);
+}
+
+.uhf__open {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--ui-accent);
+  font-size: 12px;
+  text-decoration: none;
+  padding: 3px 6px;
+  border-radius: 6px;
+}
+
+.uhf__open:hover {
+  background: var(--ui-accent-bg);
+}
+
+.uhf__thumb {
+  flex: 0 0 auto;
+  width: 108px;
+  height: 72px;
+  border-radius: 6px;
+  background: var(--ui-surface-hover);
+  object-fit: cover;
+}
+
+.uhf__notice {
+  padding: 26px 16px;
+  color: var(--ui-text-3);
+  font-size: 12.5px;
+  line-height: 1.6;
+  text-align: center;
+}
+
+.uhf__notice p {
+  margin: 0;
+}
+
+.uhf__notice button {
+  margin: 10px 4px 0;
+  padding: 0 10px;
+  border: 1px solid var(--ui-border);
+  border-radius: 6px;
+  background: var(--ui-surface);
+  color: var(--ui-accent);
+  font-family: inherit;
+  font-size: 12px;
+  line-height: 24px;
+  cursor: pointer;
+}
+
+.uhf__notice button:hover {
+  border-color: color-mix(in srgb, var(--ui-accent) 45%, transparent);
+}
+
+.uhf__skeleton {
+  padding: 8px 16px 16px;
+}
+
+.uhf__skeleton-row {
+  height: 56px;
+  margin: 10px 0;
+  border-radius: 8px;
+  background: linear-gradient(90deg, var(--ui-surface-hover), var(--ui-surface-active), var(--ui-surface-hover));
+  animation: uhf-skeleton 1.4s ease infinite;
+}
+
+@keyframes uhf-skeleton {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+/* ── 检索条：输入 + 范围 + 两条通路 ───────────────────────── */
+
+.uha {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 46px;
+  padding: 0 8px 0 14px;
+  border: 1px solid var(--ui-border);
+  border-radius: 10px;
+  background: var(--ui-surface);
+  transition: border-color 140ms ease, box-shadow 140ms ease;
+}
+
+.uha:focus-within {
+  border-color: color-mix(in srgb, var(--ui-accent) 55%, transparent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--ui-accent) 12%, transparent);
+}
+
+.uha__icon {
+  flex: 0 0 auto;
+  color: var(--ui-text-3);
+}
+
+.uha__input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  color: var(--ui-text-1);
+  font-family: inherit;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.uha__input::placeholder {
+  color: var(--ui-text-3);
+}
+
+.uha__input:focus {
+  outline: none;
+}
+
+.uha__input::-webkit-search-cancel-button {
+  display: none;
+}
+
+.uha__scope select {
+  border: 1px solid var(--ui-border);
+  border-radius: 6px;
+  background: var(--ui-surface);
+  color: var(--ui-text-3);
+  font-family: inherit;
+  font-size: 12px;
+  padding: 3px 6px;
+  cursor: pointer;
+}
+
+.uha__submit,
+.uha__ask {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex: 0 0 auto;
+  border: 0;
+  border-radius: 7px;
+  font-family: inherit;
+  font-size: 12.5px;
+  line-height: 30px;
+  padding: 0 12px;
+  cursor: pointer;
+}
+
+.uha__submit {
+  background: var(--ui-accent);
+  color: var(--ui-accent-fg);
+}
+
+.uha__submit:hover {
+  filter: brightness(1.06);
+}
+
+.uha__ask {
+  background: var(--ui-accent-bg);
+  color: var(--ui-accent);
+}
+
+.uha__ask:hover {
+  background: color-mix(in srgb, var(--ui-accent) 16%, transparent);
+}
+
+.uha-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* ── 直答面板 ────────────────────────────────────────────── */
+
+.uha-panel {
+  border: 1px solid var(--ui-border);
+  border-radius: 10px;
+  background: var(--ui-surface);
+  overflow: hidden;
+}
+
+.uha-panel__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--ui-border);
+}
+
+.uha-panel__glyph {
+  flex: 0 0 auto;
+  color: var(--ui-accent);
+}
+
+.uha-panel__name {
+  margin: 0;
+  color: var(--ui-text-1);
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.uha-panel__role {
+  color: var(--ui-text-3);
+  font-size: 12px;
+}
+
+.uha-panel__tiers {
+  display: inline-flex;
+  gap: 2px;
+  margin-left: auto;
+  padding: 2px;
+  border: 1px solid var(--ui-border);
+  border-radius: 7px;
+  background: var(--ui-canvas);
+}
+
+.uha-panel__tier {
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--ui-text-3);
+  font-family: inherit;
+  font-size: 12px;
+  line-height: 20px;
+  padding: 0 9px;
+  cursor: pointer;
+}
+
+.uha-panel__tier.is-active {
+  background: var(--ui-surface);
+  color: var(--ui-accent);
+}
+
+.uha-panel__close {
+  border: 0;
+  background: transparent;
+  color: var(--ui-text-3);
+  font-family: inherit;
+  font-size: 12px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.uha-panel__close:hover {
+  color: var(--ui-text-1);
+}
+
+.uha-panel__loading {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  padding: 34px 16px;
+}
+
+.uha-panel__loading span {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--ui-accent);
+  opacity: 0.35;
+  animation: uha-dot 1.2s ease-in-out infinite;
+}
+
+.uha-panel__loading span:nth-child(2) { animation-delay: 0.18s; }
+.uha-panel__loading span:nth-child(3) { animation-delay: 0.36s; }
+
+@keyframes uha-dot {
+  0%, 80%, 100% { transform: scale(0.8); opacity: 0.3; }
+  40% { transform: scale(1); opacity: 0.85; }
+}
+
+.uha-panel__body {
+  padding: 16px;
+}
+
+.uha-panel__question {
+  margin: 0 0 12px;
+  color: var(--ui-text-3);
+  font-size: 12.5px;
+}
+
+.uha-panel__answer {
+  color: var(--ui-text-1);
+  font-size: 14px;
+  line-height: 1.75;
+}
+
+.uha-panel__note {
+  margin: 14px 0 0;
+  padding-top: 12px;
+  border-top: 1px solid var(--ui-border);
+  color: var(--ui-text-3);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.uha-panel__foot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+@media (max-width: 720px) {
+  .uhf__head {
+    flex-wrap: wrap;
+  }
+
+  .uhf__time {
+    margin-left: 0;
+  }
+
+  .uhf__thumb {
+    display: none;
+  }
+
+  .uha {
+    height: auto;
+    flex-wrap: wrap;
+    padding: 10px 12px;
+  }
+
+  .uha__submit,
+  .uha__ask {
+    flex: 1;
+    justify-content: center;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .uhf__skeleton-row,
+  .uha-panel__loading span {
+    animation-duration: 0.01ms !important;
+  }
+}

@@ -1,0 +1,416 @@
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  --font-size: 16px;
+
+  /* Workbench workspace tokens — 知乎设计语言：冷白灰底 + 墨水蓝作标点，非纸张。 */
+  --personal-paper: #f6f7f9;
+  --personal-panel: #ffffff;
+  --personal-ink: #1a1a1a;
+  --personal-muted: #646a73;
+  --personal-line: rgba(24, 26, 30, 0.09);
+  --personal-accent: #0b62d6;
+
+  --ui-canvas: #f6f7f9;
+  --ui-surface: #ffffff;
+  --ui-surface-hover: #f0f2f5;
+  --ui-surface-active: #e7eaef;
+  --ui-panel: #ffffff;
+  --ui-composer: #ffffff;
+  --ui-composer-shadow: 0 1px 3px rgba(18, 24, 33, 0.04);
+  --ui-composer-shadow-focus: 0 2px 12px rgba(18, 24, 33, 0.07);
+  --ui-border: rgba(24, 26, 30, 0.09);
+  --ui-text-1: #1a1a1a;
+  --ui-text-2: #646a73;
+  --ui-text-3: #8a9099;
+  --ui-accent: #0b62d6;
+  --ui-accent-bg: rgba(11, 98, 214, 0.08);
+  --ui-accent-fg: #ffffff;
+  --ui-hover-tint: rgba(24, 26, 30, 0.05);
+  --ui-lavender: #eaf1fc;
+  --ui-lavender-mid: #0b62d6;
+  --ui-sage: #e6f4ec;
+  --ui-sky: #e3effb;
+  --ui-amber: #fbf2dd;
+  --ui-status-active: #0b62d6;
+  --ui-status-wait: #d97e15;
+  --ui-status-error: #d24b4b;
+  --ui-status-done: #1f9c5e;
+
+  /* 文档/材料语义色：与 --ui-* 一样在深色下整体替换，组件不得硬编码浅色。 */
+  --ui-paper: #ffffff;
+  --ui-warn-text: #a5670f;
+  --ui-warn-text-strong: #8a560c;
+  --ui-warn-hover: rgba(165, 103, 15, 0.09);
+  --ui-danger-text: #bc4034;
+  --ui-teal-text: #2f7d74;
+  --ui-verify-text: #2e8b57;
+  --ui-diff-added: #2e7d46;
+  --ui-diff-removed: #b23a2e;
+
+  /* 阅读偏好由共享设置入口写入，被对话流、专注模式和材料视图消费。 */
+  --reading-sans: "Noto Sans SC", Inter, system-ui, -apple-system, sans-serif;
+  --reading-serif: "Noto Serif SC", Georgia, "Songti SC", serif;
+  --reading-font: var(--reading-sans);
+  --reading-width: 680px;
+  --reading-body-size: 16px;
+
+  /* Stable workbench type roles. Reading content scales independently. */
+  --ui-font-ui: 14px;
+  --ui-font-meta: 12px;
+  --ui-font-caption: 11px;
+  --ui-surface-raised: #ffffff;
+  --ui-surface-overlay: #ffffff;
+  --ui-border-strong: rgba(24, 26, 30, 0.16);
+  --ui-shadow-soft: 0 8px 24px -16px rgba(18, 24, 33, 0.20);
+  --ui-shadow-float: 0 18px 48px -20px rgba(18, 24, 33, 0.22), 0 2px 10px rgba(18, 24, 33, 0.05);
+  --ui-focus-ring: 0 0 0 3px rgba(11, 98, 214, 0.18);
+  --motion-duration-quick: 120ms;
+  --motion-duration-interaction: 180ms;
+  --motion-duration-panel: 280ms;
+  --motion-duration-spatial: 420ms;
+  --motion-ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --motion-ease-premium: cubic-bezier(0.22, 1, 0.36, 1);
+  --motion-ease-exit: cubic-bezier(0.4, 0, 1, 1);
+
+  --background: #f6f7f9;
+  --foreground: #1a1a1a;
+  --card: #ffffff;
+  --card-foreground: #1a1a1a;
+  --popover: #ffffff;
+  --popover-foreground: #1a1a1a;
+  --primary: #0b62d6;
+  --primary-foreground: #ffffff;
+  --secondary: #f0f2f5;
+  --secondary-foreground: #1a1a1a;
+  --muted: #f0f2f5;
+  --muted-foreground: #8a9099;
+  --accent: #eaf1fc;
+  --accent-foreground: #0b62d6;
+  --destructive: #d24b4b;
+  --destructive-foreground: #ffffff;
+  --border: rgba(24, 26, 30, 0.09);
+  --input: transparent;
+  --input-background: #f0f2f5;
+  --switch-background: #cbced4;
+  --font-weight-medium: 500;
+  --font-weight-normal: 400;
+  --ring: #0b62d6;
+  --chart-1: oklch(0.646 0.222 41.116);
+  --chart-2: oklch(0.6 0.118 184.704);
+  --chart-3: oklch(0.398 0.07 227.392);
+  --chart-4: oklch(0.828 0.189 84.429);
+  --chart-5: oklch(0.769 0.188 70.08);
+  --radius: 0.625rem;
+  --sidebar: #ffffff;
+  --sidebar-foreground: #1a1a1a;
+  --sidebar-primary: #0b62d6;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #f0f2f5;
+  --sidebar-accent-foreground: #1a1a1a;
+  --sidebar-border: rgba(24, 26, 30, 0.09);
+  --sidebar-ring: #0b62d6;
+}
+
+html[data-style="default"][data-color="dark"] {
+  color-scheme: dark;
+
+  --personal-paper: #1b1a19;
+  --personal-panel: #232221;
+  --personal-ink: #eceae6;
+  --personal-muted: #a9a5a0;
+  --personal-line: rgba(236, 232, 225, 0.1);
+  --personal-accent: #5c96ec;
+
+  --ui-canvas: #1b1a19;
+  --ui-surface: #232221;
+  --ui-surface-hover: #2b2a28;
+  --ui-surface-active: #333230;
+  --ui-panel: #201f1e;
+  --ui-composer: #262523;
+  --ui-composer-shadow: 0 12px 32px rgba(0, 0, 0, 0.24);
+  --ui-surface-raised: #2b2a28;
+  --ui-surface-overlay: #262523;
+  --ui-border-strong: rgba(236, 232, 225, 0.18);
+  --ui-shadow-soft: 0 12px 32px rgba(0, 0, 0, 0.28);
+  --ui-shadow-float: 0 18px 48px -20px rgba(0, 0, 0, 0.40), 0 2px 10px rgba(0, 0, 0, 0.22);
+  --ui-focus-ring: 0 0 0 3px rgba(92, 150, 236, 0.30);
+  --ui-composer-shadow-focus:
+    0 0 0 3px rgba(92, 150, 236, 0.20),
+    0 16px 38px rgba(0, 0, 0, 0.30);
+  --ui-border: rgba(236, 232, 225, 0.1);
+  --ui-text-1: #eceae6;
+  --ui-text-2: #a9a5a0;
+  --ui-text-3: #827e78;
+  --ui-accent: #5c96ec;
+  --ui-accent-bg: rgba(92, 150, 236, 0.15);
+  --ui-accent-fg: #ffffff;
+  --ui-hover-tint: rgba(236, 232, 225, 0.06);
+  --ui-lavender: #22303f;
+  --ui-lavender-mid: #7da9ee;
+  --ui-sage: #212a25;
+  --ui-sky: #1f2a36;
+  --ui-amber: #322b20;
+  --ui-status-active: #5c96ec;
+  --ui-status-wait: #c79a5e;
+  --ui-status-error: #e0808a;
+  --ui-status-done: #6fb587;
+
+  /* 深色下的文档/材料语义色（对应 :root 中的浅色默认值）。 */
+  --ui-paper: #232221;
+  --ui-warn-text: #d3a868;
+  --ui-warn-text-strong: #e0bd83;
+  --ui-warn-hover: rgba(211, 168, 104, 0.14);
+  --ui-danger-text: #e0808a;
+  --ui-teal-text: #86b0a7;
+  --ui-verify-text: #6fb587;
+  --ui-diff-added: #6fb587;
+  --ui-diff-removed: #e0808a;
+
+  --background: #1b1a19;
+  --foreground: #eceae6;
+  --card: #232221;
+  --card-foreground: #eceae6;
+  --popover: #262523;
+  --popover-foreground: #eceae6;
+  --primary: #5c96ec;
+  --primary-foreground: #ffffff;
+  --secondary: #2b2a28;
+  --secondary-foreground: #eceae6;
+  --muted: #2b2a28;
+  --muted-foreground: #a9a5a0;
+  --accent: #22303f;
+  --accent-foreground: #afcbf3;
+  --destructive: #7f3a3a;
+  --destructive-foreground: #ffecec;
+  --border: rgba(236, 232, 225, 0.1);
+  --input: rgba(236, 232, 225, 0.12);
+  --input-background: #1d1c1b;
+  --switch-background: #3b3a38;
+  --ring: #5c96ec;
+  --sidebar: #1a1918;
+  --sidebar-foreground: #eceae6;
+  --sidebar-primary: #5c96ec;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #2b2a28;
+  --sidebar-accent-foreground: #eceae6;
+  --sidebar-border: rgba(236, 232, 225, 0.1);
+  --sidebar-ring: #5c96ec;
+}
+
+.dark {
+  --background: oklch(0.145 0 0);
+  --foreground: oklch(0.985 0 0);
+  --card: oklch(0.145 0 0);
+  --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.145 0 0);
+  --popover-foreground: oklch(0.985 0 0);
+  --primary: oklch(0.985 0 0);
+  --primary-foreground: oklch(0.205 0 0);
+  --secondary: oklch(0.269 0 0);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.269 0 0);
+  --muted-foreground: oklch(0.708 0 0);
+  --accent: oklch(0.269 0 0);
+  --accent-foreground: oklch(0.985 0 0);
+  --destructive: oklch(0.396 0.141 25.723);
+  --destructive-foreground: oklch(0.637 0.237 25.331);
+  --border: oklch(0.269 0 0);
+  --input: oklch(0.269 0 0);
+  --ring: oklch(0.439 0 0);
+  --font-weight-medium: 500;
+  --font-weight-normal: 400;
+  --chart-1: oklch(0.488 0.243 264.376);
+  --chart-2: oklch(0.696 0.17 162.48);
+  --chart-3: oklch(0.769 0.188 70.08);
+  --chart-4: oklch(0.627 0.265 303.9);
+  --chart-5: oklch(0.645 0.246 16.439);
+  --sidebar: oklch(0.205 0 0);
+  --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar-primary: oklch(0.488 0.243 264.376);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.269 0 0);
+  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-border: oklch(0.269 0 0);
+  --sidebar-ring: oklch(0.439 0 0);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-input-background: var(--input-background);
+  --color-switch-background: var(--switch-background);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+
+  html {
+    font-size: var(--font-size);
+  }
+
+  h1 {
+    font-size: var(--text-2xl);
+    font-weight: var(--font-weight-medium);
+    line-height: 1.5;
+  }
+
+  h2 {
+    font-size: var(--text-xl);
+    font-weight: var(--font-weight-medium);
+    line-height: 1.5;
+  }
+
+  h3 {
+    font-size: var(--text-lg);
+    font-weight: var(--font-weight-medium);
+    line-height: 1.5;
+  }
+
+  h4 {
+    font-size: var(--text-base);
+    font-weight: var(--font-weight-medium);
+    line-height: 1.5;
+  }
+
+  label {
+    font-size: var(--text-base);
+    font-weight: var(--font-weight-medium);
+    line-height: 1.5;
+  }
+
+  button {
+    font-size: var(--text-base);
+    font-weight: var(--font-weight-medium);
+    line-height: 1.5;
+  }
+
+  button:focus-visible {
+    outline: 2px solid var(--ui-accent, #0b62d6);
+    outline-offset: 2px;
+  }
+
+  input {
+    font-size: var(--text-base);
+    font-weight: var(--font-weight-normal);
+    line-height: 1.5;
+  }
+}
+
+/* 文本选中高亮：知乎墨水蓝低透明度,克制不跳。 */
+::selection {
+  background: rgba(11, 98, 214, 0.16);
+  color: inherit;
+}
+
+/* 选中行为:界面 chrome(导航、按钮、标签)默认不可选中 —— 这些是操作元素,
+   被拖蓝选中既无意义又难看。只有真正的内容/输入区才放开选中。 */
+body {
+  -webkit-user-select: none;
+  user-select: none;
+}
+/* 阅读正文、可编辑区域重新允许选中(书写、复制引用是刚需)。 */
+.reading-prose,
+input,
+textarea,
+[contenteditable="true"] {
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+/* 阅读界面容器：正文字体跟随阅读偏好。宽度用 max-width，由各处套 style 消费 --reading-width。 */
+.reading-prose {
+  font-family: var(--reading-font);
+}
+
+/* 细而克制的滚动条：默认极淡,悬停/滚动时才略明显。覆盖全站可滚动区域。 */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(24, 26, 30, 0.16) transparent;
+}
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+*::-webkit-scrollbar-thumb {
+  background-color: rgba(24, 26, 30, 0.16);
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(24, 26, 30, 0.3);
+}
+*::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+html[data-style="default"][data-color="dark"] * {
+  scrollbar-color: rgba(232, 229, 226, 0.16) transparent;
+}
+
+html[data-style="default"][data-color="dark"] *::-webkit-scrollbar-thumb {
+  background-color: rgba(232, 229, 226, 0.16);
+}
+
+html[data-style="default"][data-color="dark"] *::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(232, 229, 226, 0.28);
+}
+html[data-motion-effective="reduced"] {
+  --motion-duration-quick: 0ms;
+  --motion-duration-interaction: 0ms;
+  --motion-duration-panel: 0ms;
+  --motion-duration-spatial: 0ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html:not([data-motion-effective="standard"]) {
+    --motion-duration-quick: 0ms;
+    --motion-duration-interaction: 0ms;
+    --motion-duration-panel: 0ms;
+    --motion-duration-spatial: 0ms;
+  }
+}

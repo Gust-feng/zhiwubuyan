@@ -1,0 +1,409 @@
+/* 众声：一个议题下大家的不同说法。
+   设计语言与深度研究一致——入口是居中的提问版心，结果按报告式分节呈现。
+   版式常量集中在这里，和 research-workspace.css 用同一套尺度。 */
+
+.voices-page {
+  /* 让入口的 hero 能撑满可用高度并自行滚动；结果态则正常纵向排布。 */
+  display: flex;
+  flex-direction: column;
+  --vp-track: 820px;
+  --vp-pad-x: 42px;
+  --vp-shell: calc(var(--vp-track) + var(--vp-pad-x) * 2);
+  --vp-radius-card: 14px;
+  --vp-radius-control: 8px;
+}
+
+/* ── 入口：居中提问 ─────────────────────────────────────── */
+
+.voices-start {
+  display: grid;
+  align-content: start;
+  justify-items: center;
+  flex: 1;
+  min-height: 0;
+  padding: clamp(56px, 13vh, 112px) 0 48px;
+  overflow-y: auto;
+}
+.voices-start__content {
+  width: 100%;
+  max-width: var(--vp-shell);
+  padding: 0 var(--vp-pad-x);
+}
+.voices-start__head {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 22px;
+  margin-bottom: 28px;
+  text-align: center;
+}
+.voices-start__emblem { display: inline-flex; color: var(--ui-accent); }
+.voices-start h1 {
+  margin: 0;
+  color: var(--ui-text-1);
+  font-size: 35px;
+  font-weight: 650;
+  line-height: 1.35;
+}
+
+/* 建议议题卡：轻容器，有描边没有阴影，主角仍是提问卡片 */
+.voices-seeds {
+  margin: 0 0 26px;
+  padding: 12px 14px 9px;
+  border: 1px solid var(--ui-border);
+  border-radius: var(--vp-radius-card);
+  background: var(--ui-surface);
+}
+.voices-seeds__head {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding-bottom: 6px;
+}
+.voices-seeds__head > svg { flex-shrink: 0; color: var(--ui-accent); }
+.voices-seeds__head h2 { margin: 0; color: var(--ui-text-1); font-size: 12px; font-weight: 600; }
+.voices-seeds__role { color: var(--ui-text-3); font-size: 11px; }
+.voices-seeds__list { margin: 0; padding: 0; list-style: none; }
+.voices-seed {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 30px;
+  padding: 5px 6px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--ui-text-2);
+  font: inherit;
+  font-size: 13px;
+  line-height: 1.6;
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--motion-duration-quick), color var(--motion-duration-quick);
+}
+.voices-seed:hover { background: var(--ui-surface-hover); color: var(--ui-text-1); }
+.voices-seed__title { flex: 1 1 auto; min-width: 0; }
+
+/* 提问卡片：输入区 + 底部参数条，中间用整宽分隔线断开 */
+.voices-composer {
+  position: relative;
+  padding: 20px 22px 16px;
+  border: 1px solid var(--ui-border-strong);
+  border-radius: var(--vp-radius-card);
+  background: var(--ui-composer);
+  box-shadow: var(--ui-composer-shadow);
+  transition: border-color var(--motion-duration-quick), box-shadow var(--motion-duration-interaction);
+}
+.voices-composer:focus-within {
+  border-color: var(--ui-accent);
+  box-shadow: var(--ui-composer-shadow-focus);
+}
+/* 看山趴在输入卡片右上沿：盒底压进卡片，让双爪搭住上沿。 */
+.voices-composer__mascot {
+  position: absolute;
+  right: 26px;
+  bottom: calc(100% - 14px);
+  z-index: 2;
+  width: 108px;
+  height: 108px;
+  overflow: hidden;
+  pointer-events: none;
+}
+.voices-composer textarea {
+  display: block;
+  width: 100%;
+  min-height: 32px;
+  max-height: 200px;
+  padding: 0;
+  resize: none;
+  field-sizing: content;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: var(--ui-text-1);
+  font: inherit;
+  font-size: 18px;
+  line-height: 1.6;
+}
+.voices-composer textarea::placeholder { color: var(--ui-text-2); }
+.voices-composer__bar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 14px;
+  padding-top: 13px;
+  border-top: 1px solid var(--ui-border);
+}
+
+/* 参数条上的预置选项：分段控件，不在界面开放自由填写 */
+.voices-preset {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid var(--ui-border);
+  border-radius: 9px;
+  background: var(--ui-canvas);
+}
+.voices-preset__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 11px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--ui-text-2);
+  font: inherit;
+  font-size: 12.5px;
+  cursor: pointer;
+  transition: background var(--motion-duration-quick), color var(--motion-duration-quick);
+}
+.voices-preset__item:hover { color: var(--ui-text-1); }
+.voices-preset__item[aria-pressed="true"] {
+  background: var(--ui-surface);
+  color: var(--ui-text-1);
+  box-shadow: var(--ui-composer-shadow);
+}
+.voices-preset__item svg { flex: 0 0 auto; }
+.voices-preset__item.is-static { color: var(--ui-text-3); cursor: default; }
+.voices-preset--time .voices-preset__item { padding: 5px 9px; font-variant-numeric: tabular-nums; }
+.voices-primary-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 42px;
+  margin-left: auto;
+  padding: 9px 22px;
+  border: 0;
+  border-radius: 10px;
+  background: var(--ui-accent);
+  color: var(--ui-accent-fg);
+  font: inherit;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity var(--motion-duration-quick);
+}
+.voices-primary-button:disabled { opacity: 0.55; cursor: default; }
+
+/* ── 结果：报告式分节 ───────────────────────────────────── */
+
+.voices-result {
+  width: 100%;
+  max-width: var(--vp-shell);
+  margin: 0 auto;
+  padding: 36px var(--vp-pad-x) 72px;
+}
+.voices-report__eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--ui-text-3);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 1.2px;
+}
+.voices-report__title {
+  margin: 14px 0 0;
+  color: var(--ui-text-1);
+  font-size: 27px;
+  font-weight: 550;
+  line-height: 1.5;
+  letter-spacing: -0.6px;
+}
+.voices-report__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px;
+  margin: 16px 0 0;
+  color: var(--ui-text-3);
+  font-size: 11px;
+}
+/* 结果页回到提问态的入口：改参数或换议题都从这里回去。 */
+.voices-reset {
+  margin-left: auto;
+  padding: 4px 11px;
+  border: 1px solid var(--ui-border);
+  border-radius: 8px;
+  background: var(--ui-surface);
+  color: var(--ui-text-2);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background var(--motion-duration-quick), color var(--motion-duration-quick);
+}
+.voices-reset:hover { background: var(--ui-surface-hover); color: var(--ui-text-1); }
+
+/* 落点条：说清说法主要落在哪个知乎问题上，可切换或在没有落点时如实说明 */
+.voices-anchor {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px 8px;
+  margin: 22px 0 0;
+  padding: 10px 14px;
+  border-left: 2px solid var(--ui-accent);
+  background: var(--ui-accent-bg);
+  color: var(--ui-text-2);
+  font-size: 12.5px;
+  line-height: 1.7;
+}
+.voices-anchor svg { flex: 0 0 auto; align-self: center; color: var(--ui-accent); }
+.voices-anchor a { color: var(--ui-accent); text-decoration: none; }
+.voices-anchor a:hover { text-decoration: underline; }
+.voices-anchor.is-loose { border-left-color: var(--ui-border-strong); background: var(--ui-surface); color: var(--ui-text-3); }
+.voices-anchor.is-loose svg { color: var(--ui-text-3); }
+.voices-anchor__switch { flex: 0 0 auto; }
+.voices-anchor__switch summary { color: var(--ui-text-3); font-size: 12px; cursor: pointer; }
+.voices-anchor__options { display: grid; gap: 4px; margin-top: 8px; }
+.voices-anchor__options button {
+  padding: 6px 10px;
+  border: 1px solid var(--ui-border);
+  border-radius: 6px;
+  background: var(--ui-canvas);
+  color: var(--ui-text-2);
+  font: inherit;
+  font-size: 12.5px;
+  text-align: left;
+  cursor: pointer;
+}
+.voices-anchor__options button:hover { background: var(--ui-surface-hover); color: var(--ui-text-1); }
+
+/* 分歧 / 共同：两条并排的结论条 */
+.voices-verdicts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 12px;
+  margin: 26px 0 0;
+}
+.voices-verdict {
+  padding: 14px 16px;
+  border: 1px solid var(--ui-border);
+  border-radius: 10px;
+  background: var(--ui-surface);
+}
+.voices-verdict strong {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--ui-text-3);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.4px;
+}
+.voices-verdict p { margin: 0; color: var(--ui-text-1); font-size: 14px; line-height: 1.85; }
+
+/* 说法分节：编号 + 标题，陈述在下方，来源用发丝线列表 */
+.voices-cluster { margin: 34px 0 0; }
+.voices-cluster__head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin: 0 0 10px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--ui-border);
+}
+.voices-cluster__index {
+  color: var(--ui-text-3);
+  font-size: 11px;
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+}
+.voices-cluster__label { margin: 0; color: var(--ui-text-1); font-size: 16px; font-weight: 550; }
+.voices-cluster__tag {
+  margin-left: auto;
+  padding: 2px 8px;
+  border: 1px solid var(--ui-border);
+  border-radius: 999px;
+  color: var(--ui-text-3);
+  font-size: 10px;
+}
+.voices-cluster__statement { margin: 0; color: var(--ui-text-1); font-size: 14px; line-height: 1.9; }
+
+/* 来源列表：编号 + 摘要 + 来路，行间发丝线 */
+.voices-sources { margin: 14px 0 0; padding: 0; list-style: none; }
+.voices-sources li { padding: 12px 0; }
+.voices-sources li + li { border-top: 1px solid var(--ui-border); }
+.voices-source {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  text-decoration: none;
+}
+.voices-source__number {
+  flex: 0 0 20px;
+  color: var(--ui-text-3);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.9;
+}
+.voices-source__body { min-width: 0; }
+.voices-source__summary {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
+  color: var(--ui-text-1);
+  font-size: 13px;
+  line-height: 1.85;
+}
+a.voices-source:hover .voices-source__summary { color: var(--ui-accent); }
+.voices-source__meta { display: block; margin-top: 4px; color: var(--ui-text-3); font-size: 11px; }
+
+/* 别处的相关讨论：主体是落点问题下的回答，这些收在折叠里 */
+.voices-elsewhere { margin-top: 12px; }
+.voices-elsewhere summary { color: var(--ui-text-3); font-size: 12.5px; cursor: pointer; }
+.voices-elsewhere[open] summary { margin-bottom: 8px; }
+.voices-elsewhere .voices-sources { margin-top: 0; }
+
+.voices-unclustered { margin: 28px 0 0; }
+.voices-unclustered summary { color: var(--ui-text-3); font-size: 12.5px; cursor: pointer; }
+.voices-unclustered[open] summary { margin-bottom: 8px; }
+
+/* ── 提示：加载 / 出错 / 空结果 ─────────────────────────── */
+
+.voices-notice {
+  display: flex;
+  gap: 10px;
+  padding: 14px 16px;
+  border: 1px solid var(--ui-border);
+  border-radius: 10px;
+  background: var(--ui-surface);
+  color: var(--ui-text-2);
+  font-size: 13px;
+}
+.voices-notice svg { flex: 0 0 auto; margin-top: 2px; color: var(--ui-status-wait); }
+.voices-notice strong { display: block; color: var(--ui-text-1); font-size: 13.5px; }
+.voices-notice span { display: block; margin-top: 3px; line-height: 1.7; }
+.voices-notice__retry {
+  margin-left: auto;
+  align-self: center;
+  padding: 5px 12px;
+  border: 1px solid var(--ui-border);
+  border-radius: 8px;
+  background: var(--ui-surface);
+  color: var(--ui-text-2);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.voices-notice__retry:hover { background: var(--ui-surface-hover); color: var(--ui-text-1); }
+
+/* ── 窄容器：收窄版心与留白，按钮独占一行 ───────────────── */
+
+@media (max-width: 520px) {
+  .voices-start { padding-top: 40px; }
+  .voices-start h1 { font-size: 25px; }
+  .voices-start__emblem svg { width: 40px; height: 40px; }
+  .voices-composer__mascot { width: 80px; height: 80px; right: 16px; }
+  .voices-composer { padding: 16px 16px 14px; }
+  .voices-primary-button { flex: 1 1 100%; justify-content: center; }
+  .voices-result { padding: 24px 20px 56px; }
+  .voices-report__title { font-size: 22px; }
+}

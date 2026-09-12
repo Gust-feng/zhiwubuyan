@@ -1,0 +1,49 @@
+.ui-sidebar-brand {
+  display: flex;
+  min-width: 0;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 10px;
+  min-height: 72px;
+  border-bottom: 1px solid var(--ui-border);
+  padding: 14px;
+}
+
+.ui-sidebar-brand__mark {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  flex: 0 0 34px;
+  place-items: center;
+  border-radius: 10px;
+  /* 标志自带石墨黑与品牌蓝，浅色底才能同时看清三层横画和蓝色方点。 */
+  background: #f7f5ef;
+  color: #17191c;
+}
+
+.ui-sidebar-brand__copy {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.ui-sidebar-brand__name,
+.ui-sidebar-brand__description {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ui-sidebar-brand__name {
+  color: var(--ui-text-1);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.ui-sidebar-brand__description {
+  color: var(--ui-text-3);
+  font-size: 11px;
+  line-height: 1.25;
+}

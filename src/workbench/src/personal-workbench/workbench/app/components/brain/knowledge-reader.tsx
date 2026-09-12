@@ -1,0 +1,248 @@
+import { useEffect, useState } from 'react'
+import { ChevronRight, CornerUpLeft, Link2, Plus, Trash2, X } from 'lucide-react'
+import { useBrain, type ResolvedPage } from '../brainStore'
+import { knowledgePageIcon } from '../knowledge-view-projection'
+import { ReferencePreview } from '../ReferencePreview'
+import { CollaborationToggle } from '../CollaborationToggle'
+
+export function KnowledgeReader({
+  page,
+  resolved,
+  brain,
+  onBack,
+  onOpen,
+}: {
+  page: ResolvedPage
+  resolved: ResolvedPage[]
+  brain: ReturnType<typeof useBrain>
+  onBack: () => void
+  onOpen: (id: string) => void
+}) {
+  const [linkPickerOpen, setLinkPickerOpen] = useState(false)
+  const outIds = brain.outgoing(page.refId)
+  const backIds = brain.backlinks(page.refId)
+  const linkableTargets = resolved.filter((p) => p.refId !== page.refId && !outIds.includes(p.refId))
+
+  return (
+    <section className="flex flex-1 overflow-hidden" style={{ minHeight: 0 }}>
+      <div className="flex-1 flex flex-col overflow-hidden min-w-0">
+        <>
+            <header className="ui-preview-toolbar">
+              <div className="ui-preview-location">
+                <nav className="ui-preview-breadcrumb" aria-label="知识库路径" title={page.title}>
+                  <button type="button" onClick={onBack}>知识库</button>
+                  <ChevronRight size={12} aria-hidden="true" />
+                  <span aria-current="page">{page.title}</span>
+                </nav>
+              </div>
+              <div className="ui-preview-toolbar-actions">
+              <CollaborationToggle available={page.exists} />
+              <button
+                type="button"
+                onClick={() => {
+                  brain.uncollect(page.refId)
+                  onBack()
+                }}
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs transition-colors hover:bg-[var(--ui-hover-tint)]"
+                style={{ color: 'var(--ui-text-3, #aba39b)' }}
+              >
+                <Trash2 size={12} />
+                移出
+              </button>
+              </div>
+            </header>
+
+            <div className="flex flex-1 min-h-0 overflow-hidden">
+              <KnowledgePageContent page={page} />
+            </div>
+        </>
+      </div>
+
+      {/* 右:链接 + 反向链接(透镜) */}
+      <div
+        className="shrink-0 flex flex-col overflow-y-auto"
+        style={{ width: 256, borderLeft: '1px solid var(--ui-border, rgba(45,40,34,0.09))' }}
+      >
+        <div className="px-4 py-4">
+          <SectionHead icon={<CornerUpLeft size={12} />} label="反向链接" count={backIds.length} />
+          {backIds.length === 0 ? (
+            <p className="text-xs mb-5" style={{ color: 'var(--ui-text-3, #aba39b)' }}>
+              还没有页面链到这里。
+            </p>
+          ) : (
+            <div className="space-y-1 mb-5">
+              {backIds.map((id) => {
+                const rp = resolved.find((p) => p.refId === id)
+                if (!rp) return null
+                return <LinkChip key={id} page={rp} onClick={() => onOpen(id)} />
+              })}
+            </div>
+          )}
+
+          <SectionHead icon={<Link2 size={12} />} label="链接到" count={outIds.length} />
+          <div className="space-y-1">
+            {outIds.map((id) => {
+              const rp = resolved.find((p) => p.refId === id)
+              if (!rp) return null
+              return (
+                <LinkChip
+                  key={id}
+                  page={rp}
+                  onClick={() => onOpen(id)}
+                  onRemove={() => brain.removeLink(page.refId, id)}
+                />
+              )
+            })}
+          </div>
+
+          {linkPickerOpen ? (
+            <div className="mt-2 rounded-md p-1" style={{ border: '1px solid var(--ui-border, rgba(45,40,34,0.09))' }}>
+              <div className="flex items-center justify-between px-1.5 py-1">
+                <span className="text-xs" style={{ color: 'var(--ui-text-3, #aba39b)' }}>
+                  链接到…
+                </span>
+                <button
+                  type="button"
+                  aria-label="关闭链接选择"
+                  title="关闭"
+                  onClick={() => setLinkPickerOpen(false)}
+                  className="flex h-6 w-6 items-center justify-center rounded hover:bg-[var(--ui-hover-tint)]"
+                  style={{ color: 'var(--ui-text-3, #aba39b)' }}
+                >
+                  <X aria-hidden="true" size={12} />
+                </button>
+              </div>
+              <div className="max-h-48 overflow-y-auto">
+                {linkableTargets.length === 0 ? (
+                  <p className="px-1.5 py-2 text-xs" style={{ color: 'var(--ui-text-3, #aba39b)' }}>
+                    没有可链接的其它页面。
+                  </p>
+                ) : (
+                  linkableTargets.map((p) => (
+                    <button
+                      type="button"
+                      key={p.refId}
+                      onClick={() => {
+                        brain.addLink(page.refId, p.refId)
+                        setLinkPickerOpen(false)
+                      }}
+                      className="w-full flex items-center gap-2 px-1.5 py-1.5 rounded text-left text-xs transition-colors hover:bg-[var(--ui-hover-tint)]"
+                      style={{ color: 'var(--ui-text-1, #292722)' }}
+                    >
+                      {knowledgePageIcon(p, 12)}
+                      <span className="flex-1 truncate">{p.title}</span>
+                    </button>
+                  ))
+                )}
+              </div>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setLinkPickerOpen(true)}
+              className="mt-2 w-full flex items-center gap-1.5 px-2 py-1.5 rounded-md text-xs transition-colors hover:bg-[var(--ui-hover-tint)]"
+              style={{ color: 'var(--ui-accent, #6865a7)' }}
+            >
+              <Plus size={12} />
+              建立链接
+            </button>
+          )}
+        </div>
+      </div>
+    </section>
+  )
+}
+
+
+export function KnowledgePageContent({
+  page,
+}: {
+  page: ResolvedPage
+}) {
+  const [documentPath, setDocumentPath] = useState('')
+  useEffect(() => {
+    setDocumentPath('')
+  }, [page.refId])
+  const navigateDocumentPath = (relativePath: string) => {
+    setDocumentPath(relativePath)
+  }
+  if (!page.exists) {
+    return (
+      <div
+        className="h-full w-full overflow-y-auto px-6 py-10 text-sm"
+        style={{ maxWidth: 'var(--reading-width, 680px)', color: 'var(--ui-text-3, #aba39b)' }}
+      >
+        这个对象已不存在(可能已被删除)。可以把它移出知识库。
+      </div>
+    )
+  }
+  if (page.documentTarget === undefined) return null
+  return (
+    <ReferencePreview
+      itemId={page.refId}
+      fallbackTitle={page.title}
+      canOpen={false}
+      onOpen={() => undefined}
+      apiBase={page.documentTarget.apiBase}
+      initialRelativePath={documentPath}
+      onNavigatePath={navigateDocumentPath}
+      embedded
+    />
+  )
+}
+
+
+function SectionHead({ icon, label, count }: { icon: React.ReactNode; label: string; count: number }) {
+  return (
+    <div className="flex items-center gap-1.5 mb-2" style={{ color: 'var(--ui-text-2, #87827c)' }}>
+      {icon}
+      <span className="text-xs font-medium">{label}</span>
+      <span className="text-xs" style={{ color: 'var(--ui-text-3, #aba39b)' }}>
+        {count}
+      </span>
+    </div>
+  )
+}
+
+function LinkChip({ page, onClick, onRemove }: { page: ResolvedPage; onClick: () => void; onRemove?: () => void }) {
+  const [hovered, setHovered] = useState(false)
+  return (
+    <div
+      className="relative flex items-center gap-2 rounded-md px-2 py-1.5 cursor-pointer transition-colors"
+      style={{ background: hovered ? 'var(--ui-surface-hover, #eeebe6)' : 'transparent' }}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      onFocusCapture={() => setHovered(true)}
+      onBlurCapture={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setHovered(false)
+      }}
+    >
+      <button
+        type="button"
+        aria-label={`打开${page.title}`}
+        title={page.title}
+        onClick={onClick}
+        className="absolute inset-0 z-0 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset"
+      />
+      {knowledgePageIcon(page, 12)}
+      <span className="flex-1 text-xs truncate" style={{ color: 'var(--ui-text-1, #292722)' }}>
+        {page.title}
+      </span>
+      {onRemove && hovered && (
+        <button
+          type="button"
+          aria-label={`移除指向${page.title}的链接`}
+          title="移除链接"
+          onClick={(e) => {
+            e.stopPropagation()
+            onRemove()
+          }}
+          className="relative z-[1] flex h-6 w-6 shrink-0 items-center justify-center rounded hover:bg-[var(--ui-hover-tint)]"
+          style={{ color: 'var(--ui-text-3, #aba39b)' }}
+        >
+          <X aria-hidden="true" size={11} />
+        </button>
+      )}
+    </div>
+  )
+}

@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024" role="img" aria-label="知无不言 Logo">
+  <rect width="1024" height="1024" rx="224" fill="#F7F5EF"/>
+  
+  <g transform="translate(166 166) scale(1.35)">
+    <rect x="236" y="50" width="40" height="40" rx="8" fill="#1772F6"/>
+    <rect x="96" y="120" width="320" height="42" rx="8" fill="#17191C"/>
+    <rect x="146" y="205" width="220" height="30" rx="6" fill="#17191C"/>
+    <rect x="126" y="269" width="258" height="30" rx="6" fill="#17191C"/>
+    <path d="M142 344 H370 Q380 344 380 354 V446 Q380 456 370 456 H142 Q132 456 132 446 V354 Q132 344 142 344 Z M177 378 H335 V424 H177 Z" fill="#17191C" fill-rule="evenodd"/>
+  </g>
+</svg>

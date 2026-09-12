@@ -1,0 +1,60 @@
+/*
+ * 刘看山动画媒体层。外层盒子（调用方给定类名）负责定位与尺寸，
+ * 这里只负责媒体在盒内底边居中、透明叠放与交接时的极短交叉淡化。
+ */
+.kanshan-mascot__media {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: center bottom;
+  /* 只用 opacity 控制显隐：不能用 visibility:visible，否则会穿透栖位父级的
+     visibility:hidden，让已隐藏栖位里的视频仍被绘制出来（出现两只刘看山）。 */
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 130ms linear;
+  will-change: opacity;
+}
+
+.kanshan-mascot__media--rest {
+  z-index: 0;
+}
+
+/* idle 常驻底层。 */
+video.kanshan-mascot__media {
+  z-index: 1;
+}
+
+/* 一次性片段在上层，交接时淡出，露出从 anchor 起播的 idle。 */
+video.kanshan-mascot__media[data-clip] {
+  z-index: 2;
+}
+
+.kanshan-mascot__media.is-on {
+  opacity: 1;
+}
+
+.kanshan-mascot__media.is-on.is-leaving {
+  opacity: 0;
+}
+
+/* 系统/设置要求减少动态时，调用方盒子的位移动效一并关闭。 */
+html[data-motion-effective='reduced'] .kanshan-mascot__media {
+  transition: none;
+}
+
+/* 可点击：光标提示与按下时的轻微回弹（缩放在媒体层，不与盒子的位移动画冲突）。 */
+.kanshan-mascot.is-interactive {
+  cursor: pointer;
+}
+
+.kanshan-mascot.is-interactive:active .kanshan-mascot__media {
+  transform: scale(0.96);
+  transition: transform 90ms ease;
+}
+
+html[data-motion-effective='reduced'] .kanshan-mascot.is-interactive {
+  cursor: default;
+}

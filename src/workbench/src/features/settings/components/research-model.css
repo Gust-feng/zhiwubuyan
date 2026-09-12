@@ -1,0 +1,103 @@
+/* 模型服务（单一研究模型）：预设行 + 表单网格 + 网页端锁定态。 */
+
+.research-model-note {
+  margin: 0 0 12px;
+  color: var(--text-secondary, var(--fg-muted, #646a73));
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.research-model-configured {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 12px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--success-surface, color-mix(in oklch, #2fa36b 14%, transparent));
+  color: var(--success-text, #1f7a4d);
+  font-size: 12px;
+}
+
+.research-model-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.research-model-preset {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 5px 12px;
+  border: 1px solid var(--border-subtle, var(--cap-trunk));
+  border-radius: 999px;
+  background: transparent;
+  color: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.research-model-preset:hover:not(:disabled) {
+  border-color: var(--accent, var(--fg));
+}
+
+.research-model-preset:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.research-model-preset small {
+  color: var(--text-secondary, var(--fg-muted, #646a73));
+  font-size: 11px;
+}
+
+.research-model-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.research-model-notice,
+.research-model-error {
+  margin: 12px 0 0;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.research-model-notice {
+  color: var(--success-text, #1f7a4d);
+}
+
+.research-model-error {
+  color: var(--danger-text, #c0392b);
+}
+
+.research-model-locked {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 16px;
+  border: 1px solid var(--border-subtle, var(--cap-trunk));
+  border-radius: 12px;
+  background: color-mix(in oklch, var(--fg) 3%, transparent);
+}
+
+.research-model-locked strong {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 14px;
+}
+
+.research-model-locked span {
+  color: var(--text-secondary, var(--fg-muted, #646a73));
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+@media (max-width: 720px) {
+  .research-model-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

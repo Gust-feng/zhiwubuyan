@@ -1,0 +1,18 @@
+/* 栖位根容器：定位与尺寸由所在界面的类名决定，这里只保证块级承载。 */
+.kanshan-perch {
+  display: block;
+  pointer-events: none;
+}
+
+/* 未激活时不拦截指针；激活后把交互交还给刘看山（点击趣味反应）。 */
+.kanshan-perch[data-active='true'] {
+  pointer-events: auto;
+}
+
+/* 刘看山在栖位盒内铺满，内部媒体层负责底边居中对齐。 */
+.kanshan-perch__body {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
