@@ -1,0 +1,325 @@
+:root {
+  color: #26344a;
+  background: #edf2f8;
+  font-family: "Noto Sans SC Variable", "Segoe UI Variable", "Microsoft YaHei", sans-serif;
+  font-synthesis: none;
+  color-scheme: light;
+  --welcome-blue: #0866ed;
+  --welcome-blue-bright: #1c82ff;
+  --welcome-title: #3159e8;
+  --welcome-text: #26344a;
+  --welcome-muted: #8391a6;
+  --welcome-canvas: #edf2f8;
+  --welcome-surface: #ffffff;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  width: 100%;
+  height: 100%;
+}
+
+body {
+  min-width: 760px;
+  min-height: 540px;
+  margin: 0;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 72% 10%, rgba(220, 239, 255, 0.72), transparent 32%),
+    var(--welcome-canvas);
+  -webkit-font-smoothing: antialiased;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+button {
+  font: inherit;
+}
+
+.welcome-stage {
+  display: grid;
+  width: 100%;
+  height: 100%;
+  place-items: center;
+  padding: 28px;
+}
+
+.welcome-window {
+  display: grid;
+  width: min(1180px, calc(100vw - 56px), calc((100vh - 56px) * 1.5));
+  max-width: 100%;
+  aspect-ratio: 3 / 2;
+  grid-template-columns: 41.5% minmax(0, 1fr);
+  overflow: hidden;
+  border: 1px solid rgba(67, 94, 130, 0.08);
+  border-radius: 22px;
+  background: var(--welcome-surface);
+  box-shadow: 0 26px 70px rgba(35, 67, 108, 0.17), 0 5px 18px rgba(35, 67, 108, 0.08);
+}
+
+.welcome-scene {
+  position: relative;
+  min-width: 0;
+  overflow: hidden;
+  background: #dfe8f2;
+}
+
+.welcome-scene img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 61.2% center;
+  pointer-events: none;
+  -webkit-user-drag: none;
+}
+
+.welcome-scene-edge {
+  position: absolute;
+  inset: 0 0 0 auto;
+  width: clamp(28px, 4vw, 58px);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.68));
+}
+
+.welcome-panel {
+  position: relative;
+  min-width: 0;
+  overflow: hidden;
+  background: var(--welcome-surface);
+}
+
+.welcome-glow {
+  position: absolute;
+  top: -31%;
+  right: 4%;
+  width: 62%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(243, 251, 255, 0.98) 0%, rgba(220, 241, 255, 0.54) 58%, rgba(255, 255, 255, 0) 76%);
+  pointer-events: none;
+}
+
+.product-version {
+  position: absolute;
+  z-index: 1;
+  right: clamp(24px, 4vw, 46px);
+  bottom: clamp(22px, 3.4vw, 38px);
+  color: var(--welcome-muted);
+  font-size: clamp(9px, 1.05vw, 12px);
+  letter-spacing: 0.08em;
+}
+
+.welcome-content {
+  position: absolute;
+  z-index: 2;
+  top: 44%;
+  left: 50%;
+  display: flex;
+  width: min(390px, calc(100% - 96px));
+  flex-direction: column;
+  transform: translate(-50%, -50%);
+}
+
+.welcome-heading {
+  margin-bottom: clamp(38px, 5vw, 54px);
+}
+
+.welcome-title-motion {
+  --welcome-title-size: clamp(38px, 5.1vw, 64px);
+  position: relative;
+  width: calc(var(--welcome-title-size) * 4.45);
+  height: calc(var(--welcome-title-size) * 1.12);
+  max-width: 100%;
+  isolation: isolate;
+  touch-action: manipulation;
+}
+
+/* 字形的墨迹顶部会越出视图框约 3 个单位，用一块透明命中区补齐，避免鼠标停在字形尖角时动效不触发。 */
+.welcome-title-motion::before {
+  content: "";
+  position: absolute;
+  inset: -7px -6px;
+}
+
+.welcome-title-motion__semantic {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.welcome-title-motion__svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.welcome-title-motion__text {
+  font-family: "Noto Serif SC Variable", "Source Han Serif CN", "Songti SC", serif;
+  font-size: 64px;
+  font-weight: 530;
+  letter-spacing: 5.76px;
+}
+
+.welcome-title-motion__base {
+  fill: var(--welcome-title);
+}
+
+.welcome-title-motion__echo-a,
+.welcome-title-motion__echo-b,
+.welcome-title-motion__refracted {
+  pointer-events: none;
+}
+
+.welcome-title-motion__echo-a {
+  fill: #45bcff;
+  opacity: 0;
+}
+
+.welcome-title-motion__echo-b {
+  fill: #ffd08b;
+  opacity: 0;
+}
+
+.welcome-title-motion__refracted {
+  opacity: 0;
+}
+
+.welcome-tagline {
+  margin: clamp(14px, 1.8vw, 20px) 0 0;
+  color: #67bdf2;
+  font-family: "Noto Serif SC Variable", "Source Han Serif CN", "Songti SC", serif;
+  font-size: clamp(16px, 1.7vw, 23px);
+  font-weight: 420;
+  letter-spacing: 0.08em;
+  line-height: 1.35;
+  white-space: nowrap;
+}
+
+.continue-button {
+  position: relative;
+  display: grid;
+  width: 100%;
+  height: clamp(50px, 5.7vw, 62px);
+  grid-template-columns: 30px 1px minmax(0, 1fr) 22px;
+  align-items: center;
+  gap: 13px;
+  border: 0;
+  border-radius: 13px;
+  padding: 0 17px;
+  background: linear-gradient(90deg, var(--welcome-blue-bright), var(--welcome-blue));
+  box-shadow: 0 13px 26px rgba(8, 102, 237, 0.2);
+  color: #ffffff;
+  cursor: pointer;
+  transition: filter 180ms ease, transform 180ms ease, box-shadow 240ms ease;
+}
+
+.continue-button:hover:not(:disabled) {
+  filter: brightness(1.055);
+  box-shadow: 0 16px 30px rgba(8, 102, 237, 0.24);
+}
+
+.continue-button:active:not(:disabled) {
+  transform: scale(0.993);
+}
+
+.continue-button:focus-visible {
+  outline: 3px solid rgba(11, 91, 234, 0.28);
+  outline-offset: 4px;
+}
+
+.continue-button:disabled {
+  cursor: default;
+}
+
+.continue-button.state-ready {
+  filter: saturate(0.82) brightness(1.04);
+}
+
+.zhihu-mark {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.96);
+  color: #0b5bea;
+  font-family: "Noto Serif SC Variable", serif;
+  font-size: 17px;
+  font-weight: 580;
+}
+
+.button-divider {
+  width: 1px;
+  height: 21px;
+  background: rgba(255, 255, 255, 0.82);
+}
+
+.button-label {
+  overflow: hidden;
+  font-size: clamp(13px, 1.45vw, 17px);
+  font-weight: 620;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.button-state {
+  display: grid;
+  width: 22px;
+  height: 22px;
+  place-items: center;
+}
+
+.slogan-highlight {
+  color: #5bb8ef;
+  background: linear-gradient(105deg, #3f9fea 0%, #67bdf2 44%, #b5e5fb 100%);
+  background-size: 135% 100%;
+  background-position: 8% 50%;
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  text-shadow: none;
+}
+
+.spin {
+  animation: spin 900ms linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+@media (max-height: 600px) {
+  .welcome-stage { padding: 16px; }
+  .welcome-window { width: min(1180px, calc(100vw - 32px), calc((100vh - 32px) * 1.5)); }
+  .welcome-content { top: 44%; width: min(350px, calc(100% - 64px)); transform: translate(-50%, -50%); }
+  .welcome-heading { margin-bottom: 26px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  .welcome-title-motion__echo-a,
+  .welcome-title-motion__echo-b,
+  .welcome-title-motion__refracted {
+    display: none;
+  }
+}

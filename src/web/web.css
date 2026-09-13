@@ -1,0 +1,170 @@
+@import '@fontsource-variable/noto-sans-sc';
+@import '@ui/personal-workbench/workbench/styles/tailwind.css';
+@import '@ui/personal-workbench/workbench/styles/theme.css';
+
+/* 网页端壳布局：与工作台共用设计令牌，只写壳本身。 */
+.web-shell {
+  display: flex;
+  height: 100vh;
+  overflow: hidden;
+  background: var(--ui-canvas);
+  color: var(--ui-text-1);
+  font-family: var(--reading-sans);
+}
+
+.web-sidebar {
+  width: 236px;
+  flex: 0 0 236px;
+  display: flex;
+  flex-direction: column;
+  background: var(--ui-surface);
+  border-right: 1px solid var(--ui-border);
+  padding: 20px 8px 12px;
+}
+
+.web-sidebar__brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 12px 16px;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.web-sidebar__brand-mark {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  flex: 0 0 34px;
+  place-items: center;
+  border-radius: 10px;
+  /* 标志自带石墨黑与品牌蓝，浅色底才能同时看清三层横画和蓝色方点。 */
+  background: #f7f5ef;
+  color: #17191c;
+}
+
+.web-sidebar__brand-copy {
+  min-width: 0;
+}
+
+.web-sidebar__brand small {
+  display: block;
+  margin-top: 2px;
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--ui-text-3);
+}
+
+.web-sidebar__nav {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.web-sidebar__foot {
+  padding: 10px 12px 0;
+  border-top: 1px solid var(--ui-border);
+  font-size: 11px;
+  color: var(--ui-text-3);
+  line-height: 1.6;
+}
+
+.web-main {
+  flex: 1;
+  min-width: 0;
+  overflow-y: auto;
+}
+
+/* 今日想问（首页本地队列） */
+.web-ask {
+  display: flex;
+  gap: 8px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--ui-border);
+}
+
+.web-ask__input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background: transparent;
+  font-size: 13px;
+  color: var(--ui-text-1);
+  outline: none;
+}
+
+.web-ask__input::placeholder {
+  color: var(--ui-text-3);
+}
+
+.web-ask__add {
+  border: none;
+  background: var(--ui-accent-bg);
+  color: var(--ui-accent);
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.web-ask__add:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.web-question-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  font-size: 13px;
+}
+
+.web-question-row + .web-question-row {
+  border-top: 1px solid var(--ui-border);
+}
+
+.web-question-row__text {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.web-question-row__action {
+  border: none;
+  background: transparent;
+  color: var(--ui-accent);
+  font-size: 12px;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 6px;
+  white-space: nowrap;
+}
+
+.web-question-row__action:hover {
+  background: var(--ui-accent-bg);
+}
+
+.web-question-row__remove {
+  border: none;
+  background: transparent;
+  color: var(--ui-text-3);
+  font-size: 12px;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 6px;
+}
+
+.web-question-row__remove:hover {
+  color: var(--ui-danger-text);
+}
+
+.web-ask__empty {
+  padding: 12px 16px;
+  font-size: 12px;
+  color: var(--ui-text-3);
+}
