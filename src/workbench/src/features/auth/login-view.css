@@ -266,7 +266,7 @@
   filter: saturate(0.82) brightness(1.04);
 }
 
-.zhihu-mark {
+.app-mark {
   display: grid;
   /* 30px 方块、17px 字号 @1180 画布 */
   width: 2.54cqw;
@@ -278,6 +278,10 @@
   font-family: "Noto Serif SC Variable", serif;
   font-size: clamp(12px, 1.44cqw, 17px);
   font-weight: 580;
+}
+
+.app-mark .ui-brand-mark {
+  color: #17191c;
 }
 
 .button-divider {

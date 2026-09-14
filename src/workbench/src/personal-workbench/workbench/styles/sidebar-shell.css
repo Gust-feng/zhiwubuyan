@@ -10,20 +10,8 @@
 .ui-sidebar__brand {
   display: grid;
   flex: 0 0 auto;
-  grid-template-columns: 32px minmax(0, 1fr);
-  align-items: center;
-  column-gap: 8px;
-  padding: 24px 20px 22px;
-}
-
-.ui-sidebar__brand-mark {
-  display: grid;
-  width: 32px;
-  height: 32px;
-  place-items: center;
-  border-radius: 9px;
-  background: var(--ui-accent-bg);
-  color: var(--ui-accent);
+  gap: 5px;
+  padding: 30px 20px 24px;
 }
 
 .ui-sidebar__brand-name {
@@ -38,8 +26,7 @@
 }
 
 .ui-sidebar__brand-line {
-  grid-column: 2;
-  margin-top: 4px;
+  margin-top: 0;
   color: var(--ui-text-3);
   font-family: "Noto Serif SC Variable", var(--reading-serif);
   font-size: 10px;
@@ -151,14 +138,9 @@
 }
 
 .ui-sidebar__bottom-actions .ui-sidebar-account {
-  flex: 0 0 42px;
+  flex: 1 1 auto;
 }
 
-.ui-sidebar__bottom-actions .ui-sidebar-footer {
-  flex: 1 1 auto;
-  border-top: 0;
-  padding: 0;
-}
 
 .ui-sidebar__credo span {
   width: 22px;

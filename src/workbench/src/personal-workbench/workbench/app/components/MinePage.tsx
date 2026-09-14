@@ -12,6 +12,7 @@ export function MinePage() {
   const { openLogin } = useZhihuLogin()
   const loginErrorRef = useRef<string | undefined>(readLoginError())
   const openedLoginRef = useRef(false)
+  // 本地开发数据模式仍允许预览档案布局；它只在账号展示上保持“未登录”语义。
   const unauthenticated = sessionState.status === 'ready' && !sessionState.session.authenticated
 
   useEffect(() => {

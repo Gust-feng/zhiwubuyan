@@ -7,9 +7,9 @@
 }
 
 .ui-mine__archive-page {
-  width: min(1400px, 100%);
+  width: min(1440px, 100%);
   margin: 0 auto;
-  padding: 20px 44px 48px;
+  padding: 26px 28px 54px;
 }
 
 .ui-mine__archive-skeleton {

@@ -5,12 +5,10 @@ import {
   Sparkles,
 } from 'lucide-react'
 import { SidebarAccount } from './SidebarAccount'
-import { SidebarFooter } from './SidebarFooter'
 import {
   SidebarNavRow,
 } from './SidebarRows'
 import type { WorkbenchView } from '../../../../workbench/navigation-state'
-import { BrandMark } from '@ui/components/brand-mark'
 
 /** 全局导航选择功能板块；对话历史由右侧面板管理。 */
 export type View = WorkbenchView
@@ -56,7 +54,6 @@ export function Sidebar({
         style={{ width: SIDEBAR_W, minWidth: SIDEBAR_W }}
       >
       <header className="ui-sidebar__brand" aria-label="知无不言">
-        <span className="ui-sidebar__brand-mark" aria-hidden="true"><BrandMark size={28} /></span>
         <span className="ui-sidebar__brand-name">知无不言</span>
         <span className="ui-sidebar__brand-line">好奇心，带我们去更大的世界</span>
       </header>
@@ -116,7 +113,6 @@ export function Sidebar({
         </p>
         <div className="ui-sidebar__bottom-actions">
           <SidebarAccount active={view === 'mine'} onOpenMine={() => onNavigate('mine')} />
-          <SidebarFooter />
         </div>
       </div>
       </div>

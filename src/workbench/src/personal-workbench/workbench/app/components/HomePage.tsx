@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Bookmark, PenLine, Users } from 'lucide-react'
+import { ArrowRight, Bookmark, LockKeyhole, Network, PenLine, Users } from 'lucide-react'
 import { HomeAnswerPanel, HomeAskBar, HomeFeedView, useHomeSearchState } from './home-feed-view'
 import {
   CollectionRow,
@@ -14,7 +14,7 @@ import {
 import { useHomeAnswer, useHomeFeed } from './use-home-feed'
 import { useCoreFeed } from './use-core-feed'
 import { useWorkbenchSurface } from '@ui/workbench/surface'
-import { useZhihuSession } from '@ui/workbench/zhihu-account'
+import { isZhihuUserSession, useZhihuSession } from '@ui/workbench/zhihu-account'
 import { useZhihuLogin } from '@ui/features/auth/login-request'
 import './home-page.css'
 import './workbench-views.css'
@@ -39,15 +39,15 @@ export function HomePage({ onOpenVoices }: HomePageProps) {
   })
   const answer = useHomeAnswer()
   const surfaceState = useWorkbenchSurface()
-  const { state: sessionState } = useZhihuSession()
+  const { state: sessionState, reload: reloadSession } = useZhihuSession()
   const { openLogin } = useZhihuLogin()
   const [tier, setTier] = useState<'fast' | 'thinking'>('fast')
   const [asked, setAsked] = useState('')
 
   // 网页端直答要消耗调用方额度，未登录不发请求，改为拉起登录。
   // 桌面端用用户自带凭证，不拦；公开热榜由探索页单独读取。
-  const loginRequired = surfaceState.surface === 'web' && surfaceState.ready
-    && !(sessionState.status === 'ready' && sessionState.session.authenticated)
+  const authenticated = sessionState.status === 'ready' && isZhihuUserSession(sessionState.session)
+  const loginRequired = surfaceState.surface === 'web' && surfaceState.ready && !authenticated
 
   const askZhida = (question: string, nextTier: 'fast' | 'thinking') => {
     if (question.trim() === '') return
@@ -73,9 +73,16 @@ export function HomePage({ onOpenVoices }: HomePageProps) {
       <div className="ui-view__frame ui-home__frame">
         <div className="ui-home__masthead-wrap">
           <HomeMasthead
-            profile={sessionState.status === 'ready' && sessionState.session.authenticated
+            state={sessionState.status === 'loading'
+              ? 'loading'
+              : sessionState.status === 'error'
+                ? 'error'
+              : authenticated ? 'authenticated' : 'guest'}
+            profile={authenticated
               ? sessionState.session.profile
               : undefined}
+            onLogin={() => openLogin('home')}
+            onRetry={sessionState.status === 'error' ? reloadSession : undefined}
           />
         </div>
 
@@ -124,7 +131,31 @@ export function HomePage({ onOpenVoices }: HomePageProps) {
 /** 个人数据只在确认已登录后挂载，避免匿名访问误打用户接口。 */
 function HomePersonalSummary() {
   const { state: sessionState, reload } = useZhihuSession()
-  const { openLogin } = useZhihuLogin()
+
+  if (sessionState.status === 'loading') {
+    return (
+      <section className="ui-home__personal ui-home__personal--guest" aria-label="个人摘要">
+        <div className="ui-home__personal-prompt" role="status">正在确认登录状态…</div>
+      </section>
+    )
+  }
+
+  if (sessionState.status === 'error') {
+    return (
+      <section className="ui-home__personal ui-home__personal--guest" aria-label="个人摘要">
+        <div className="ui-home__personal-prompt" role="status">
+          <span>{sessionState.message}</span>
+          <button type="button" onClick={reload}>重新检查</button>
+        </div>
+      </section>
+    )
+  }
+
+  if (!isZhihuUserSession(sessionState.session)) {
+    return (
+      <GuestPersonalPreview onLogin={() => undefined} />
+    )
+  }
 
   return (
     <section className="ui-home__personal" aria-labelledby="home-personal-title">
@@ -136,22 +167,42 @@ function HomePersonalSummary() {
         </div>
       </header>
 
-      {sessionState.status === 'loading' && (
-        <div className="ui-home__personal-prompt" role="status">正在确认登录状态…</div>
-      )}
-      {sessionState.status === 'error' && (
-        <div className="ui-home__personal-prompt" role="status">
-          <span>{sessionState.message}</span>
-          <button type="button" onClick={reload}>重新检查</button>
+      <AuthenticatedHomeSummary />
+    </section>
+  )
+}
+
+function GuestPersonalPreview({ onLogin }: { readonly onLogin: () => void }) {
+  const items = [
+    { icon: PenLine, title: '创作', subtitle: '记录思考，分享见解', detail: '在这里，遇见更好的表达自己。' },
+    { icon: Bookmark, title: '收藏', subtitle: '好的想法，值得反复阅读', detail: '收藏你感兴趣的内容。' },
+    { icon: Users, title: '关注', subtitle: '与有趣的人，一起看更大的世界', detail: '发现值得关注的创作者。' },
+    { icon: Network, title: '知识脉络', subtitle: '从问题出发，构建自己的知识地图', detail: '让知识成为你的思考路径。' },
+  ] as const
+
+  return (
+    <section className="ui-home__personal ui-home__personal--guest" aria-label="个人功能预览">
+      <header className="ui-home__personal-head">
+        <div>
+          <span className="ui-home__section-rule" aria-hidden />
+          <h2>你的知乎</h2>
+          <p>登录后，开启属于你的知识轨迹。</p>
         </div>
-      )}
-      {sessionState.status === 'ready' && !sessionState.session.authenticated && (
-        <div className="ui-home__personal-prompt">
-          <span>登录后可在这里查看你的创作、收藏与关注摘要。</span>
-          <button type="button" onClick={() => openLogin('home')}>登录知乎</button>
-        </div>
-      )}
-      {sessionState.status === 'ready' && sessionState.session.authenticated && <AuthenticatedHomeSummary />}
+      </header>
+      <div className="ui-home__preview-grid">
+        {items.map(({ icon: Icon, title, subtitle, detail }) => (
+          <article className="ui-home__preview-card" key={title}>
+            <div className="ui-home__preview-title"><Icon size={17} aria-hidden /><h3>{title}</h3><ArrowRight size={14} aria-hidden /></div>
+            <p className="ui-home__preview-subtitle">{subtitle}</p>
+            <button type="button" className="ui-home__preview-lock" onClick={onLogin}>
+              <span className="ui-home__preview-lock-icon"><LockKeyhole size={19} aria-hidden /></span>
+              <strong>登录后查看</strong>
+              <span>{detail}</span>
+            </button>
+            <button type="button" className="ui-home__preview-more" onClick={onLogin}>了解{title}功能 <ArrowRight size={13} aria-hidden /></button>
+          </article>
+        ))}
+      </div>
     </section>
   )
 }

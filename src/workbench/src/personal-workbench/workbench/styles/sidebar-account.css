@@ -1,22 +1,22 @@
-/* 账号入口位于侧栏底部，登录与“我的知乎”行为保持同一入口。 */
+/* 账号入口收在侧栏底部，仅保留头像视觉；登录与“我的知乎”行为保持同一入口。 */
 .ui-sidebar-account {
   position: relative;
   flex: 0 0 auto;
   min-width: 0;
-  border-top: 1px solid var(--ui-border);
-  padding: 10px 12px 8px;
+  padding: 0;
 }
 
 .ui-sidebar-account__trigger {
   display: flex;
-  width: 100%;
-  min-width: 0;
+  width: 38px;
+  height: 38px;
+  min-width: 38px;
   align-items: center;
-  gap: 9px;
+  justify-content: center;
   border: 1px solid transparent;
   border-radius: 10px;
   background: transparent;
-  padding: 7px 9px;
+  padding: 3px;
   color: var(--ui-text-1);
   cursor: pointer;
   text-align: left;
@@ -27,6 +27,12 @@
 
 .ui-sidebar-account__trigger:hover:not(:disabled) {
   background: color-mix(in srgb, var(--ui-text-1) 4%, transparent);
+}
+
+.ui-sidebar-account[data-authenticated='false'] .ui-sidebar-account__trigger {
+  border-color: var(--ui-border);
+  background: var(--ui-surface);
+  color: var(--ui-accent);
 }
 
 .ui-sidebar-account__trigger[aria-expanded='true'] {
@@ -50,9 +56,9 @@
 
 .ui-sidebar-account__avatar {
   display: grid;
-  width: 32px;
-  height: 32px;
-  flex: 0 0 32px;
+  width: 30px;
+  height: 30px;
+  flex: 0 0 30px;
   place-items: center;
   border-radius: 50%;
   object-fit: cover;
@@ -67,47 +73,13 @@
   line-height: 1;
 }
 
-/* 身份文案容器：宽度贴合文字本身，让悬浮下划线只覆盖名字而不是整行。 */
-.ui-sidebar-account__identity {
-  position: relative;
-  display: inline-flex;
-  flex: 0 1 auto;
-  min-width: 0;
-}
-
-.ui-sidebar-account__name {
-  display: inline-block;
-  max-width: 100%;
-  overflow: hidden;
+.ui-sidebar-account__avatar--brand {
+  border-radius: 8px;
+  background: var(--ui-accent-bg);
   color: var(--ui-text-1);
-  font-size: 13px;
-  font-weight: 500;
-  line-height: 1.25;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-/* 每个字独立承载位移，字与字之间的空格仍按原样排版。 */
-.ui-sidebar-account__char {
-  display: inline-block;
-  white-space: pre;
-}
-
-.ui-sidebar-account__underline {
-  position: absolute;
-  right: 0;
-  bottom: -3px;
-  left: 0;
-  height: 2px;
-  border-radius: 2px;
-  background: var(--ui-accent);
-  opacity: 0;
-  transform: scaleX(0);
-  transform-origin: left center;
 }
 
 .ui-sidebar-account__error {
-  margin: 6px 4px 0;
   color: var(--ui-danger-text);
   font-size: 11px;
   line-height: 1.4;
@@ -115,10 +87,9 @@
 
 .ui-sidebar-account__menu {
   position: absolute;
-  left: 8px;
-  right: 8px;
-  top: auto;
-  bottom: calc(100% - 4px);
+  left: 0;
+  width: 156px;
+  bottom: calc(100% + 8px);
   z-index: 90;
   display: grid;
   gap: 2px;
