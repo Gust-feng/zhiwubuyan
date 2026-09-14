@@ -128,8 +128,9 @@
 
 .ui-sidebar__bottom {
   flex: 0 0 auto;
-  border-top: 1px solid var(--ui-border);
-  padding-top: 16px;
+  /* 不再画通栏分隔线：该线原本用来分隔导航区与底部账号区，账号入口删除后
+     底部只剩题款，再画一道会与题款自己的短横线叠成两道线。 */
+  padding-top: 20px;
 }
 
 .ui-sidebar__credo span {
