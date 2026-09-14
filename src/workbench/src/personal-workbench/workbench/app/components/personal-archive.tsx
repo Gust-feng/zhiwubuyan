@@ -17,7 +17,7 @@ export function PersonalArchiveView({ archive, onRefresh }: {
   const { views, counts } = archive
   return (
     <div className="ui-archive">
-      <ProfileHero archive={archive} onRefresh={onRefresh} />
+      <ProfileHero archive={archive} />
       <FootprintSection archive={archive} />
       <div className="ui-archive__panels" aria-label="个人档案摘要">
         <CreationPanel count={counts.creations} items={views.responseStructure} />
@@ -25,14 +25,13 @@ export function PersonalArchiveView({ archive, onRefresh }: {
         <FollowPanel count={counts.followees} tiers={views.followeeTiers} keywords={views.headlineKeywords} />
         <KnowledgePanel clusters={views.questionClusters} />
       </div>
-      <ArchiveStatus archive={archive} />
+      <ArchiveStatus archive={archive} onRefresh={onRefresh} />
     </div>
   )
 }
 
-function ProfileHero({ archive, onRefresh }: {
+function ProfileHero({ archive }: {
   readonly archive: PersonalArchive
-  readonly onRefresh: () => void
 }) {
   const profile = archive.profile
   const name = profile?.fullname ?? '我的知乎'
@@ -42,14 +41,11 @@ function ProfileHero({ archive, onRefresh }: {
         {profile?.avatarUrl !== undefined && profile.avatarUrl !== ''
           ? <img src={profile.avatarUrl} alt="" referrerPolicy="no-referrer" />
           : <span>{name.slice(0, 1)}</span>}
+        <i className="ui-archive__presence" />
       </div>
       <h1>{name}</h1>
-      <p>{profile?.headline ?? '好奇心，带我们去更大的世界。'}</p>
-      <blockquote>“在问题里，看见更大的世界。”<cite>知无不言</cite></blockquote>
-      <button type="button" className="ui-archive__refresh" onClick={onRefresh}>
-        <RefreshCw size={14} aria-hidden />
-        重新同步
-      </button>
+      <p>{profile?.headline ?? '保持好奇，长期阅读，慢慢变好。'}</p>
+      <blockquote>「在别人的问题里，看到更大的世界。」<cite>知无不言</cite></blockquote>
     </header>
   )
 }
@@ -187,6 +183,13 @@ function KnowledgePanel({ clusters }: { readonly clusters: readonly ArchiveQuest
     <ArchivePanel icon={Network} title="知识脉络" subtitle="从同题内容，看见自己的知识连接" count={`${clusters.length} 组`}>
       {visible.length === 0 ? <PanelEmpty>还没有可串联的同题内容。</PanelEmpty> : (
         <div className="ui-archive__network" aria-label="同题聚合">
+          <svg className="ui-archive__network-lines" viewBox="0 0 260 182" preserveAspectRatio="none" aria-hidden="true">
+            <line x1="130" y1="91" x2="45" y2="24" />
+            <line x1="130" y1="91" x2="214" y2="26" />
+            <line x1="130" y1="91" x2="28" y2="153" />
+            <line x1="130" y1="91" x2="220" y2="151" />
+            <line x1="130" y1="91" x2="12" y2="91" />
+          </svg>
           <span className="ui-archive__network-center">我</span>
           {visible.map((cluster, index) => (
             <a
@@ -197,13 +200,20 @@ function KnowledgePanel({ clusters }: { readonly clusters: readonly ArchiveQuest
               rel="noreferrer"
               title={cluster.items[0]?.title ?? `同题内容 ${index + 1}`}
             >
-              同题 {index + 1}
+              {clusterLabel(cluster, index)}
             </a>
           ))}
         </div>
       )}
     </ArchivePanel>
   )
+}
+
+/** 节点展示真实同题内容的短标题，不用虚构的知识分类填充。 */
+function clusterLabel(cluster: ArchiveQuestionCluster, index: number): string {
+  const title = cluster.items[0]?.title.trim()
+  if (title === undefined || title === '') return `同题 ${index + 1}`
+  return title.length > 6 ? `${title.slice(0, 6)}…` : title
 }
 
 function ArchivePanel({ icon: Icon, title, subtitle, count, children }: {
@@ -229,16 +239,24 @@ function PanelEmpty({ children }: { readonly children: React.ReactNode }) {
   return <p className="ui-archive__panel-empty">{children}</p>
 }
 
-function ArchiveStatus({ archive }: { readonly archive: PersonalArchive }) {
+function ArchiveStatus({ archive, onRefresh }: {
+  readonly archive: PersonalArchive
+  readonly onRefresh: () => void
+}) {
   const clipped: string[] = []
   if (archive.truncated.creations) clipped.push('创作')
   if (archive.truncated.followees) clipped.push('关注')
   if (archive.truncated.favlistContents) clipped.push('收藏夹内容')
   return (
     <footer className="ui-archive__status">
-      <span>{archive.stale ? '当前展示上次同步结果' : `同步于 ${formatSyncedAt(archive.syncedAt)}`}</span>
+      {/* 只保留「是否复用旧数据」这个状态；不再显示同步时刻。 */}
+      {archive.stale && <span>当前展示上次同步结果</span>}
       {clipped.length > 0 && <span>{clipped.join('、')}已达本次同步上限</span>}
       {!archive.persistent && <span>档案仅在本次会话内有效</span>}
+      <button type="button" onClick={onRefresh}>
+        <RefreshCw size={12} aria-hidden />
+        重新同步
+      </button>
     </footer>
   )
 }
@@ -275,13 +293,6 @@ function formatYearRange(firstDate: string | undefined, lastDate: string | undef
   const last = new Date(lastDate)
   if (Number.isNaN(first.getTime()) || Number.isNaN(last.getTime())) return '过去一年'
   return `${first.getFullYear()} 年 ${first.getMonth() + 1} 月 – ${last.getMonth() + 1} 月`
-}
-
-function formatSyncedAt(iso: string): string {
-  const time = new Date(iso)
-  if (Number.isNaN(time.getTime())) return iso
-  const pad = (value: number): string => String(value).padStart(2, '0')
-  return `${time.getFullYear()}-${pad(time.getMonth() + 1)}-${pad(time.getDate())} ${pad(time.getHours())}:${pad(time.getMinutes())}`
 }
 
 function formatDay(iso: string): string {

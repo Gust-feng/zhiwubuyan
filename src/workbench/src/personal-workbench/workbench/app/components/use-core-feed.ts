@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { fetchJsonCached } from './json-cache'
 
 export interface CoreFeed<T> {
   readonly status: 'loading' | 'ready' | 'error'
@@ -13,29 +14,42 @@ export interface CoreFeedPage<T> {
   readonly fetchedAt?: string
 }
 
-/** 单个内容面的取数：加载、空、失败、重试共用一组状态，过期响应直接丢弃。 */
-export function useCoreFeedLoader<T>(loadPage: (signal: AbortSignal) => Promise<CoreFeedPage<T>>): CoreFeed<T> {
+/**
+ * 单个内容面的取数：加载、空、失败、重试共用一组状态，过期响应直接丢弃。
+ *
+ * `cacheKey` 提供时结果进进程内短时缓存：视图切换会卸载再挂载本组件，
+ * 有缓存就直接渲染上一份结果，不再闪一次 loading、也不再重复请求。
+ */
+export function useCoreFeedLoader<T>(
+  loadPage: (signal: AbortSignal) => Promise<CoreFeedPage<T>>,
+  cacheKey?: string,
+): CoreFeed<T> {
   const [state, setState] = useState<CoreFeed<T>>({
     status: 'loading',
     items: [],
     retry: () => {},
   })
   const requestSeqRef = useRef(0)
+  const forceRef = useRef(false)
 
-  const load = useCallback(() => {
+  const load = useCallback((force = false) => {
     const seq = requestSeqRef.current + 1
     requestSeqRef.current = seq
     const controller = new AbortController()
+    if (force) forceRef.current = true
     setState((previous) => ({
       ...previous,
       status: 'loading',
       error: undefined,
-      retry: load,
+      retry: () => load(true),
     }))
-    loadPage(controller.signal)
+    const request = cacheKey === undefined
+      ? loadPage(controller.signal)
+      : fetchJsonCached(cacheKey, () => loadPage(controller.signal), { force })
+    request
       .then((page) => {
         if (requestSeqRef.current !== seq) return
-        setState({ status: 'ready', items: page.items, fetchedAt: page.fetchedAt, retry: load })
+        setState({ status: 'ready', items: page.items, fetchedAt: page.fetchedAt, retry: () => load(true) })
       })
       .catch((error: unknown) => {
         if (controller.signal.aborted || requestSeqRef.current !== seq) return
@@ -43,13 +57,13 @@ export function useCoreFeedLoader<T>(loadPage: (signal: AbortSignal) => Promise<
           status: 'error',
           items: [],
           error: error instanceof Error && error.message ? error.message : '暂时不可用。',
-          retry: load,
+          retry: () => load(true),
         })
       })
     return () => controller.abort()
-  }, [loadPage])
+  }, [loadPage, cacheKey])
 
-  useEffect(() => load(), [load])
+  useEffect(() => load(forceRef.current), [load])
 
   return state
 }
@@ -74,7 +88,8 @@ export function useCoreFeed<T>(
     }
   }, [path, readItems])
 
-  return useCoreFeedLoader(loadPage)
+  // 按路径缓存：视图切换重挂载时直接命中上一份结果，不再闪 loading。
+  return useCoreFeedLoader(loadPage, path)
 }
 
 export function readStringField(record: Record<string, unknown>, key: string): string {

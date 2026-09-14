@@ -7,7 +7,6 @@ interface RecommendedSeed {
   readonly id: string;
   readonly title: string;
 }
-
 function readRecommendationItems(body: Record<string, unknown>): readonly RecommendedSeed[] {
   const raw = Array.isArray(body.items) ? body.items : [];
   return raw.flatMap((item) => {
@@ -32,7 +31,6 @@ export function ResearchSeeds({ onPick, limit = 4, bare = false }: { onPick: (ti
       <div className="dr-seeds__head">
         <Bookmark size={14} aria-hidden />
         <h2>为你推荐</h2>
-        <span className="dr-seeds__meta">{updatedLabel(feed.fetchedAt)}</span>
       </div>
       {feed.status === 'loading' ? (
         <div className="dr-seeds__skeleton" aria-label="正在获取推荐">
@@ -60,11 +58,4 @@ export function ResearchSeeds({ onPick, limit = 4, bare = false }: { onPick: (ti
   );
   if (bare) return body;
   return <section className="dr-seeds" aria-label="为你推荐">{body}</section>;
-}
-
-function updatedLabel(fetchedAt: string | undefined): string {
-  if (fetchedAt === undefined) return '';
-  const time = new Date(fetchedAt);
-  if (Number.isNaN(time.getTime())) return '';
-  return `更新于 ${String(time.getHours()).padStart(2, '0')}:${String(time.getMinutes()).padStart(2, '0')}`;
 }

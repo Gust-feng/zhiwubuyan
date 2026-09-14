@@ -9,26 +9,49 @@ import {
   readStringField,
   type CoreFeed,
 } from './use-core-feed'
+import { BrandMark } from '@ui/components/brand-mark'
 import type { ZhihuAccountProfile } from '@ui/workbench/zhihu-account'
 import './home-page.css'
 
-export function HomeMasthead({ profile }: { readonly profile?: ZhihuAccountProfile }) {
-  const name = profile?.fullname.trim() || '首页'
+type HomeIdentityState = 'loading' | 'error' | 'guest' | 'authenticated'
+
+export function HomeMasthead({ state, profile, onLogin, onRetry }: {
+  readonly state: HomeIdentityState
+  readonly profile?: ZhihuAccountProfile
+  readonly onLogin: () => void
+  readonly onRetry?: () => void
+}) {
+  const name = state === 'authenticated'
+    ? profile?.fullname.trim() || '我的知乎'
+    : state === 'error' ? '暂时无法确认登录状态'
+      : '正在连接你的知乎'
   const avatarUrl = profile?.avatarUrl?.trim()
-  const personalized = profile !== undefined
+  const personalized = state === 'authenticated'
+  const subtitle = state === 'authenticated'
+    ? profile?.headline?.trim() || '把好奇留给问题，也留给自己。'
+    : state === 'error' ? '重新检查后即可继续。'
+      : '正在确认账号状态…'
   return (
-    <header className="ui-home__masthead" data-personalized={personalized || undefined}>
-      {personalized && (
-        <div className="ui-home__identity-avatar" aria-hidden="true">
-          {avatarUrl !== undefined && avatarUrl !== ''
-            ? <img src={avatarUrl} alt="" referrerPolicy="no-referrer" />
-            : <span>{name.slice(0, 1)}</span>}
-          <i />
-        </div>
+    <header className="ui-home__masthead" data-state={state}>
+      <div
+        className={personalized ? 'ui-home__identity-avatar' : 'ui-home__identity-avatar ui-home__identity-avatar--empty'}
+        aria-hidden="true"
+      >
+        {personalized && (avatarUrl !== undefined && avatarUrl !== ''
+          ? <img src={avatarUrl} alt="" referrerPolicy="no-referrer" />
+          : <span>{name.slice(0, 1)}</span>)}
+        {personalized && <i />}
+      </div>
+      {state !== 'guest' && <><h1>{name}</h1><p>{subtitle}</p></>}
+      {state === 'guest' && (
+        <button type="button" className="ui-home__identity-action" onClick={onLogin}>
+          <BrandMark size={22} />
+          <span>使用知乎登录</span>
+        </button>
       )}
-      <span className="ui-home__date">{formatDateLabel()}</span>
-      <h1>{name}</h1>
-      <p>{profile?.headline?.trim() || (personalized ? '把好奇留给问题，也留给自己。' : '搜索知乎内容，或直接问一句。')}</p>
+      {state === 'error' && onRetry !== undefined && (
+        <button type="button" className="ui-home__identity-action" onClick={onRetry}>重新检查</button>
+      )}
       {personalized && <blockquote>“在别人的问题里，看见更大的世界。”</blockquote>}
     </header>
   )
@@ -184,7 +207,6 @@ export function CoreCard<T>({ icon: Icon, name, role, accent = false, feed, limi
         <Icon size={15} className={accent ? 'ui-home__core-glyph is-accent' : 'ui-home__core-glyph'} aria-hidden />
         <h2 className="ui-home__core-name">{name}</h2>
         <span className="ui-home__core-role">{role}</span>
-        <span className="ui-home__core-meta">{formatUpdatedLabel(feed)}</span>
         {moreLabel !== undefined && onMore !== undefined && (
           <button type="button" className="ui-home__core-more" onClick={onMore}>{moreLabel}</button>
         )}
@@ -293,17 +315,4 @@ export function formatCount(count: number): string {
     return `${value.endsWith('.0') ? value.slice(0, -2) : value} 万`
   }
   return String(count)
-}
-
-export function formatDateLabel(): string {
-  const now = new Date()
-  const week = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'][now.getDay()]
-  return `${now.getFullYear()}年${now.getMonth() + 1}月${now.getDate()}日 · ${week}`
-}
-
-function formatUpdatedLabel(feed: CoreFeed<unknown>): string {
-  if (feed.status === 'loading' || feed.fetchedAt === undefined) return ''
-  const time = new Date(feed.fetchedAt)
-  if (Number.isNaN(time.getTime())) return ''
-  return `更新于 ${String(time.getHours()).padStart(2, '0')}:${String(time.getMinutes()).padStart(2, '0')}`
 }

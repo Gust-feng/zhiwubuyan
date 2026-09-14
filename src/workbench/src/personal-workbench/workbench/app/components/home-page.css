@@ -11,7 +11,7 @@
 }
 
 .ui-view__frame.ui-home__frame {
-  width: min(1240px, 100%);
+  width: min(1400px, 100%);
   margin: 0 auto;
   padding: 0 42px 60px;
 }
@@ -21,7 +21,7 @@
 .ui-home__masthead {
   position: relative;
   display: flex;
-  min-height: 250px;
+  min-height: 276px;
   align-items: center;
   flex-direction: column;
   justify-content: center;
@@ -43,6 +43,33 @@
   font-family: "Noto Serif SC Variable", var(--reading-serif);
   font-size: 31px;
   box-shadow: 0 10px 30px color-mix(in srgb, var(--ui-accent) 12%, transparent);
+}
+
+.ui-home__identity-avatar--empty {
+  border: 1px solid color-mix(in srgb, var(--ui-text-3) 28%, var(--ui-border));
+  background: color-mix(in srgb, var(--ui-text-3) 3%, var(--ui-surface));
+  box-shadow: none;
+}
+
+.ui-home__identity-avatar--empty::before {
+  position: absolute;
+  top: 24px;
+  width: 23px;
+  height: 23px;
+  border: 1px solid color-mix(in srgb, var(--ui-text-3) 38%, transparent);
+  border-radius: 50%;
+  content: '';
+}
+
+.ui-home__identity-avatar--empty::after {
+  position: absolute;
+  bottom: 19px;
+  width: 43px;
+  height: 22px;
+  border: 1px solid color-mix(in srgb, var(--ui-text-3) 38%, transparent);
+  border-bottom: 0;
+  border-radius: 24px 24px 0 0;
+  content: '';
 }
 
 .ui-home__identity-avatar img {
@@ -74,9 +101,15 @@
   line-height: 1.25;
 }
 
-.ui-home__masthead:not([data-personalized='true']) h1 {
-  margin-top: 6px;
-  font-size: clamp(42px, 5vw, 58px);
+.ui-home__masthead[data-state='guest'] h1 {
+  font-size: 24px;
+  letter-spacing: .05em;
+}
+
+.ui-home__masthead[data-state='loading'] h1,
+.ui-home__masthead[data-state='error'] h1 {
+  font-size: 22px;
+  letter-spacing: .04em;
 }
 
 .ui-home__masthead > p {
@@ -85,6 +118,36 @@
   font-family: "Noto Serif SC Variable", var(--reading-serif);
   font-size: 12px;
   line-height: 1.7;
+}
+
+.ui-home__identity-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 15px;
+  min-height: 42px;
+  padding: 0 22px;
+  border: 1px solid color-mix(in srgb, var(--ui-accent) 70%, transparent);
+  border-radius: 999px;
+  background: var(--ui-accent);
+  color: var(--ui-surface);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 8px 20px color-mix(in srgb, var(--ui-accent) 20%, transparent);
+  transition: transform 140ms ease, box-shadow 140ms ease, background-color 140ms ease;
+}
+
+.ui-home__identity-action:hover {
+  background: color-mix(in srgb, var(--ui-accent) 88%, black);
+  box-shadow: 0 10px 24px color-mix(in srgb, var(--ui-accent) 26%, transparent);
+  transform: translateY(-1px);
+}
+
+.ui-home__identity-action .ui-brand-mark {
+  color: currentColor;
 }
 
 .ui-home__masthead blockquote {
@@ -100,16 +163,6 @@
   text-align: left;
 }
 
-.ui-home__date {
-  flex: 0 0 auto;
-  color: var(--ui-text-3);
-  font-size: 10.5px;
-  letter-spacing: .06em;
-}
-
-.ui-home__masthead[data-personalized='true'] .ui-home__date {
-  margin-top: 10px;
-}
 
 /* ── 知乎式搜索框：全局入口，但不是唯一主角 ────────────────── */
 
@@ -174,8 +227,9 @@
 /* 首页正文：检索条下方的问答面板与内容流按竖向堆叠。 */
 .ui-home__content {
   display: grid;
+  width: min(980px, 100%);
   gap: 16px;
-  margin-top: 18px;
+  margin: 18px auto 0;
 }
 
 .ui-home__grid {
@@ -455,7 +509,10 @@ a.ui-home__row:hover .ui-home__row-open {
 }
 
 .ui-home > .ui-home__frame > .uha {
+  width: min(980px, 100%);
   height: 50px;
+  margin-right: auto;
+  margin-left: auto;
   border-radius: 7px;
   box-shadow: 0 7px 24px color-mix(in srgb, var(--ui-accent) 5%, transparent);
 }

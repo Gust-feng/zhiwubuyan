@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react'
 import { rememberZhihuLoginReturn } from './zhihu-auth-navigation'
+import { clearJsonCache } from '../personal-workbench/workbench/app/components/json-cache'
 
 /** 会话随附的展示资料；端点无正式契约，读取不到时整个 profile 缺省。 */
 export type ZhihuAccountProfile = {
@@ -26,6 +27,14 @@ export type ZhihuSessionState =
   | { readonly status: 'ready'; readonly session: ZhihuSession }
   | { readonly status: 'error'; readonly message: string }
 
+/**
+ * 是否为用户本人完成 OAuth 授权的会话。
+ * 本地开发数据开关只提供调用方数据预览，不等于用户已经登录；账号相关界面统一从这里判断。
+ */
+export function isZhihuUserSession(session: ZhihuSession | undefined): boolean {
+  return session?.authenticated === true && session.developerMode !== true
+}
+
 /** 登录状态唯一读取入口：侧栏账号区与「我的知乎」共用同一形状。 */
 export function isZhihuSession(value: unknown): value is ZhihuSession {
   if (value === null || typeof value !== 'object' || Array.isArray(value)) return false
@@ -41,6 +50,18 @@ export async function fetchZhihuSession(signal?: AbortSignal): Promise<ZhihuSess
   return body
 }
 
+/**
+ * 最近一次已知的会话：用于在重新确认期间**先按已知状态渲染**，
+ * 避免每次挂载都先闪一下「正在确认登录状态」。只存活在本次页面生命周期内，
+ * 不落任何持久存储；确认结果回来后立即覆盖。
+ */
+let lastKnownSession: ZhihuSession | undefined
+
+/** 明确的登出/失效路径要清掉，否则会拿旧身份渲染一帧。 */
+export function forgetZhihuSession(): void {
+  lastKnownSession = undefined
+}
+
 /** 登录状态读取结果；多处消费方共用同一形状。 */
 export type ZhihuSessionController = {
   readonly state: ZhihuSessionState
@@ -52,15 +73,23 @@ export type ZhihuSessionController = {
  * 独立登录窗口（不在工作台树下）自持一份即可，不必为它搭上下文。
  */
 export function useZhihuSessionSource(): ZhihuSessionController {
-  const [state, setState] = useState<ZhihuSessionState>({ status: 'loading' })
+  // 有已知结果就先按它渲染，界面不再闪「正在确认登录状态」。
+  const [state, setState] = useState<ZhihuSessionState>(() =>
+    lastKnownSession === undefined ? { status: 'loading' } : { status: 'ready', session: lastKnownSession })
 
   const load = useCallback(() => {
     const controller = new AbortController()
-    setState({ status: 'loading' })
+    // 重新确认时不退回 loading：保留当前（或已知）状态，结果回来后原子替换。
+    setState((previous) => (previous.status === 'ready' ? previous : { status: 'loading' }))
     fetchZhihuSession(controller.signal)
-      .then((session) => setState({ status: 'ready', session }))
+      .then((session) => {
+        lastKnownSession = session
+        setState({ status: 'ready', session })
+      })
       .catch((error: unknown) => {
         if (controller.signal.aborted) return
+        // 已经有已知结果时保留它：一次网络抖动不该把已登录的界面打成错误态。
+        if (lastKnownSession !== undefined) return
         setState({
           status: 'error',
           message: error instanceof Error ? error.message : '暂时无法确认登录状态。',
@@ -95,6 +124,9 @@ export function useZhihuSession(): ZhihuSessionController {
 /** 退出登录：清除服务端会话后整页回到初始状态，个人数据缓存随之失效。 */
 export async function logoutZhihuAccount(): Promise<void> {
   await fetch('/api/auth/logout', { method: 'POST' })
+  // 清掉已知会话与取数缓存，避免继续按已登出身份渲染。
+  forgetZhihuSession()
+  clearJsonCache()
 }
 
 /**

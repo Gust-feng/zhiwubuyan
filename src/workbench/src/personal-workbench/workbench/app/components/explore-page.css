@@ -71,11 +71,13 @@
 }
 
 .ui-explore__feature {
-  padding: 34px 40px 36px 0;
+  /* 主议题与「正在讨论」是同一页的上下两段：上段留白过大会把下段挤到尴尬位置，
+     这里收紧纵向节奏，让两段靠在一起读。 */
+  padding: 24px 40px 22px 0;
 }
 
 .ui-explore__discussion {
-  padding: 24px 40px 36px 0;
+  padding: 18px 40px 36px 0;
   border-top: 1px solid var(--ui-border);
 }
 
@@ -116,15 +118,11 @@
 }
 
 .ui-explore__section-head > span,
-.ui-explore__side-head > span,
-.ui-explore__updated {
+.ui-explore__side-head > span {
   color: var(--ui-text-3);
   font-size: 10.5px;
 }
 
-.ui-explore__section-head .ui-explore__updated {
-  margin-left: auto;
-}
 
 .ui-explore__side-head > svg {
   display: none;
@@ -137,7 +135,7 @@
 }
 
 .ui-explore__feature-body {
-  padding: 26px 0 0;
+  padding: 18px 0 0;
 }
 
 .ui-explore__feature-title {
@@ -169,7 +167,7 @@ a.ui-explore__feature-title:hover {
 .ui-explore__feature-summary {
   display: -webkit-box;
   max-width: 760px;
-  margin: 16px 0 0;
+  margin: 12px 0 0;
   overflow: hidden;
   color: var(--ui-text-2);
   font-family: "Noto Serif SC Variable", var(--reading-serif);
@@ -177,7 +175,8 @@ a.ui-explore__feature-title:hover {
   line-height: 1.9;
   text-wrap: pretty;
   -webkit-box-orient: vertical;
-  -webkit-line-clamp: 4;
+  /* 3 行足够给出议题要点；再多会把「正在讨论」推到首屏之外。 */
+  -webkit-line-clamp: 3;
 }
 
 .ui-explore__feature-meta {
@@ -186,8 +185,8 @@ a.ui-explore__feature-title:hover {
   flex-wrap: wrap;
   align-items: baseline;
   gap: 8px 14px;
-  margin-top: 20px;
-  padding: 14px 0 0 20px;
+  margin-top: 14px;
+  padding: 12px 0 0 20px;
   border-left: 3px solid color-mix(in srgb, var(--ui-accent) 18%, var(--ui-border));
   color: var(--ui-text-3);
   font-size: 11.5px;
@@ -312,7 +311,7 @@ a.ui-explore__feature-title:hover {
 }
 
 .ui-explore__feature-skeleton {
-  min-height: 240px;
+  min-height: 168px;
   align-content: center;
 }
 

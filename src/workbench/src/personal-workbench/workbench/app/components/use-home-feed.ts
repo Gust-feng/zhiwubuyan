@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { fetchJsonCached } from './json-cache'
 
 /**
  * 首页内容流与问答的取数。
@@ -136,28 +137,31 @@ export function useHomeFeed(input: {
       params.set('type', type)
     }
     const query = params.toString()
+    const path = `/api/home/feed${query === '' ? '' : `?${query}`}`
     setState((previous) => ({
       ...previous,
       status: 'loading',
       error: undefined,
     }))
-    fetch(`/api/home/feed${query === '' ? '' : `?${query}`}`, { signal: controller.signal })
-      .then(async (response) => {
-        if (!response.ok) throw new Error(await readError(response))
-        const body = (await response.json()) as unknown
-        if (body === null || typeof body !== 'object' || Array.isArray(body)) {
-          return { items: [], channel: 'hot' as const, fetchedAt: undefined, stale: false, empty: true }
-        }
-        const record = body as Record<string, unknown>
-        const items = readHomeFeedItems(record)
-        return {
-          items,
-          channel: record.channel === 'topic' ? ('topic' as const) : ('hot' as const),
-          fetchedAt: readString(record.fetchedAt) || undefined,
-          stale: record.stale === true,
-          empty: items.length === 0,
-        }
-      })
+    // 视图切换会重挂载本组件：命中短时缓存就直接渲染，不再闪一次 loading。
+    // refreshKey 递增表示用户显式重试，此时跳过缓存。
+    fetchJsonCached(path, async () => {
+      const response = await fetch(path, { signal: controller.signal })
+      if (!response.ok) throw new Error(await readError(response))
+      const body = (await response.json()) as unknown
+      if (body === null || typeof body !== 'object' || Array.isArray(body)) {
+        return { items: [], channel: 'hot' as const, fetchedAt: undefined, stale: false, empty: true }
+      }
+      const record = body as Record<string, unknown>
+      const items = readHomeFeedItems(record)
+      return {
+        items,
+        channel: record.channel === 'topic' ? ('topic' as const) : ('hot' as const),
+        fetchedAt: readString(record.fetchedAt) || undefined,
+        stale: record.stale === true,
+        empty: items.length === 0,
+      }
+    }, { force: refreshKey > 0 })
       .then((page) => {
         if (seqRef.current !== seq) return
         setState({
