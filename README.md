@@ -56,17 +56,20 @@ Vercel 环境变量：
 | `ZHIHU_ACCESS_SECRET` | 开放平台调用凭证 |
 | `PUBLIC_ORIGIN` | 公开来源，如 `https://gustfeng.dev`；回调固定为 `<PUBLIC_ORIGIN>/api/auth/callback`，需与开放平台登记的地址一致 |
 | `ZHIHU_OAUTH_APP_ID` / `ZHIHU_OAUTH_APP_KEY` | 知乎 OAuth 登录凭证 |
-| `KV_REST_API_URL` / `KV_REST_API_TOKEN`，或 `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` | 共享 Redis，**必配**：承载登录会话、限流计数，以及热榜与个人档案的跨实例缓存。serverless 实例之间不共享内存，缺省会导致登录随机失效，并让个人档案在每个冷启动实例里重复全量扫描（一次最坏上百次上游调用）。两套命名都识别（前者是旧 Vercel KV 的名字）；从 Marketplace 装 Upstash 集成会自动注入后者，**无需手填** |
+| `KV_REST_API_URL` / `KV_REST_API_TOKEN`（或 `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN`） | 共享 Redis，**必配**：承载登录会话、限流计数，以及热榜与个人档案的跨实例缓存。serverless 实例之间不共享内存，缺省会导致登录随机失效，并让个人档案在每个冷启动实例里重复全量扫描（一次最坏上百次上游调用）。两套命名都识别；本仓库实测：从 Marketplace 装 Upstash 集成注入的是前者，**无需手填** |
 | `WEB_RATE_LIMIT_MAX` / `WEB_RATE_LIMIT_WINDOW_SECONDS` | 可选，登录后消耗额度的接口（直答、众声、研究 Pro）限流阈值；默认每窗口 20 次 / 60 秒 |
 
-### 开通共享 Redis（获取 KV 变量）
+### 开通共享 Redis
 
 Vercel KV 已于 2024 年 12 月并入 **Upstash Redis**，现在没有单独的 "Vercel KV" 产品了：
 
-1. 打开 Vercel 项目 → **Storage**（或 Marketplace）→ 选 **Upstash for Redis**。
-2. 创建新的 Upstash 数据库（免费档足够）或关联已有账号。
-3. 连接到本项目，环境变量会**自动注入** `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN`（Vercel 面板可见）。
-4. **重新部署**一次——环境变量只在新的部署里生效。
+```bash
+vercel integration add upstash/upstash-kv -e production -e preview
+```
+
+或在面板里：Vercel 项目 → **Storage**（或 Marketplace）→ 选 **Upstash for Redis** → 创建数据库 → 连接本项目。
+
+环境变量会**自动注入**（本仓库实测为 `KV_REST_API_URL` / `KV_REST_API_TOKEN`，另附 `KV_URL`、`REDIS_URL`、只读 token），无需手填；**装完必须重新部署一次**才生效。
 
 若要在本地联调：在 Upstash 控制台该数据库的 **REST API** 区域可复制 URL 与 token，填进本地 `.env`（任选一组命名）。
 
