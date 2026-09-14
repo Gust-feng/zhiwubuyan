@@ -114,12 +114,12 @@
   margin: 0;
   /* 题款块贴在侧栏底部：padding-bottom 就是文字离底边的距离，
      所以上移靠加大它、右移靠加大 padding-left。 */
-  padding: 4px 24px 36px 36px;
+  padding: 4px 24px 40px 34px;
   color: var(--ui-text-3);
   font-family: "Noto Serif SC Variable", var(--reading-serif);
-  font-size: 11.5px;
-  letter-spacing: .06em;
-  line-height: 1.6;
+  font-size: 13px;
+  letter-spacing: .07em;
+  line-height: 1.7;
 }
 
 /* 两行竖排：横线单独占一行，两句话各占一行，读起来是题款而不是一行注解。 */
@@ -136,10 +136,11 @@
 }
 
 .ui-sidebar__credo span {
-  /* 横线与题款之间留一段呼吸；两行题款之间不再加额外间距。 */
-  margin-bottom: 12px;
-  width: 22px;
-  height: 1px;
+  /* 横线与题款之间留一段呼吸；两行题款之间不再加额外间距。
+     长度随字号一起放大，避免小短横配大字显得失衡。 */
+  margin-bottom: 13px;
+  width: 26px;
+  height: 1.5px;
   background: color-mix(in srgb, var(--ui-accent) 38%, var(--ui-border));
 }
 
