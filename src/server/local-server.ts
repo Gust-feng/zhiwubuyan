@@ -3,6 +3,13 @@ import { createServer, type IncomingMessage, type ServerResponse } from "node:ht
 import { extname, join, normalize } from "node:path";
 import { createRuntime } from "../application/runtime.ts";
 import { createMemorySharedCache } from "../application/shared-cache.ts";
+import { createAnimationMaterialProvider } from "../application/animation-material.ts";
+import { createConceptAnimationCommand } from "../application/concept-animation.ts";
+import { createChatModelClient } from "../platform/model/chat.ts";
+import {
+  readConceptAnimationModel,
+  readConceptAnimationTuning,
+} from "../platform/model/config.ts";
 import { isProductError, ProductError } from "../platform/zhihu/errors.ts";
 import { readOAuthAppConfig, missingOAuthConfig, oauthRedirectUri } from "../platform/zhihu/oauth.ts";
 import { startResearchBackend, type ResearchBackend } from "../backend/index.ts";
@@ -10,7 +17,9 @@ import { CreateResearchTaskInput, type CreateResearchTaskInput as CreateResearch
 import { ResearchApiError } from "../application/deep-research.ts";
 import { openZhihuCredentialStore } from "../storage/zhihu-credential-store.ts";
 import { createMemorySessionStore } from "./session-store.ts";
+import { createConceptAnimationApi } from "./concept-animation-api.ts";
 import { createZhihuApiHandler } from "./zhihu-api.ts";
+import { createFileAnimationStore, animationStoreDir } from "../storage/animation-store.ts";
 import { createFileHomeFeedCacheStore, homeFeedCachePath } from "../storage/home-feed-cache.ts";
 import { createFilePersonalArchiveStore, personalArchiveDir } from "../storage/personal-archive-store.ts";
 import {
@@ -71,7 +80,7 @@ export async function startLocalServer(options: LocalServerOptions): Promise<Loc
     developerUserDataEnabled,
     // 本机运行面同时承接 Pro 与自研 Ultra 引擎，因此额外声明 research_ultra；
     // 网页端只声明 research（Pro 单次直答），档位菜单据此不列出 Ultra。
-    capabilities: ["zhihu_search", "global_search", "hot_list", "user_data", "research_brief", "voices", "research", "research_ultra"],
+    capabilities: ["zhihu_search", "global_search", "hot_list", "user_data", "research_brief", "voices", "research", "research_ultra", "concept_animation"],
     // 运行面同时决定登录形态：桌面端独立窗口，网页端应用内弹窗。
     surface: desktopEdition ? "desktop" : "web",
   });
@@ -94,6 +103,32 @@ export async function startLocalServer(options: LocalServerOptions): Promise<Loc
     console.log(`[research] 重启收敛：${research.recoveredTaskIds.length} 个未完成任务标记为 interrupted。`);
   }
 
+  // 成象（概念动画）：模型配置在启动时解析一次；未配置则该路由返回明确的未接通说明，
+  // 不影响其他接口。每次请求新建命令，携带各自的超时信号。取料走 runtime 的检索能力，
+  // 同主题 15 分钟内只取一次（进程内有界缓存 + 单飞），保护按账号汇总的搜索额度。
+  const conceptAnimationModel = readConceptAnimationModel(process.env);
+  const conceptAnimationTuning = readConceptAnimationTuning(process.env);
+  // 本机运行面没有登录身份，成象记录统一落在一个固定 scope 下。
+  const conceptAnimationScope = "local";
+  // 取料 provider 只建一次：缓存与单飞必须在进程内跨请求共享，建在每次请求里等于没有缓存。
+  const conceptAnimationMaterial = runtime === undefined
+    ? undefined
+    : createAnimationMaterialProvider({ content: runtime.content, cache: createMemorySharedCache() });
+  const handleConceptAnimationApi = createConceptAnimationApi({
+    createCommand: () => {
+      if (conceptAnimationModel === null) return null;
+      return createConceptAnimationCommand({
+        model: createChatModelClient(conceptAnimationModel),
+        providerLabel: conceptAnimationModel.providerLabel,
+        tuning: conceptAnimationTuning,
+        // 本机长驻进程不设函数时长上限；仍给一个上界，避免异常请求把连接一直挂住。
+        signal: AbortSignal.timeout(readPositiveInt(process.env.ANIMATION_MODEL_TIMEOUT_MS, 300_000)),
+        ...(conceptAnimationMaterial === undefined ? {} : { material: conceptAnimationMaterial }),
+      });
+    },
+    store: createFileAnimationStore(animationStoreDir(dataDir)),
+  });
+
   const requireRuntime = () => {
     if (!runtime) throw new ProductError("AUTH_REQUIRED", "尚未配置知乎开放平台凭证。");
     return runtime;
@@ -103,6 +138,9 @@ export async function startLocalServer(options: LocalServerOptions): Promise<Loc
     try {
       const url = new URL(request.url ?? "/", `http://${request.headers.host ?? host}`);
       if (await handleResearchRoutes(research, url, request, response)) {
+        return;
+      }
+      if (await handleConceptAnimationApi(conceptAnimationScope, url, request, response)) {
         return;
       }
       if (await handleZhihuApi(url, request, response)) {
@@ -250,6 +288,15 @@ async function handleResearchRoutes(
     }
     throw error;
   }
+}
+
+// ---------------------------------------------------------------------------
+// 概念动画路由已抽到 concept-animation-api.ts，由本文件与网页端共用。
+// ---------------------------------------------------------------------------
+
+function readPositiveInt(value: string | undefined, fallback: number): number {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
 }
 
 function serveWeb(webRoot: string, pathname: string, response: ServerResponse, label = "前端"): void {

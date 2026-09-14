@@ -9,6 +9,7 @@ import type { OAuthAppConfig, OAuthToken } from "../platform/zhihu/oauth.ts";
 import { fetchAuthorizedUserProfile, type AuthorizedUserProfile } from "../platform/zhihu/user-profile.ts";
 import type { UserDataGateway } from "../platform/zhihu/user-data.ts";
 import { buildPersonalArchiveViews } from "../application/personal-archive-views.ts";
+import { ENTRY_SEED_KINDS, SEED_TOPIC_LIMIT, type EntrySeedKind } from "../application/entry-seeds.ts";
 import type { createRuntime } from "../application/runtime.ts";
 import type { RateLimiter } from "./rate-limit.ts";
 import { rateLimitKey } from "./rate-limit.ts";
@@ -50,6 +51,13 @@ export type ZhihuApiDeps = {
    * 是次秒级单次调用。自研 Ultra 引擎仍只在本地/桌面运行面承接。
    */
   researchProEnabled?: boolean;
+  /**
+   * 成象（概念动画）路由。网页端传入共享路由实现，本处负责登录门槛、限流，
+   * 并把会话派生的用户 scope 交给它——避免共享路由再实现一套身份解析。
+   */
+  conceptAnimation?: {
+    handle(scope: string, url: URL, request: IncomingMessage, response: ServerResponse): Promise<boolean>;
+  };
   /**
    * 会话与缓存实际落在哪里（"redis" / "memory"）。只用于 /api/status 的运维可见性：
    * 线上若显示 memory，说明共享存储没接上，登录会在多实例间随机失效——
@@ -254,6 +262,17 @@ export function createZhihuApiHandler(deps: ZhihuApiDeps) {
     throw new ProductError("RATE_LIMITED", "请求过于频繁，请稍后再试。");
   }
 
+  /**
+   * 成象记录的隔离键：优先 `/user` 的 hash_id（稳定、跨会话一致），
+   * 拿不到时退回会话内临时键——与个人档案同一策略，绝不把不同用户混进同一 scope。
+   */
+  async function conceptAnimationScope(request: IncomingMessage): Promise<string> {
+    const session = await activeSession(request);
+    if (session === undefined) return "caller";
+    const profile = await loadProfile(session);
+    return profile?.hashId ?? `session:${session.accessToken.slice(0, 12)}`;
+  }
+
   async function handleOAuthCallback(url: URL, request: IncomingMessage, response: ServerResponse): Promise<void> {
     if (!oauthConfig || !oauthCallback) throw new ProductError("AUTH_REQUIRED", "知乎账号登录尚未配置。");
     const landing = `${oauthCallback.origin}/`;
@@ -400,19 +419,6 @@ export function createZhihuApiHandler(deps: ZhihuApiDeps) {
           userData.followees({ limit: 10 }));
         return writeJson(response, 200, result);
       }
-      // 官方「问题路由」：按当前账号画像推荐适合回答的问题（creator 额度组，每日有限）。
-      // 推荐按账号画像生成且额度有限，短时缓存半小时：刷新页面拿到同一批，也不重复消耗额度。
-      if (url.pathname === "/api/user/recommendations" && request.method === "GET") {
-        const active = requireRuntime();
-        const session = await activeSession(request);
-        const cacheKey = session?.accessToken ?? "caller";
-        const result = await withAuthorizedUser(request, response, (userData) =>
-          active.recommendations.recommendations({
-            cacheKey,
-            load: () => userData.questionRecommendations({ count: 10 }),
-          }));
-        return writeJson(response, 200, result);
-      }
       if (url.pathname === "/api/user/archive" && request.method === "GET") {
         // 一次同步会翻页取全创作/关注/收藏，是额度最重的入口；网页端必须先过限流。
         await enforceRateLimit(request, response, "user-archive");
@@ -433,15 +439,30 @@ export function createZhihuApiHandler(deps: ZhihuApiDeps) {
         });
         return writeJson(response, 200, voices);
       }
-      // 主题由前端传入（就是它屏幕上正在展示的那几条收藏标题）：
-      // 后端不再读一次用户数据，路由本身只做「主题 → 研究问题」这一步提炼。
-      if (url.pathname === "/api/research/seed-questions" && request.method === "POST") {
-        await requireWebLogin(request);
+      // 入口种子：素材按入口各取各的，成品都由直答提炼成该入口能直接用的内容。
+      //   深度研究——登录用户自己的收藏标题（user_data 额度组），要登录才读得到；
+      //   众声——知乎热榜（公开内容），与身份无关，因此不要求登录。
+      // 提炼走 zhida_openai 组；素材全在服务端取，前端只说明自己是哪个入口。
+      if (url.pathname === "/api/research/seeds" && request.method === "GET") {
+        const kind = readEntrySeedKind(url.searchParams.get("kind"));
+        // 两个入口各自计数：一个入口被刷爆不该连带另一个也用不了。
+        await enforceRateLimit(request, response, `entry-seeds:${kind}`);
         const active = requireRuntime();
-        const body = asRequest(await readJson(request));
-        const raw = Array.isArray(body.topics) ? body.topics : [];
-        const seeds = await active.seedQuestions.execute({
-          topics: raw.filter((topic): topic is string => typeof topic === "string"),
+        if (kind === "voices") {
+          // 热榜对所有用户是同一批，提炼结果因此可跨用户复用——服务端缓存足以吸收重复请求。
+          const feed = await active.homeFeed.feed({ limit: SEED_TOPIC_LIMIT });
+          return writeJson(response, 200, await active.entrySeeds.execute({
+            kind,
+            topics: feed.items.map((item) => item.title),
+          }));
+        }
+        await requireWebLogin(request);
+        const seeds = await withAuthorizedUser(request, response, async (userData) => {
+          const collections = await userData.recentCollections({ limit: SEED_TOPIC_LIMIT });
+          return active.entrySeeds.execute({
+            kind,
+            topics: collections.items.map((item) => item.title),
+          });
         });
         return writeJson(response, 200, seeds);
       }
@@ -472,6 +493,16 @@ export function createZhihuApiHandler(deps: ZhihuApiDeps) {
       if (deps.researchProEnabled === true && url.pathname === "/api/research-tasks" && request.method === "GET") {
         return writeJson(response, 200, { ok: true, data: { items: [], hasMore: false } });
       }
+      // 成象（概念动画）：生成同时消耗知乎搜索与模型两类额度，网页端要求登录；
+      // 生成请求额外限流（读取历史不烧额度，不放限流）。记录按会话用户 scope 隔离。
+      if (deps.conceptAnimation && isConceptAnimationPath(url.pathname)) {
+        await requireWebLogin(request);
+        if (url.pathname === "/api/concept-animation" && request.method === "POST") {
+          await enforceRateLimit(request, response, "concept-animation");
+        }
+        const scope = await conceptAnimationScope(request);
+        return await deps.conceptAnimation.handle(scope, url, request, response);
+      }
       return false;
     } catch (error) {
       if (isProductError(error)) {
@@ -494,6 +525,18 @@ function callbackUrl(config: OAuthAppConfig): URL {
 /** 研究档位：非法值按不可用处理，交给调用方如实拒绝，不猜一个默认档位。 */
 function readResearchTier(value: unknown): string {
   return typeof value === "string" ? value.trim() : "";
+}
+
+/** 成象相关路径：生成、历史列表与单条记录。 */
+function isConceptAnimationPath(pathname: string): boolean {
+  return pathname === "/api/concept-animation" || pathname === "/api/concept-animations" || pathname.startsWith("/api/concept-animations/");
+}
+
+/** 入口类型：只认已知的两个入口，其余（含缺失）按深度研究处理——
+ *  老客户端与手写请求不必都带上这个参数。 */
+function readEntrySeedKind(value: string | null): EntrySeedKind {
+  const matched = ENTRY_SEED_KINDS.find((kind) => kind === value);
+  return matched ?? "research";
 }
 
 /** 众声的检索范围与时间范围是预置选项，非法值一律按默认处理，不做自由填写。 */

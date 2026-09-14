@@ -2,11 +2,17 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 import { Redis } from "@upstash/redis";
 import { createRuntime } from "../application/runtime.ts";
 import { createMemorySharedCache, type SharedCache } from "../application/shared-cache.ts";
+import { createAnimationMaterialProvider } from "../application/animation-material.ts";
+import { createConceptAnimationCommand } from "../application/concept-animation.ts";
+import { createChatModelClient } from "../platform/model/chat.ts";
+import { readConceptAnimationModel, readConceptAnimationTuning } from "../platform/model/config.ts";
 import { readOAuthAppConfig, missingOAuthConfig, oauthRedirectUri } from "../platform/zhihu/oauth.ts";
 import { createKvSharedCache, readRedisRestConfig } from "../storage/kv-shared-cache.ts";
+import { createSharedCacheAnimationStore } from "../storage/animation-store.ts";
 import { createSharedCacheHomeFeedCacheStore } from "../storage/home-feed-cache.ts";
 import { createSharedCachePersonalArchiveStore } from "../storage/personal-archive-store.ts";
 import { createZhihuApiHandler } from "./zhihu-api.ts";
+import { createConceptAnimationApi } from "./concept-animation-api.ts";
 import { createKvSessionStore, createMemorySessionStore, type SessionStore } from "./session-store.ts";
 import {
   createKvRateLimiter,
@@ -58,6 +64,30 @@ const runtime = accessSecret
     })
   : undefined;
 
+// 成象（概念动画）：模型配置在实例启动时解析一次（Vercel 注入环境变量，无本地可写目录）。
+// 取料 provider 也建一次——缓存与单飞必须在同一实例内跨请求共享，建在每次请求里等于没有缓存。
+const conceptAnimationModel = readConceptAnimationModel(process.env);
+const conceptAnimationTuning = readConceptAnimationTuning(process.env);
+// 网页端是 Serverless：函数有硬性时长上限（vercel.json 设 60s），一次生成 + 可能的重生成要留出余量，
+// 因此把生成超时收敛到 50s 以内；超时按 504 返回，而不是让平台直接杀掉连接。
+const CONCEPT_ANIMATION_WEB_TIMEOUT_MS = 50_000;
+const conceptAnimationMaterial = runtime === undefined
+  ? undefined
+  : createAnimationMaterialProvider({ content: runtime.content, cache: sharedCache });
+const handleConceptAnimation = createConceptAnimationApi({
+  createCommand: () => {
+    if (conceptAnimationModel === null) return null;
+    return createConceptAnimationCommand({
+      model: createChatModelClient(conceptAnimationModel),
+      providerLabel: conceptAnimationModel.providerLabel,
+      tuning: conceptAnimationTuning,
+      signal: AbortSignal.timeout(readWebAnimationTimeout(process.env)),
+      ...(conceptAnimationMaterial === undefined ? {} : { material: conceptAnimationMaterial }),
+    });
+  },
+  store: createSharedCacheAnimationStore(sharedCache),
+});
+
 // 网页端承接知乎 API 面（热榜、我的知乎、众声、首页直答）与深度研究 Pro。
 // Pro 是单次知乎直答调用，不依赖长驻研究引擎；自研 Ultra 引擎只在本地/桌面运行面承接，
 // 因此这里声明 research（前端据此启用研究入口）但不声明 research_ultra（档位菜单只剩 Pro）。
@@ -67,14 +97,23 @@ const handleZhihuApi = createZhihuApiHandler({
   oauthMissingConfig: missingOAuthConfig(process.env),
   oauthRedirectUri: oauthRedirectUri(process.env),
   sessions: createSessions(),
-  capabilities: ["zhihu_search", "global_search", "hot_list", "user_data", "voices", "research"],
+  capabilities: ["zhihu_search", "global_search", "hot_list", "user_data", "voices", "research", "concept_animation"],
   surface: "web",
   researchProEnabled: true,
+  // 成象路由由本处提供；登录门槛、限流与身份 scope 在 handler 内统一处理。
+  conceptAnimation: { handle: handleConceptAnimation },
   // 线上显示 memory 即说明共享存储没接上（登录会在多实例间随机失效）。
   sessionStorage: redis === undefined ? "memory" : "redis",
   hotCacheControl: "public, s-maxage=3600, stale-while-revalidate=300",
   rateLimiter: createRateLimiter(),
 });
+
+/** 生成超时：环境变量显式配置优先，但无论如何不超过平台的函数时长余量。 */
+function readWebAnimationTimeout(env: Record<string, string | undefined>): number {
+  const parsed = Number(env.ANIMATION_MODEL_TIMEOUT_MS);
+  if (!Number.isFinite(parsed) || !Number.isInteger(parsed) || parsed <= 0) return CONCEPT_ANIMATION_WEB_TIMEOUT_MS;
+  return Math.min(parsed, CONCEPT_ANIMATION_WEB_TIMEOUT_MS);
+}
 
 /** 各 `api/**` 入口共用的处理函数；未命中的路径回落到本函数的 404。 */
 export default async function webApiHandler(

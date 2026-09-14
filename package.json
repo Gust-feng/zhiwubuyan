@@ -35,7 +35,9 @@
     "verify:cache": "node src/cli/verify-shared-cache.ts",
     "verify:archive": "node --use-system-ca src/cli/verify-personal-archive.ts && node --use-system-ca src/cli/verify-personal-archive-e2e.ts",
     "verify:login": "node --use-system-ca src/cli/verify-login-session.ts",
-    "verify:user-feed": "node --use-system-ca src/cli/verify-user-feed-cache.ts"
+    "verify:user-feed": "node --use-system-ca src/cli/verify-user-feed-cache.ts",
+    "concept-animation": "node --use-system-ca src/cli/concept-animation.ts",
+    "verify:concept-animation": "node src/cli/verify-concept-animation.ts"
   },
   "dependencies": {
     "@fontsource-variable/noto-sans-sc": "^5.3.0",
