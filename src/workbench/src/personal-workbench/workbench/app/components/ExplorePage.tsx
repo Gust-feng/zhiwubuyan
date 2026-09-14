@@ -1,23 +1,19 @@
-import { useState } from 'react'
-import { BookOpen, ExternalLink, Flame } from 'lucide-react'
-import { useZhihuLogin } from '@ui/features/auth/login-request'
-import { isZhihuUserSession, useZhihuSession } from '@ui/workbench/zhihu-account'
+import { useEffect, useLayoutEffect, useRef, useState, type RefObject } from 'react'
+import { Flame } from 'lucide-react'
 import { FeedCard } from './home-feed-view'
 import { formatCount, HotRow } from './home-feeds'
-import { useCoreFeed, type CoreFeed } from './use-core-feed'
 import { useHomeFeed, type HomeFeedItem, type HomeFeedState } from './use-home-feed'
 import './explore-page.css'
 import './workbench-views.css'
 
-interface RecommendedQuestion {
-  readonly id: string
-  readonly title: string
-}
 /** 热榜只在本页读取一次，主议题、讨论列表与 Top 5 都由同一份结果切片。 */
 export function ExplorePage() {
   const [refreshKey, setRefreshKey] = useState(0)
   const feed = useHomeFeed({ refreshKey })
   const retry = (): void => setRefreshKey((current) => current + 1)
+  // 内容换了就要重新量一次：主议题的标题行数会改变主区可用高度。
+  const revision = `${feed.status}:${feed.items.length}:${feed.items[0]?.id ?? ''}`
+  const { counts, mainRef, asideRef } = useOneScreenCounts(revision)
 
   return (
     <div className="ui-view ui-explore">
@@ -25,23 +21,103 @@ export function ExplorePage() {
         <header className="ui-explore__header">
           <h1>发现</h1>
           <div className="ui-explore__context">
-            <p>从今天正在发生的讨论里，找到值得继续追问的问题。</p>
+            <p>今天大家在讨论什么，挑一条追问下去。</p>
           </div>
         </header>
 
         <div className="ui-explore__layout">
-          <main className="ui-explore__main">
+          <main className="ui-explore__main" ref={mainRef}>
             <FeatureIssue feed={feed} onRetry={retry} />
-            <DiscussionList feed={feed} onRetry={retry} />
+            <DiscussionList feed={feed} onRetry={retry} limit={counts.discussion} />
           </main>
-          <aside className="ui-explore__aside" aria-label="探索侧栏">
-            <HotRanking feed={feed} onRetry={retry} />
-            <KnowledgePicks />
+          <aside className="ui-explore__aside" aria-label="探索侧栏" ref={asideRef}>
+            <HotRanking feed={feed} onRetry={retry} limit={counts.hot} />
           </aside>
         </div>
       </div>
     </div>
   )
+}
+
+/** 条数下限保证版面成立，上限避免大窗口把整份热榜一次铺完。 */
+const DISCUSSION_MIN = 1
+const DISCUSSION_MAX = 8
+const HOT_MIN = 5
+const HOT_MAX = 20
+
+/**
+ * 发现页是一屏版面：两栏都不滚动，可显示的条数按容器实际高度算——窗口大就多显示，窗口小就少显示。
+ * 参与计算的量都与已显示条数无关（容器高、单行高、列表起点），所以结果一次收敛，不会来回重排。
+ */
+function useOneScreenCounts(revision: string): {
+  readonly counts: { readonly discussion: number; readonly hot: number }
+  readonly mainRef: RefObject<HTMLElement | null>
+  readonly asideRef: RefObject<HTMLElement | null>
+} {
+  const mainRef = useRef<HTMLElement | null>(null)
+  const asideRef = useRef<HTMLElement | null>(null)
+  // 先按下限起步，量完再放开：宁可先少显示两条，也不要先撑破再回缩。
+  const [counts, setCounts] = useState({ discussion: DISCUSSION_MIN, hot: HOT_MIN })
+
+  useLayoutEffect(() => {
+    const main = mainRef.current
+    const aside = asideRef.current
+    if (main === null || aside === null) return
+    const measure = (): void => {
+      // 单栏堆叠时整页本来就会滚动，这时给足条数比压缩条数有用。
+      const stacked = aside.getBoundingClientRect().top > main.getBoundingClientRect().top + 1
+      const next = stacked ? { discussion: DISCUSSION_MAX, hot: HOT_MAX } : {
+        discussion: fitCount(main, '.ui-explore__discussion-list', '.ui-explore__discussion', DISCUSSION_MIN, DISCUSSION_MAX),
+        hot: fitCount(aside, '.ui-explore__side-card .ui-home__core-list', '.ui-explore__side-card', HOT_MIN, HOT_MAX),
+      }
+      setCounts((previous) => (
+        previous.discussion === next.discussion && previous.hot === next.hot ? previous : next
+      ))
+    }
+    measure()
+    // 窗口尺寸变化必须走 resize：部分环境下后台标签不派发 ResizeObserver 回调，只监听它会让条数停在首次测量值。
+    window.addEventListener('resize', measure)
+    const observer = new ResizeObserver(measure)
+    observer.observe(main)
+    observer.observe(aside)
+    return () => {
+      window.removeEventListener('resize', measure)
+      observer.disconnect()
+    }
+  }, [revision])
+
+  return { counts, mainRef, asideRef }
+}
+
+/**
+ * 逐条累加真实行高，取放得下的最大条数。
+ * 不能用「可用高度 ÷ 最高一条」折算：标题行数不同会导致高度不等，最高值会把结果压小，
+ * 表现就是列表底部留出一片空白。尚未渲染的条目按已知最高值保守估计，宁可少一条也不溢出。
+ */
+function fitCount(
+  container: HTMLElement,
+  listSelector: string,
+  sectionSelector: string,
+  min: number,
+  max: number,
+): number {
+  const list = container.querySelector<HTMLElement>(listSelector)
+  if (list === null || list.children.length === 0) return min
+  const heights = Array.from(list.children).map((row) => row.getBoundingClientRect().height)
+  const tallest = Math.max(...heights)
+  if (tallest <= 0) return min
+  const section = list.closest(sectionSelector)
+  const trailing = section === null ? 0 : Number.parseFloat(getComputedStyle(section).paddingBottom) || 0
+  const available = container.clientHeight - (list.getBoundingClientRect().top - container.getBoundingClientRect().top) - trailing
+  let used = 0
+  let fits = 0
+  while (fits < max) {
+    const height = fits < heights.length ? heights[fits] : tallest
+    if (used + height > available) break
+    used += height
+    fits += 1
+  }
+  return Math.min(max, Math.max(min, fits))
 }
 
 function FeatureIssue({ feed, onRetry }: { readonly feed: HomeFeedState; readonly onRetry: () => void }) {
@@ -61,42 +137,54 @@ function FeatureIssue({ feed, onRetry }: { readonly feed: HomeFeedState; readonl
 }
 
 function FeatureCard({ item }: { readonly item: HomeFeedItem }) {
+  // 标题本身就是入口：点击直接跳到知乎原文，不再另挂外链图标。
   const title = item.url === '' ? (
     <h3 className="ui-explore__feature-title">{item.title}</h3>
   ) : (
     <a className="ui-explore__feature-title" href={item.url} target="_blank" rel="noreferrer">
-      {item.title}<ExternalLink size={15} aria-hidden />
+      {item.title}
     </a>
   )
+  // 热榜条目多数没有作者与互动数：三者都缺失时整块不渲染，避免留出一条只有边框的空行。
+  const hasMeta = item.contentType !== undefined
+    || item.authorName !== undefined
+    || item.voteCount !== undefined
+    || item.commentCount !== undefined
   return (
     <article className="ui-explore__feature-body">
       {title}
       {item.summary !== '' && <p className="ui-explore__feature-summary">{item.summary}</p>}
-      <div className="ui-explore__feature-meta">
-        {item.contentType !== undefined && <span>{item.contentType}</span>}
-        {item.authorName !== undefined && <span>{item.authorName}</span>}
-        {(item.voteCount !== undefined || item.commentCount !== undefined) && (
-          <span className="ui-explore__feature-stats">
-            {item.voteCount !== undefined && <span><strong>{formatCount(item.voteCount)}</strong> 赞同</span>}
-            {item.commentCount !== undefined && <span><strong>{formatCount(item.commentCount)}</strong> 评论</span>}
-          </span>
-        )}
-      </div>
+      {hasMeta && (
+        <div className="ui-explore__feature-meta">
+          {item.contentType !== undefined && <span>{item.contentType}</span>}
+          {item.authorName !== undefined && <span>{item.authorName}</span>}
+          {(item.voteCount !== undefined || item.commentCount !== undefined) && (
+            <span className="ui-explore__feature-stats">
+              {item.voteCount !== undefined && <span><strong>{formatCount(item.voteCount)}</strong> 赞同</span>}
+              {item.commentCount !== undefined && <span><strong>{formatCount(item.commentCount)}</strong> 评论</span>}
+            </span>
+          )}
+        </div>
+      )}
     </article>
   )
 }
 
-function DiscussionList({ feed, onRetry }: { readonly feed: HomeFeedState; readonly onRetry: () => void }) {
-  const items = feed.items.slice(1, 6)
+/** 发现页是一屏版面：讨论条数与热榜条数都按一屏容量取定，靠数据切片而不是滚动承载。 */
+function DiscussionList({ feed, onRetry, limit }: {
+  readonly feed: HomeFeedState
+  readonly onRetry: () => void
+  readonly limit: number
+}) {
+  const items = feed.items.slice(1, 1 + limit)
   return (
     <section className="ui-explore__discussion" aria-labelledby="explore-discussion-title">
       <div className="ui-explore__section-head">
         <h2 id="explore-discussion-title">正在讨论</h2>
-        <span>来自今日热榜</span>
       </div>
       {feed.status === 'loading' && (
         <div className="ui-explore__list-skeleton" aria-label="正在获取讨论">
-          {Array.from({ length: 4 }, (_, index) => <span key={index} />)}
+          {Array.from({ length: limit }, (_, index) => <span key={index} />)}
         </div>
       )}
       {feed.status === 'error' && <ExploreNotice message="讨论列表暂不可用。" onRetry={onRetry} />}
@@ -115,18 +203,24 @@ function DiscussionList({ feed, onRetry }: { readonly feed: HomeFeedState; reado
   )
 }
 
-function HotRanking({ feed, onRetry }: { readonly feed: HomeFeedState; readonly onRetry: () => void }) {
-  const items = feed.items.slice(0, 5)
+function HotRanking({ feed, onRetry, limit }: {
+  readonly feed: HomeFeedState
+  readonly onRetry: () => void
+  readonly limit: number
+}) {
+  const items = feed.items.slice(0, limit)
   return (
     <section className="ui-explore__side-card" aria-labelledby="explore-hot-title">
       <div className="ui-explore__side-head">
         <Flame size={15} className="is-hot" aria-hidden />
         <h2 id="explore-hot-title">知乎热榜</h2>
-        <span>Top 5</span>
       </div>
+      {feed.status === 'ready' && feed.stale && (
+        <p className="ui-explore__stale">上游暂不可用，下面是上一次获取的内容。</p>
+      )}
       {feed.status === 'loading' && (
         <div className="ui-explore__side-skeleton" aria-label="正在获取热榜">
-          {Array.from({ length: 5 }, (_, index) => <span key={index} />)}
+          {Array.from({ length: limit }, (_, index) => <span key={index} />)}
         </div>
       )}
       {feed.status === 'error' && <ExploreNotice message="热榜暂不可用。" onRetry={onRetry} compact />}
@@ -138,75 +232,6 @@ function HotRanking({ feed, onRetry }: { readonly feed: HomeFeedState; readonly 
       )}
     </section>
   )
-}
-
-/** 知识精选按账号画像生成；未登录时只解释登录收益，不请求用户推荐接口。 */
-function KnowledgePicks() {
-  const { state: sessionState } = useZhihuSession()
-  const { openLogin } = useZhihuLogin()
-  const personalized = sessionState.status === 'ready' && isZhihuUserSession(sessionState.session)
-  return (
-    <section className="ui-explore__side-card" aria-labelledby="explore-knowledge-title">
-      <div className="ui-explore__side-head">
-        <BookOpen size={15} aria-hidden />
-        <h2 id="explore-knowledge-title">{personalized ? '知识精选' : '值得追问的问题'}</h2>
-      </div>
-      {sessionState.status === 'loading' && (
-        <div className="ui-explore__side-skeleton" aria-label="正在确认登录状态">
-          {Array.from({ length: 3 }, (_, index) => <span key={index} />)}
-        </div>
-      )}
-      {sessionState.status === 'ready' && personalized && <KnowledgeList />}
-      {/* 未登录不请求推荐接口：推荐属于用户数据域，热榜例外不能扩散到这里。 */}
-      {sessionState.status === 'ready' && !personalized && (
-        <div className="ui-explore__login-note">
-          <p>登录后查看按你的知乎画像推荐的问题。</p>
-          <button type="button" onClick={() => openLogin('explore')}>登录查看</button>
-        </div>
-      )}
-      {sessionState.status === 'error' && <ExploreNotice message={sessionState.message} compact />}
-    </section>
-  )
-}
-
-function KnowledgeList() {
-  const feed = useCoreFeed('/api/user/recommendations', readRecommendedQuestions)
-  return <KnowledgeListState feed={feed} />
-}
-
-function KnowledgeListState({ feed }: { readonly feed: CoreFeed<RecommendedQuestion> }) {
-  if (feed.status === 'loading') {
-    return (
-      <div className="ui-explore__side-skeleton" aria-label="正在获取知识精选">
-        {Array.from({ length: 3 }, (_, index) => <span key={index} />)}
-      </div>
-    )
-  }
-  if (feed.status === 'error') {
-    return <ExploreNotice message={feed.error ?? '推荐暂不可用。'} onRetry={feed.retry} compact />
-  }
-  if (feed.items.length === 0) return <ExploreNotice message="暂时没有推荐的问题。" compact />
-  return (
-    <ol className="ui-explore__knowledge-list">
-      {feed.items.slice(0, 4).map((item, index) => (
-        <li key={item.id}>
-          <span>{String(index + 1).padStart(2, '0')}</span>
-          <p>{item.title}</p>
-        </li>
-      ))}
-    </ol>
-  )
-}
-
-function readRecommendedQuestions(body: Record<string, unknown>): readonly RecommendedQuestion[] {
-  if (!Array.isArray(body.items)) return []
-  return body.items.flatMap((raw) => {
-    if (raw === null || typeof raw !== 'object' || Array.isArray(raw)) return []
-    const item = raw as Record<string, unknown>
-    const id = typeof item.id === 'string' ? item.id : ''
-    const title = typeof item.title === 'string' ? item.title.trim() : ''
-    return id === '' || title === '' ? [] : [{ id, title }]
-  })
 }
 
 function FeatureSkeleton() {

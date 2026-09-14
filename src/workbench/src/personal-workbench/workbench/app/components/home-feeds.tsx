@@ -9,7 +9,7 @@ import {
   readStringField,
   type CoreFeed,
 } from './use-core-feed'
-import { BrandMark } from '@ui/components/brand-mark'
+import { ZhihuLogo } from '@ui/components/zhihu-logo'
 import type { ZhihuAccountProfile } from '@ui/workbench/zhihu-account'
 import './home-page.css'
 
@@ -45,14 +45,19 @@ export function HomeMasthead({ state, profile, onLogin, onRetry }: {
       {state !== 'guest' && <><h1>{name}</h1><p>{subtitle}</p></>}
       {state === 'guest' && (
         <button type="button" className="ui-home__identity-action" onClick={onLogin}>
-          <BrandMark size={22} />
+          <ZhihuLogo />
           <span>使用知乎登录</span>
         </button>
       )}
       {state === 'error' && onRetry !== undefined && (
         <button type="button" className="ui-home__identity-action" onClick={onRetry}>重新检查</button>
       )}
-      {personalized && <blockquote>“在别人的问题里，看见更大的世界。”</blockquote>}
+      <blockquote>
+        <span className="ui-home__quote-bracket">「</span>好的问题，
+        <br />
+        让世界更大一点。<span className="ui-home__quote-bracket">」</span>
+        <cite>知无不言</cite>
+      </blockquote>
     </header>
   )
 }

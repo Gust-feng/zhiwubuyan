@@ -131,6 +131,7 @@ export function HomePage({ onOpenVoices }: HomePageProps) {
 /** 个人数据只在确认已登录后挂载，避免匿名访问误打用户接口。 */
 function HomePersonalSummary() {
   const { state: sessionState, reload } = useZhihuSession()
+  const { openLogin } = useZhihuLogin()
 
   if (sessionState.status === 'loading') {
     return (
@@ -153,7 +154,7 @@ function HomePersonalSummary() {
 
   if (!isZhihuUserSession(sessionState.session)) {
     return (
-      <GuestPersonalPreview onLogin={() => undefined} />
+      <GuestPersonalPreview onLogin={() => openLogin('home')} />
     )
   }
 
@@ -172,12 +173,74 @@ function HomePersonalSummary() {
   )
 }
 
+/** 未登录预览只画形状，不放任何真实或编造的数据；形状本身说明登录后能得到什么。 */
+type PreviewKind = 'creation' | 'collection' | 'followee' | 'knowledge'
+
+function PreviewGhost({ kind }: { readonly kind: PreviewKind }) {
+  if (kind === 'creation') {
+    return (
+      <span className="ui-home__ghost ui-home__ghost--lines" aria-hidden>
+        <i /><i /><i /><i /><i />
+      </span>
+    )
+  }
+
+  if (kind === 'collection') {
+    return (
+      <span className="ui-home__ghost ui-home__ghost--media" aria-hidden>
+        {[0, 1, 2].map((row) => (
+          <span className="ui-home__ghost-media-row" key={row}>
+            <i className="ui-home__ghost-thumb" />
+            <span className="ui-home__ghost-media-text"><i /><i /></span>
+            <Bookmark className="ui-home__ghost-mark" size={12} aria-hidden />
+          </span>
+        ))}
+      </span>
+    )
+  }
+
+  if (kind === 'followee') {
+    return (
+      <span className="ui-home__ghost ui-home__ghost--avatars" aria-hidden>
+        {[0, 1, 2].map((index) => <i key={index} />)}
+      </span>
+    )
+  }
+
+  return (
+    <span className="ui-home__ghost ui-home__ghost--graph" aria-hidden>
+      <svg viewBox="0 0 168 96" focusable="false">
+        <g className="ui-home__ghost-graph-edges">
+          <line x1="84" y1="48" x2="30" y2="22" />
+          <line x1="84" y1="48" x2="140" y2="24" />
+          <line x1="84" y1="48" x2="24" y2="72" />
+          <line x1="84" y1="48" x2="86" y2="86" />
+          <line x1="84" y1="48" x2="146" y2="70" />
+        </g>
+        <g className="ui-home__ghost-graph-nodes">
+          <circle cx="84" cy="48" r="13" />
+          <circle cx="30" cy="22" r="7" />
+          <circle cx="140" cy="24" r="7" />
+          <circle cx="24" cy="72" r="7" />
+          <circle cx="86" cy="86" r="7" />
+          <circle cx="146" cy="70" r="7" />
+        </g>
+      </svg>
+      <span className="ui-home__ghost-graph-label ui-home__ghost-graph-label--insight">认知</span>
+      <span className="ui-home__ghost-graph-label ui-home__ghost-graph-label--tech">技术</span>
+      <span className="ui-home__ghost-graph-label ui-home__ghost-graph-label--life">生活</span>
+      <span className="ui-home__ghost-graph-label ui-home__ghost-graph-label--product">产品</span>
+      <span className="ui-home__ghost-graph-label ui-home__ghost-graph-label--society">社会</span>
+    </span>
+  )
+}
+
 function GuestPersonalPreview({ onLogin }: { readonly onLogin: () => void }) {
   const items = [
-    { icon: PenLine, title: '创作', subtitle: '记录思考，分享见解', detail: '在这里，遇见更好的表达自己。' },
-    { icon: Bookmark, title: '收藏', subtitle: '好的想法，值得反复阅读', detail: '收藏你感兴趣的内容。' },
-    { icon: Users, title: '关注', subtitle: '与有趣的人，一起看更大的世界', detail: '发现值得关注的创作者。' },
-    { icon: Network, title: '知识脉络', subtitle: '从问题出发，构建自己的知识地图', detail: '让知识成为你的思考路径。' },
+    { kind: 'creation', icon: PenLine, title: '创作', subtitle: '记录思考，分享见解', detail: '在这里，遇见更好的表达自己。' },
+    { kind: 'collection', icon: Bookmark, title: '收藏', subtitle: '好的想法，值得反复阅读', detail: '收藏你感兴趣的内容。' },
+    { kind: 'followee', icon: Users, title: '关注', subtitle: '与有趣的人，一起看更大的世界', detail: '发现值得关注的创作者。' },
+    { kind: 'knowledge', icon: Network, title: '知识脉络', subtitle: '从问题出发，构建自己的知识地图', detail: '让知识成为你的思考路径。' },
   ] as const
 
   return (
@@ -190,16 +253,23 @@ function GuestPersonalPreview({ onLogin }: { readonly onLogin: () => void }) {
         </div>
       </header>
       <div className="ui-home__preview-grid">
-        {items.map(({ icon: Icon, title, subtitle, detail }) => (
+        {items.map(({ kind, icon: Icon, title, subtitle, detail }) => (
           <article className="ui-home__preview-card" key={title}>
-            <div className="ui-home__preview-title"><Icon size={17} aria-hidden /><h3>{title}</h3><ArrowRight size={14} aria-hidden /></div>
+            <div className="ui-home__preview-title"><Icon size={17} aria-hidden /><h3>{title}</h3><ArrowRight className="ui-home__preview-title-arrow" size={16} aria-hidden /></div>
             <p className="ui-home__preview-subtitle">{subtitle}</p>
-            <button type="button" className="ui-home__preview-lock" onClick={onLogin}>
-              <span className="ui-home__preview-lock-icon"><LockKeyhole size={19} aria-hidden /></span>
-              <strong>登录后查看</strong>
-              <span>{detail}</span>
+            <button
+              type="button"
+              className="ui-home__preview-lock"
+              onClick={onLogin}
+              aria-label={`登录后查看${title}`}
+            >
+              <PreviewGhost kind={kind} />
+              <span className="ui-home__preview-gate">
+                <span className="ui-home__preview-badge"><LockKeyhole size={15} aria-hidden /></span>
+                <strong>登录后查看</strong>
+                <span className="ui-home__preview-detail">{detail}</span>
+              </span>
             </button>
-            <button type="button" className="ui-home__preview-more" onClick={onLogin}>了解{title}功能 <ArrowRight size={13} aria-hidden /></button>
           </article>
         ))}
       </div>

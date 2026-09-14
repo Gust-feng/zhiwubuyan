@@ -1,16 +1,22 @@
 .ui-view.ui-explore {
+  display: flex;
+  overflow: hidden;
   background: var(--ui-surface);
 }
 
 .ui-view__frame.ui-explore__frame {
   width: min(1320px, 100%);
-  padding: 0 38px 56px;
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 0 38px;
   background: var(--ui-surface);
 }
 
 .ui-explore__header {
   display: flex;
-  min-height: 112px;
+  min-height: clamp(68px, 10.5vh, 100px);
   align-items: center;
   gap: 28px;
   border-bottom: 1px solid var(--ui-border);
@@ -20,7 +26,7 @@
   margin: 0;
   color: color-mix(in srgb, var(--ui-accent) 14%, var(--ui-text-1));
   font-family: "Noto Serif SC Variable", var(--reading-serif);
-  font-size: clamp(40px, 5vw, 58px);
+  font-size: clamp(38px, 4.2vw, 54px);
   font-weight: 700;
   letter-spacing: .08em;
   line-height: 1;
@@ -45,10 +51,17 @@
   letter-spacing: .04em;
 }
 
+/* 版面距离随窗口高度伸缩：窗口越高越舒展、越矮越紧凑，不用固定像素，避免换尺寸就失衡。
+   三档分别对应「块内间距」「行内边距」「块间距」，两栏共用同一组值，竖线两侧节奏一致。 */
 .ui-explore__layout {
+  --ui-explore-gap-tight: clamp(8px, 1.5vh, 16px);
+  --ui-explore-gap-row: clamp(11px, 1.9vh, 20px);
+  --ui-explore-gap-block: clamp(14px, 2.6vh, 32px);
+  --ui-explore-gap-row-min: clamp(2px, .8vh, 8px);
   display: grid;
+  min-height: 0;
+  flex: 1;
   grid-template-columns: minmax(0, 1fr) 320px;
-  align-items: start;
 }
 
 .ui-explore__main,
@@ -57,10 +70,15 @@
 }
 
 .ui-explore__main {
+  display: flex;
+  flex-direction: column;
   border-right: 1px solid var(--ui-border);
+  overflow: hidden;
 }
 
 .ui-explore__aside {
+  display: flex;
+  overflow: hidden;
   background: color-mix(in srgb, var(--ui-accent) 1.5%, var(--ui-surface));
 }
 
@@ -70,23 +88,28 @@
   background: transparent;
 }
 
+/* 主议题与「正在讨论」之间留出呼吸：上下块各出一半内边距，合起来就是两者之间的距离。 */
 .ui-explore__feature {
-  /* 主议题与「正在讨论」是同一页的上下两段：上段留白过大会把下段挤到尴尬位置，
-     这里收紧纵向节奏，让两段靠在一起读。 */
-  padding: 24px 40px 22px 0;
+  flex: 0 0 auto;
+  padding: var(--ui-explore-gap-block) 40px var(--ui-explore-gap-block) 0;
 }
 
+/* 讨论区吃掉主区剩余高度：窗口高就用更宽松的行距填满，而不是在底部留一片空白。 */
 .ui-explore__discussion {
-  padding: 18px 40px 36px 0;
+  display: flex;
+  min-height: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+  padding: var(--ui-explore-gap-block) 40px var(--ui-explore-gap-block) 0;
   border-top: 1px solid var(--ui-border);
 }
 
 .ui-explore__side-card {
-  padding: 30px 0 30px 30px;
-}
-
-.ui-explore__side-card + .ui-explore__side-card {
-  border-top: 1px solid var(--ui-border);
+  display: flex;
+  min-height: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+  padding: var(--ui-explore-gap-block) 0 var(--ui-explore-gap-block) 30px;
 }
 
 .ui-explore__section-head,
@@ -97,8 +120,7 @@
   gap: 10px;
 }
 
-.ui-explore__section-head::before,
-.ui-explore__side-head::before {
+.ui-explore__section-head::before {
   width: 16px;
   height: 3px;
   flex: 0 0 auto;
@@ -117,39 +139,36 @@
   letter-spacing: .06em;
 }
 
-.ui-explore__section-head > span,
-.ui-explore__side-head > span {
+/* 右栏标题不用通栏短线，让热榜自己的火花标记当标点；颜色沿用首页热榜字形那一档。 */
+.ui-explore__side-head > svg {
+  flex: 0 0 auto;
   color: var(--ui-text-3);
-  font-size: 10.5px;
 }
 
+.ui-explore__side-head > svg.is-hot {
+  color: var(--ui-status-error);
+}
 
-.ui-explore__side-head > svg {
+/* 热榜整行可点，不再另挂外链图标。 */
+.ui-explore__side-card .ui-home__row-open {
   display: none;
 }
 
-.ui-explore__side-head > span {
-  margin-left: auto;
-  letter-spacing: .08em;
-  text-transform: uppercase;
-}
-
 .ui-explore__feature-body {
-  padding: 18px 0 0;
+  padding: var(--ui-explore-gap-tight) 0 0;
 }
 
 .ui-explore__feature-title {
   display: flex;
-  max-width: 790px;
   align-items: flex-start;
   gap: 9px;
   margin: 0;
   color: color-mix(in srgb, var(--ui-accent) 14%, var(--ui-text-1));
   font-family: "Noto Serif SC Variable", var(--reading-serif);
-  font-size: clamp(28px, 3.4vw, 43px);
+  font-size: clamp(28px, 3vw, 40px);
   font-weight: 700;
   letter-spacing: .02em;
-  line-height: 1.28;
+  line-height: 1.3;
   text-decoration: none;
   text-wrap: balance;
 }
@@ -166,27 +185,24 @@ a.ui-explore__feature-title:hover {
 
 .ui-explore__feature-summary {
   display: -webkit-box;
-  max-width: 760px;
-  margin: 12px 0 0;
+  margin: var(--ui-explore-gap-tight) 0 0;
   overflow: hidden;
   color: var(--ui-text-2);
   font-family: "Noto Serif SC Variable", var(--reading-serif);
   font-size: 14px;
-  line-height: 1.9;
+  line-height: 1.85;
   text-wrap: pretty;
   -webkit-box-orient: vertical;
-  /* 3 行足够给出议题要点；再多会把「正在讨论」推到首屏之外。 */
-  -webkit-line-clamp: 3;
+  -webkit-line-clamp: 2;
 }
 
 .ui-explore__feature-meta {
   display: flex;
-  max-width: 760px;
   flex-wrap: wrap;
   align-items: baseline;
   gap: 8px 14px;
-  margin-top: 14px;
-  padding: 12px 0 0 20px;
+  margin-top: var(--ui-explore-gap-tight);
+  padding: var(--ui-explore-gap-tight) 0 0 16px;
   border-left: 3px solid color-mix(in srgb, var(--ui-accent) 18%, var(--ui-border));
   color: var(--ui-text-3);
   font-size: 11.5px;
@@ -216,14 +232,27 @@ a.ui-explore__feature-title:hover {
 }
 
 .ui-explore__discussion-list {
-  margin-top: 12px;
+  display: flex;
+  min-height: 0;
+  margin-top: var(--ui-explore-gap-tight);
+  flex: 1 1 auto;
+  flex-direction: column;
+  /* 余量分摊到条目之间，条目自身保持自然高度——拉伸会让高度测量失去意义。 */
+  justify-content: space-between;
 }
 
+/* 基线对齐：序号首行始终贴在标题首行的基线上，标题行数、字号或行距变化都不会错位。 */
 .ui-explore__discussion-list > li {
   display: grid;
-  grid-template-columns: 32px minmax(0, 1fr);
+  flex: 0 0 auto;
+  align-items: baseline;
+  grid-template-columns: 30px minmax(0, 1fr);
   gap: 10px;
   border-bottom: 1px solid var(--ui-border);
+}
+
+.ui-explore__discussion-list > li:last-child {
+  border-bottom: 0;
 }
 
 .ui-explore__discussion-list > li:first-child {
@@ -235,7 +264,6 @@ a.ui-explore__feature-title:hover {
 }
 
 .ui-explore__discussion-rank {
-  padding-top: 18px;
   color: var(--ui-accent);
   font-family: "Noto Serif SC Variable", var(--reading-serif);
   font-size: 15px;
@@ -244,55 +272,63 @@ a.ui-explore__feature-title:hover {
 
 .ui-explore__discussion-list .uhf__card {
   min-width: 0;
-  padding: 16px 0;
+  gap: 14px;
+  padding: var(--ui-explore-gap-row) 0;
 }
 
 .ui-explore__discussion-list .uhf__card:hover {
   background: transparent;
 }
 
-.ui-explore__discussion-list .uhf__card-title {
-  font-family: "Noto Serif SC Variable", var(--reading-serif);
-  font-size: 15px;
-  line-height: 1.55;
+.ui-explore__discussion-list .uhf__card-foot {
+  margin-top: var(--ui-explore-gap-row-min);
 }
 
-.ui-explore__discussion-list .uhf__summary {
-  margin-top: 4px;
-  color: var(--ui-text-3);
-  font-size: 12.5px;
+.ui-explore__discussion-list .uhf__card-title {
+  display: -webkit-box;
+  overflow: hidden;
+  font-family: "Noto Serif SC Variable", var(--reading-serif);
+  font-size: 15px;
+  line-height: 1.5;
+  -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
 }
 
-.ui-explore__discussion-list .uhf__card-foot {
-  margin-top: 6px;
+/* 标题本身就是入口，卡片里的「阅读原文」与外链图标都不再需要；
+   留着它会被挤到缩略图下方悬空，正是列表看起来错位的原因。 */
+.ui-explore__discussion-list .uhf__card-actions {
+  display: none;
+}
+
+.ui-explore__discussion-list .uhf__summary {
+  margin-top: var(--ui-explore-gap-row-min);
+  color: var(--ui-text-3);
+  font-size: 12.5px;
+  line-height: 1.6;
+  -webkit-line-clamp: 1;
 }
 
 .ui-explore__discussion-list .uhf__thumb {
-  width: 92px;
-  height: 62px;
+  width: 88px;
+  height: 60px;
 }
 
-.ui-explore__notice,
-.ui-explore__login-note {
+.ui-explore__notice {
   padding: 28px 0;
   color: var(--ui-text-3);
   font-size: 12px;
   line-height: 1.65;
 }
 
-.ui-explore__notice.is-compact,
-.ui-explore__login-note {
+.ui-explore__notice.is-compact {
   padding: 24px 0 4px;
 }
 
-.ui-explore__notice p,
-.ui-explore__login-note p {
+.ui-explore__notice p {
   margin: 0;
 }
 
-.ui-explore__notice button,
-.ui-explore__login-note button {
+.ui-explore__notice button {
   margin-top: 10px;
   padding: 0;
   border: 0;
@@ -344,14 +380,34 @@ a.ui-explore__feature-title:hover {
 }
 
 .ui-explore__side-card .ui-home__core-list {
-  margin-top: 12px;
+  display: flex;
+  min-height: 0;
+  margin-top: var(--ui-explore-gap-tight);
+  flex: 1 1 auto;
+  flex-direction: column;
+  /* 同上：条目自然高度，余量走间距。 */
+  justify-content: space-between;
+}
+
+/* 上游暂不可用时如实标注，别让「HH:MM 获取」看起来像刚拿到的。 */
+.ui-explore__stale {
+  margin: var(--ui-explore-gap-tight) 0 0;
+  color: var(--ui-status-wait);
+  font-size: 11.5px;
+  line-height: 1.6;
+}
+
+.ui-explore__side-card .ui-home__core-list > li {
+  display: block;
+  flex: 0 0 auto;
 }
 
 .ui-explore__side-card .ui-home__row {
-  min-height: 50px;
-  grid-template-columns: 27px minmax(0, 1fr);
+  width: 100%;
+  min-height: 46px;
+  grid-template-columns: 26px minmax(0, 1fr);
   align-items: center;
-  padding: 10px 22px 10px 0;
+  padding: var(--ui-explore-gap-row) 22px var(--ui-explore-gap-row) 0;
 }
 
 .ui-explore__side-card .ui-home__rank {
@@ -365,45 +421,15 @@ a.ui-explore__feature-title:hover {
   font-size: 12.5px;
   line-height: 1.5;
   white-space: normal;
+  /* 侧栏热榜每条最多两行，条数按容器高度算，整栏不滚动。 */
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 
 .ui-explore__side-card .ui-home__row-open {
   right: 0;
-}
-
-.ui-explore__knowledge-list {
-  margin: 12px 0 0;
-  padding: 0;
-  list-style: none;
-}
-
-.ui-explore__knowledge-list li {
-  display: grid;
-  grid-template-columns: 28px minmax(0, 1fr);
-  gap: 8px;
-  padding: 14px 0;
-  border-bottom: 1px solid var(--ui-border);
-}
-
-.ui-explore__knowledge-list li:last-child {
-  border-bottom: 0;
-}
-
-.ui-explore__knowledge-list span {
-  color: color-mix(in srgb, var(--ui-accent) 78%, var(--ui-text-3));
-  font-family: "Noto Serif SC Variable", var(--reading-serif);
-  font-size: 12px;
-  font-weight: 700;
-  line-height: 1.7;
-}
-
-.ui-explore__knowledge-list p {
-  margin: 0;
-  color: var(--ui-text-2);
-  font-family: "Noto Serif SC Variable", var(--reading-serif);
-  font-size: 12.5px;
-  font-weight: 600;
-  line-height: 1.65;
 }
 
 @keyframes ui-explore-skeleton {
@@ -411,9 +437,60 @@ a.ui-explore__feature-title:hover {
   50% { opacity: .58; }
 }
 
+/* 窗口不够高时先让讨论摘要退出：条数已按容器算过，仍放不下就退掉更次要的一行。 */
+@media (max-height: 620px) {
+  .ui-explore__discussion-list .uhf__summary {
+    display: none;
+  }
+}
+
+/* 再矮就退回滚动，宁可滚也不裁掉内容。 */
+@media (max-height: 560px) {
+  .ui-explore__main,
+  .ui-explore__aside,
+  .ui-explore__discussion,
+  .ui-explore__side-card,
+  .ui-explore__discussion-list,
+  .ui-explore__side-card .ui-home__core-list {
+    display: block;
+  }
+
+  .ui-explore__main,
+  .ui-explore__aside {
+    overflow-y: auto;
+    scrollbar-width: thin;
+  }
+
+  .ui-explore__discussion-list > li {
+    display: grid;
+  }
+}
+
+/* 单栏堆叠后主区与热榜必然超出视口：此宽度下恢复滚动，避免内容被裁掉。 */
 @media (max-width: 980px) {
+  .ui-view.ui-explore {
+    overflow-y: auto;
+  }
+
+  .ui-explore__frame {
+    height: auto;
+    min-height: 100%;
+    padding-bottom: 40px;
+  }
+
   .ui-explore__layout {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .ui-explore__main,
+  .ui-explore__aside {
+    display: block;
+    overflow: visible;
+  }
+
+  .ui-explore__discussion,
+  .ui-explore__side-card {
+    display: block;
   }
 
   .ui-explore__main {
@@ -421,19 +498,11 @@ a.ui-explore__feature-title:hover {
   }
 
   .ui-explore__aside {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
     border-top: 1px solid var(--ui-border);
   }
 
   .ui-explore__side-card {
-    padding: 28px 24px 30px 0;
-  }
-
-  .ui-explore__side-card + .ui-explore__side-card {
-    border-top: 0;
-    border-left: 1px solid var(--ui-border);
-    padding-left: 24px;
+    padding: 24px 0 28px;
   }
 }
 
@@ -451,7 +520,7 @@ a.ui-explore__feature-title:hover {
   }
 
   .ui-explore__header h1 {
-    font-size: 38px;
+    font-size: 36px;
   }
 
   .ui-explore__feature,
@@ -463,18 +532,8 @@ a.ui-explore__feature-title:hover {
     font-size: 26px;
   }
 
-  .ui-explore__aside {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .ui-explore__side-card,
-  .ui-explore__side-card + .ui-explore__side-card {
-    padding: 26px 0;
-    border-left: 0;
-  }
-
-  .ui-explore__side-card + .ui-explore__side-card {
-    border-top: 1px solid var(--ui-border);
+  .ui-explore__side-card {
+    padding: 22px 0 26px;
   }
 
   .ui-explore__discussion-list .uhf__thumb {
