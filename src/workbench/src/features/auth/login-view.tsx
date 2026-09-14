@@ -1,6 +1,6 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { ArrowRight, Check, LoaderCircle } from "lucide-react";
-import { BrandMark } from "@ui/components/brand-mark";
+import { ZhihuLogo } from "@ui/components/zhihu-logo";
 import "./login-view.css";
 
 /** 主按钮的三态：等待、跳转中、就绪；三态共用同一颗按钮，不因状态换版式。 */
@@ -407,7 +407,7 @@ export function LoginView({
               onContinue();
             }}
           >
-            <span className="app-mark" aria-hidden="true"><BrandMark size={23} /></span>
+            <span className="app-mark" aria-hidden="true"><ZhihuLogo /></span>
             <span className="button-divider" aria-hidden="true" />
             <span className="button-label">{label}</span>
             <span className="button-state" aria-hidden="true">
