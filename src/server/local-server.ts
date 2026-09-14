@@ -244,7 +244,7 @@ async function handleResearchRoutes(
       const input: CreateResearchTaskInputType = CreateResearchTaskInput.parse(normalized);
       if (input.tier === "pro" && request.headers.accept?.includes("text/event-stream")) {
         if (!researchPro) throw new ProductError("AUTH_REQUIRED", "尚未配置知乎开放平台凭证。");
-        return await respondResearchPro(researchPro, input, request, response, 290_000);
+        return await respondResearchPro(researchPro, input, request, response);
       }
       const { detail, accepted } = await engine.createResearchTask(input);
       // 202 表示已受理异步执行；同步完成的快答与幂等重放返回 200。

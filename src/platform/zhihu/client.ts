@@ -1,3 +1,4 @@
+import { EventSourceParserStream } from "eventsource-parser/stream";
 import { ProductError } from "./errors.ts";
 import { identityHeaders, type RequestIdentity } from "./identity.ts";
 import { asRecord, parseJsonPreserveIntegers, readNumber, readString } from "./json.ts";
@@ -17,6 +18,8 @@ export type FetchLike = (
 ) => Promise<{
   ok: boolean;
   status: number;
+  headers?: { get(name: string): string | null };
+  body?: Awaited<ReturnType<typeof fetch>>["body"];
   text(): Promise<string>;
 }>;
 
@@ -48,29 +51,33 @@ export function createOpenPlatformClient(options: OpenPlatformClientOptions = {}
   const fetchImpl = options.fetch ?? defaultFetch;
   const now = options.now ?? Date.now;
 
+  async function send(input: TransportRequest) {
+    const url = new URL(input.path, `${baseUrl}/`);
+    for (const [key, value] of Object.entries(input.query ?? {})) {
+      if (value === undefined || value === "") continue;
+      url.searchParams.set(key, String(value));
+    }
+    const headers = {
+      ...identityHeaders(input.identity),
+      "X-Request-Timestamp": String(Math.floor(now() / 1000)),
+      "Content-Type": "application/json",
+    };
+    return fetchImpl(url.toString(), {
+      method: input.method,
+      headers,
+      body: input.json === undefined ? undefined : JSON.stringify(input.json),
+      signal: input.signal,
+    }).catch((error: unknown) => {
+      if (error instanceof Error && (error.name === "AbortError" || error.name === "TimeoutError")) {
+        throw new ProductError("ABORTED", "请求已中止。", error.name);
+      }
+      throw error;
+    });
+  }
+
   return {
     async request(input: TransportRequest): Promise<Envelope | unknown> {
-      const url = new URL(input.path, `${baseUrl}/`);
-      for (const [key, value] of Object.entries(input.query ?? {})) {
-        if (value === undefined || value === "") continue;
-        url.searchParams.set(key, String(value));
-      }
-      const headers = {
-        ...identityHeaders(input.identity),
-        "X-Request-Timestamp": String(Math.floor(now() / 1000)),
-        "Content-Type": "application/json",
-      };
-      const response = await fetchImpl(url.toString(), {
-        method: input.method,
-        headers,
-        body: input.json === undefined ? undefined : JSON.stringify(input.json),
-        signal: input.signal,
-      }).catch((error: unknown) => {
-        if (error instanceof Error && (error.name === "AbortError" || error.name === "TimeoutError")) {
-          throw new ProductError("ABORTED", "请求已中止。", error.name);
-        }
-        throw error;
-      });
+      const response = await send(input);
       const text = await response.text();
       const body = parseBody(text, response.status);
       if (!response.ok) {
@@ -94,8 +101,33 @@ export function createOpenPlatformClient(options: OpenPlatformClientOptions = {}
       identity: RequestIdentity,
       json: unknown,
       envelope: "platform" | "raw" = "platform",
+      signal?: AbortSignal,
     ): Promise<Envelope | unknown> {
-      return await this.request({ method: "POST", path, identity, json, envelope });
+      return await this.request({ method: "POST", path, identity, json, envelope, signal });
+    },
+    async *postEventStream(path: string, identity: RequestIdentity, json: unknown, signal?: AbortSignal): AsyncGenerator<string> {
+      const response = await send({ method: "POST", path, identity, json, signal });
+      if (!response.ok) {
+        throw mapHttpFailure(response.status, parseBody(await response.text(), response.status));
+      }
+      if (!response.body || !response.headers?.get("content-type")?.includes("text/event-stream")) {
+        throw new ProductError("PROTOCOL_ERROR", "直答未返回事件流。");
+      }
+      const reader = response.body
+        .pipeThrough(new TextDecoderStream())
+        .pipeThrough(new EventSourceParserStream())
+        .getReader();
+      try {
+        while (true) {
+          const event = await reader.read();
+          if (event.done) return;
+          yield event.value.data;
+        }
+      } finally {
+        // 结束标记、用户停止及解析错误都关闭同一次上游连接。
+        await reader.cancel().catch(() => undefined);
+        reader.releaseLock();
+      }
     },
   };
 }
@@ -162,12 +194,7 @@ function mapBusinessCode(code: number, message: string): ProductError {
 
 async function defaultFetch(
   input: string,
-  init: { method: HttpMethod; headers: Record<string, string>; body?: string },
+  init: { method: HttpMethod; headers: Record<string, string>; body?: string; signal?: AbortSignal },
 ) {
-  const response = await fetch(input, init);
-  return {
-    ok: response.ok,
-    status: response.status,
-    text: () => response.text(),
-  };
+  return fetch(input, init);
 }

@@ -1,4 +1,6 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
+import { CreateResearchTaskInput } from "../contracts/research.ts";
+import { respondResearchPro } from "./research-pro-response.ts";
 import { isProductError, ProductError } from "../platform/zhihu/errors.ts";
 import {
   buildAuthorizeUrl,
@@ -18,6 +20,7 @@ import {
   clearedSessionCookie,
   isSecureRequest,
   readJson,
+  readJsonLimited,
   readOptionalInt,
   readOptionalString,
   readRequiredString,
@@ -51,6 +54,7 @@ export type ZhihuApiDeps = {
    * 是次秒级单次调用。自研 Ultra 引擎仍只在本地/桌面运行面承接。
    */
   researchProEnabled?: boolean;
+  researchProTimeoutMs?: number;
   /**
    * 成象（概念动画）路由。网页端传入共享路由实现，本处负责登录门槛、限流，
    * 并把会话派生的用户 scope 交给它——避免共享路由再实现一套身份解析。
@@ -472,7 +476,7 @@ export function createZhihuApiHandler(deps: ZhihuApiDeps) {
         await requireWebLogin(request);
         await enforceRateLimit(request, response, "research-pro");
         const active = requireRuntime();
-        const body = asRequest(await readJson(request));
+        const body = asRequest(await readJsonLimited(request, 16 * 1024));
         const tier = readResearchTier(body.tier);
         if (tier !== "pro") {
           throw new ProductError(
@@ -482,11 +486,12 @@ export function createZhihuApiHandler(deps: ZhihuApiDeps) {
               : "该研究档位不可用，请改用 Pro。",
           );
         }
-        const result = await active.researchPro.execute({
-          requestId: readRequiredString(body.requestId, "缺少请求标识。"),
-          question: readRequiredString(body.question, "研究问题不能为空。"),
+        const parsed = CreateResearchTaskInput.safeParse({
+          ...body,
+          question: typeof body.question === "string" ? body.question.trim() : body.question,
         });
-        return writeJson(response, 200, { ok: true, data: result.detail });
+        if (!parsed.success) throw new ProductError("INVALID_INPUT", "研究参数不符合要求，问题需为 1 至 2000 字。");
+        return await respondResearchPro(active.researchPro, parsed.data, request, response, deps.researchProTimeoutMs);
       }
       // 网页端任务列表：服务端不落库，因此没有可恢复的历史。
       // 返回空列表而不是 404——前端刷新时会用它尝试恢复上一次研究，404 会被当成错误展示。

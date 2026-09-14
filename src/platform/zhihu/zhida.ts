@@ -16,7 +16,12 @@ export type ZhidaAnswer = {
 };
 
 export type ZhidaGateway = {
-  answer(input: { model: ZhidaModel; prompt: string }): Promise<ZhidaAnswer>;
+  answer(input: {
+    model: ZhidaModel;
+    prompt: string;
+    signal?: AbortSignal;
+    onDelta?: (text: string) => void | Promise<void>;
+  }): Promise<ZhidaAnswer>;
 };
 
 type Client = ReturnType<typeof createOpenPlatformClient>;
@@ -26,6 +31,9 @@ export function createZhidaGateway(client: Client, identity: RequestIdentity): Z
     async answer(input) {
       const prompt = input.prompt.trim();
       if (!prompt) throw new ProductError("INVALID_INPUT", "直答的输入不能为空。");
+      if (input.model === "zhida-agent" || input.onDelta) {
+        return readStream(client, identity, { ...input, prompt });
+      }
       const body = await client.postJson(
         "/v1/chat/completions",
         identity,
@@ -35,6 +43,7 @@ export function createZhidaGateway(client: Client, identity: RequestIdentity): Z
           messages: [{ role: "user", content: prompt }],
         },
         "raw",
+        input.signal,
       );
       const record = asRecord(body);
       if (!record) throw new ProductError("PROTOCOL_ERROR", "直答响应缺少对象外壳。");
@@ -63,6 +72,47 @@ export function createZhidaGateway(client: Client, identity: RequestIdentity): Z
       };
     },
   };
+}
+
+async function readStream(client: Client, identity: RequestIdentity, input: Parameters<ZhidaGateway["answer"]>[0]): Promise<ZhidaAnswer> {
+  let content = "";
+  let finishReason: string | undefined;
+  let usage: ZhidaAnswer["usage"] = null;
+  for await (const data of client.postEventStream("/v1/chat/completions", identity, {
+    model: input.model,
+    stream: true,
+    messages: [{ role: "user", content: input.prompt }],
+  }, input.signal)) {
+    input.signal?.throwIfAborted();
+    if (data === "[DONE]") {
+      if (!content.trim()) throw new ProductError("PROTOCOL_ERROR", "直答没有返回内容。");
+      return { model: input.model, content: content.trim(), finishReason, usage };
+    }
+    let chunk: Record<string, unknown> | undefined;
+    try {
+      chunk = asRecord(JSON.parse(data));
+    } catch {
+      throw new ProductError("PROTOCOL_ERROR", "直答事件不是合法 JSON。");
+    }
+    if (!chunk) throw new ProductError("PROTOCOL_ERROR", "直答事件缺少对象外壳。");
+    const choice = asArrayFirst(chunk.choices);
+    const delta = asRecord(choice?.delta);
+    if (chunk.error || choice?.error || delta?.error || choice?.finish_reason === "error") {
+      throw new ProductError("UPSTREAM_ERROR", "知乎直答生成中断，请重新研究。");
+    }
+    if (typeof delta?.content === "string" && delta.content !== "") {
+      content += delta.content;
+      await input.onDelta?.(delta.content);
+    }
+    const reason = readString(choice?.finish_reason);
+    if (reason) finishReason = reason;
+    const tokens = asRecord(chunk.usage);
+    if (tokens) usage = {
+      inputTokens: readNumber(tokens.prompt_tokens) ?? null,
+      outputTokens: readNumber(tokens.completion_tokens) ?? null,
+    };
+  }
+  throw new ProductError("PROTOCOL_ERROR", "直答连接在答案完成前断开，请重新研究。");
 }
 
 function requireModel(model: ZhidaModel): ZhidaModel {

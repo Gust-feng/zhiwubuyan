@@ -22,6 +22,9 @@
     }
   ],
   "functions": {
+    "api/research-tasks.ts": {
+      "maxDuration": 300
+    },
     "api/**/*.ts": {
       "maxDuration": 60
     }

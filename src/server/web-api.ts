@@ -105,7 +105,6 @@ const handleZhihuApi = createZhihuApiHandler({
   ],
   surface: "web",
   researchProEnabled: true,
-  researchProTimeoutMs: 290_000,
   // 成象路由由本处提供；登录门槛、限流与身份 scope 在 handler 内统一处理。
   conceptAnimation: { handle: handleConceptAnimation },
   // 线上显示 memory 即说明共享存储没接上（登录会在多实例间随机失效）。

@@ -377,6 +377,15 @@ export const TaskDetail = TaskSummary.and(
 );
 export type TaskDetail = z.infer<typeof TaskDetail>;
 
+/** Pro 单次请求的流式事件，不参与 Ultra 的工作流状态。 */
+export const ResearchProEvent = z.discriminatedUnion("type", [
+  z.object({ type: z.literal("started"), question: z.string(), createdAt: isoTimestamp }),
+  z.object({ type: z.literal("answer_delta"), text: z.string() }),
+  z.object({ type: z.literal("completed"), detail: TaskDetail }),
+  z.object({ type: z.literal("failed"), error: TaskError }),
+]);
+export type ResearchProEvent = z.infer<typeof ResearchProEvent>;
+
 // ---------------------------------------------------------------------------
 // 模型输出 schema（主管/调查单元），由应用校验后转换。
 // ---------------------------------------------------------------------------

@@ -1,11 +1,10 @@
 import { ProductError } from "../platform/zhihu/errors.ts";
 import type { ZhidaGateway } from "../platform/zhihu/zhida.ts";
+import type { ResearchProEvent } from "../contracts/research.ts";
 import { DEFAULT_LIMITS, TIER_ZHIDA_MODEL } from "./research-baseline.ts";
 import type {
-  Limits as LimitsType,
   QuickAnswer,
   TaskDetail,
-  Usage as UsageType,
 } from "../contracts/research.ts";
 
 /**
@@ -36,13 +35,23 @@ export function createResearchProCommand(input: {
   const nextId = input.nextId ?? ((requestId: string) => `pro-${requestId}`);
 
   return {
-    async execute(request: ResearchProInput): Promise<ResearchProResult> {
+    async execute(request: ResearchProInput, options: {
+      signal?: AbortSignal;
+      onEvent?: (event: ResearchProEvent) => void | Promise<void>;
+    } = {}): Promise<ResearchProResult> {
       const question = request.question.trim();
       if (!question) throw new ProductError("INVALID_INPUT", "研究问题不能为空。");
       const model = TIER_ZHIDA_MODEL.pro;
       const createdAt = clock().toISOString();
-
-      const response = await input.zhida.answer({ model, prompt: question });
+      options.signal?.throwIfAborted();
+      await options.onEvent?.({ type: "started", question, createdAt });
+      const response = await input.zhida.answer({
+        model,
+        prompt: question,
+        signal: options.signal,
+        onDelta: (text) => options.onEvent?.({ type: "answer_delta", text }),
+      });
+      options.signal?.throwIfAborted();
       const answer: QuickAnswer = {
         content: response.content,
         model: response.model,
@@ -52,7 +61,7 @@ export function createResearchProCommand(input: {
         id: nextId(request.requestId),
         question,
         status: "completed",
-        stage: "saving",
+        stage: null,
         createdAt,
         endedAt: answer.generatedAt,
         sourceCount: 0,
@@ -72,12 +81,13 @@ export function createResearchProCommand(input: {
           inputTokens: response.usage?.inputTokens ?? null,
           outputTokens: response.usage?.outputTokens ?? null,
           cachedInputTokens: null,
-          elapsedMs: 0,
+          elapsedMs: Math.max(0, Date.parse(answer.generatedAt) - Date.parse(createdAt)),
         },
         limits: { ...DEFAULT_LIMITS },
         modelInfo: { provider: "zhihu-zhida", modelId: model },
         answer,
       };
+      await options.onEvent?.({ type: "completed", detail });
       return { detail, accepted: true };
     },
   };
