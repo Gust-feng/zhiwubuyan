@@ -32,7 +32,7 @@
 .dr-workspace { display: flex; flex: 1; flex-direction: column; min-height: 0; container: research / inline-size; }
 .dr-toolbar { display: flex; align-items: center; justify-content: flex-end; flex-shrink: 0; min-height: 61px; padding: 12px 26px; gap: 16px; border-bottom: 1px solid var(--ui-border); background: var(--ui-surface); }
 .dr-toolbar__actions { display: flex; align-items: center; gap: 12px; }
-.dr-icon-button, .dr-button, .dr-text-button, .dr-primary-button, .dr-stop { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; gap: 6px; border-radius: var(--dr-radius-control); text-decoration: none; transition: background var(--motion-duration-quick); }
+.dr-icon-button, .dr-button, .dr-text-button, .dr-stop { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; gap: 6px; border-radius: var(--dr-radius-control); text-decoration: none; transition: background var(--motion-duration-quick); }
 .dr-icon-button { width: 30px; height: 30px; border: 0; background: transparent; }
 .dr-button { min-height: 30px; padding: 5px 10px; border: 1px solid var(--ui-border-strong); background: var(--ui-surface); font-size: 12px; }
 .dr-text-button { padding: 4px 0; border: 0; color: var(--ui-text-2) !important; background: transparent; font-size: 12px; }
@@ -191,9 +191,8 @@ li[data-state="active"] .dr-plan__check > span { width: 5px; height: 5px; border
 .dr-tier-menu button { display: flex; align-items: center; justify-content: space-between; gap: 16px; width: 100%; min-height: 42px; padding: 9px 12px 9px 14px; border: 0; border-radius: 10px; background: transparent; color: var(--ui-text-1); font-size: 14px; text-align: left; transition: background var(--motion-duration-quick); }
 .dr-tier-menu button:hover { background: var(--ui-surface-hover); }
 .dr-tier-menu button > svg { flex-shrink: 0; color: var(--ui-accent); }
-.dr-primary-button { min-height: 42px; padding: 9px 22px; border: 0; border-radius: 10px; background: var(--ui-accent); color: var(--ui-accent-fg) !important; font-size: 16px !important; font-weight: 600 !important; }
-.dr-live__error { flex-shrink: 0; margin: 10px 26px 0; padding: 9px 13px; border-left: 2px solid var(--ui-status-error); border-radius: 5px; background: var(--ui-surface); color: var(--ui-text-1); font-size: 12px; line-height: 1.7; }
-@container research (max-width: 880px) {
+/* 主按钮的尺寸与配色在入口外壳里（entry-surface.css 的 .entry-primary-button）。 */
+.dr-live__error { flex-shrink: 0; margin: 10px 26px 0; padding: 9px 13px; border-left: 2px solid var(--ui-status-error); border-radius: 5px; background: var(--ui-surface); color: var(--ui-text-1); font-size: 12px; line-height: 1.7; }@container research (max-width: 880px) {
   .dr-layout { grid-template-columns: minmax(0, 1fr); }
   .dr-layout[data-inspector="auto"] .dr-inspector-slot { display: none; }
   .dr-layout[data-inspector="open"] .dr-main { display: none; }
@@ -222,8 +221,6 @@ li[data-state="active"] .dr-plan__check > span { width: 5px; height: 5px; border
   .dr-composer { padding: 15px; }
   .dr-composer textarea { min-height: 48px; font-size: 16px; }
   .dr-composer__bar { gap: 8px; }
-  /* 窄容器里参数条会折行，主按钮独占下一行并顶到右边缘。 */
-  .dr-primary-button { flex: 1 1 100%; }
 }
 @media (prefers-reduced-motion: reduce) { .dr-indeterminate > span { animation: none; } }
 html[data-motion-effective="reduced"] .dr-indeterminate > span { animation: none; }
@@ -241,10 +238,10 @@ html[data-motion-effective="reduced"] .dr-indeterminate > span { animation: none
 .dr-usage__item { padding: 2px 8px; border: 1px solid var(--ui-border); border-radius: 999px; color: var(--ui-text-2); font-size: 11px; }
 
 /* Pro 快答 */
-.dr-answer { display: flex; flex-direction: column; gap: 10px; padding: 16px 18px; border: 1px solid var(--ui-border); border-radius: 12px; background: var(--ui-surface); }
-.dr-answer__strip { padding: 5px 10px; border-radius: 7px; background: var(--ui-surface-hover); color: var(--ui-text-2); font-size: 11px; }
-.dr-answer__body { white-space: pre-wrap; line-height: 1.75; font-size: 13px; }
-.dr-answer__meta { color: var(--ui-text-2); font-size: 11px; }
+.dr-answer { display: flex; flex-direction: column; align-items: flex-start; gap: 14px; min-width: 0; }
+.dr-answer__status { display: flex; align-items: center; gap: 8px; min-height: 24px; color: var(--ui-text-2); font-size: 13px; }
+.dr-answer__strip { margin: 0; color: var(--ui-text-3); font-size: 11px; }
+.dr-answer__body { width: 100%; min-width: 0; overflow-wrap: anywhere; line-height: 1.85; font-size: 15px; }
 
 /* 报告头徽标与限制 */
 .dr-report__flags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }

@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ArrowLeft, ArrowUp, BookOpen, Check, ChevronDown, ListChecks, Lock, PanelRight, Plus, Search, SlidersHorizontal, Sparkles, Square } from 'lucide-react';
 import { kanshanDirector } from '@ui/components/kanshan-mascot/kanshan-director';
+import { handleComposerEnter } from '@ui/components/entry-surface/entry-composer-keys';
+import { StreamingRichText } from '@ui/components/rich-text';
 import { ResearchInspector, type ResearchInspectorTab } from './research-inspector';
 import { ResearchReport } from './research-report';
 import type { ResearchViewModel } from './research-view-model';
@@ -40,15 +42,15 @@ export function ResearchWorkspace({ research, submitting, onStop, onNew, reportM
       <header className="dr-toolbar">
         <div className="dr-toolbar__actions">
           <button type="button" className="dr-button" onClick={() => onNew()}><Plus size={14} /><span>新研究</span></button>
-          <button type="button" className="dr-icon-button" ref={detailsButtonRef} onClick={() => openInspector(tab, selectedSourceId)} aria-label="查看研究活动与来源" title="研究活动与来源"><PanelRight size={18} /></button>
+          {research.tier !== 'pro' && <button type="button" className="dr-icon-button" ref={detailsButtonRef} onClick={() => openInspector(tab, selectedSourceId)} aria-label="查看研究活动与来源" title="研究活动与来源"><PanelRight size={18} /></button>}
         </div>
       </header>
-      <div className="dr-layout" data-inspector={inspector}>
+      <div className="dr-layout" data-inspector={research.tier === 'pro' ? 'closed' : inspector}>
         <div className="dr-main">
           <div className="dr-main__content">
             <div className="dr-question"><span className="dr-kicker">研究问题</span><p>{research.question}</p></div>
-            {research.scene === 'completed' && research.answer ? (
-              <QuickAnswerBlock answer={research.answer} />
+            {research.tier === 'pro' ? (
+              <QuickAnswerBlock research={research} active={active} onStop={onStop} onRetry={() => onNew(true)} />
             ) : research.scene === 'completed' ? (
               reportMarkdownUrl ? (
                 <>
@@ -59,14 +61,14 @@ export function ResearchWorkspace({ research, submitting, onStop, onNew, reportM
             ) : (
               <ResearchPlan research={research} active={active} submitting={submitting} onStop={onStop} onOpenActivity={() => openInspector('activity')} onOpenSources={() => openInspector('sources')} onNew={() => onNew(true)} />
             )}
-            <p className="dr-main__note"><BookOpen size={13} />研究不止于一种观点，也保留结论成立的条件。</p>
+            {research.tier !== 'pro' && <p className="dr-main__note"><BookOpen size={13} />研究不止于一种观点，也保留结论成立的条件。</p>}
           </div>
-          <div className="dr-main__footer"><span>每个判断，都有来路。</span><button type="button" className="dr-text-button" onClick={() => openInspector('sources')}>查看 {research.sources.length} 个来源<ArrowUp size={12} /></button></div>
+          {research.tier !== 'pro' && <div className="dr-main__footer"><span>每个判断，都有来路。</span><button type="button" className="dr-text-button" onClick={() => openInspector('sources')}>查看 {research.sources.length} 个来源<ArrowUp size={12} /></button></div>}
         </div>
-        <div className="dr-inspector-slot" ref={inspectorRef} tabIndex={-1} aria-label="研究详情面板" onKeyDown={(event) => { if (event.key === 'Escape') { event.preventDefault(); closeInspector(); } }}>
+        {research.tier !== 'pro' && <div className="dr-inspector-slot" ref={inspectorRef} tabIndex={-1} aria-label="研究详情面板" onKeyDown={(event) => { if (event.key === 'Escape') { event.preventDefault(); closeInspector(); } }}>
           <button type="button" className="dr-mobile-back dr-text-button" onClick={closeInspector}><ArrowLeft size={15} />返回研究</button>
           <ResearchInspector activities={research.activities} sources={research.sources} tab={tab} selectedSourceId={selectedSourceId} running={active} onTabChange={(nextTab) => { setTab(nextTab); setSelectedSourceId(null); }} onSelectSource={(id) => { setTab('sources'); setSelectedSourceId(id); }} onClose={closeInspector} />
-        </div>
+        </div>}
       </div>
     </section>
   );
@@ -128,24 +130,23 @@ export function ResearchEntryComposer({ draft, tier, tiers, unavailableMessage, 
     if (focusSignal > 0) requestAnimationFrame(() => topicRef.current?.focus());
   }, [focusSignal]);
 
+  /** 回车与主按钮共用同一条提交路：空输入把焦点交还输入框，服务未就绪时不发请求。 */
+  function submitDraft() {
+    // 输入为空时主按钮仍可点：把焦点交还输入框，比让主操作沉默更清楚。
+    if (!draft.trim()) {
+      topicRef.current?.focus();
+      return;
+    }
+    // 研究服务端未就绪时不发请求：说明已经可见，再打一次只会换回同样的结论。
+    if (unavailable) return;
+    onStart();
+  }
+
   return (
-    <form onSubmit={(event) => {
-      event.preventDefault();
-      // 输入为空时主按钮仍可点：把焦点交还输入框，比让主操作沉默更清楚。
-      if (!draft.trim()) {
-        topicRef.current?.focus();
-        return;
-      }
-      // 研究服务端未就绪时不发请求：说明已经可见，再打一次只会换回同样的结论。
-      if (unavailable) return;
-      onStart();
-    }}>
+    <form onSubmit={(event) => { event.preventDefault(); submitDraft(); }}>
       <textarea ref={topicRef} id="dr-topic" aria-label="深度研究主题" placeholder="写下一个问题，或补充你在意的背景与范围。" rows={1} value={draft} onChange={(event) => onDraftChange(event.target.value)} onFocus={triggerAttention} onKeyDown={(event) => {
-        // 回车即开始研究；Shift+Enter 保留换行，输入法组词中不触发。
-        if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) {
-          event.preventDefault();
-          onStart();
-        }
+        // 回车即开始研究（与主按钮同一条路）；Ctrl/⌘+回车才是换行，输入法组词中不触发。
+        handleComposerEnter(event, { value: draft, onValueChange: onDraftChange, onSubmit: submitDraft });
       }} />
       <div className="dr-composer__bar">
         <div className="dr-tier-select" ref={tierSelectRef}>
@@ -168,7 +169,7 @@ export function ResearchEntryComposer({ draft, tier, tiers, unavailableMessage, 
             </ul>
           )}
         </div>
-        <button type="submit" className="dr-primary-button" disabled={submitting || unavailable}><span>{submitting ? (tier === 'pro' ? '正在研究…' : '提交中…') : '开始研究'}</span><ArrowUp size={16} aria-hidden /></button>
+        <button type="submit" className="entry-primary-button" disabled={submitting || unavailable}><span>{submitting ? (tier === 'pro' ? '正在研究…' : '提交中…') : '开始研究'}</span><ArrowUp size={16} aria-hidden /></button>
       </div>
       {unavailable ? (
         <p className="dr-tier__lock" role="alert">
@@ -237,12 +238,22 @@ function UsageBlock({ usage }: { usage: NonNullable<ResearchViewModel['usage']> 
   return <div className="dr-usage">{items.map((item) => <span key={item.label} className="dr-usage__item">{item.label} {item.value.used}/{item.value.max}</span>)}</div>;
 }
 
-function QuickAnswerBlock({ answer }: { answer: NonNullable<ResearchViewModel['answer']> }) {
+function QuickAnswerBlock({ research, active, onStop, onRetry }: {
+  research: ResearchViewModel;
+  active: boolean;
+  onStop: () => void;
+  onRetry: () => void;
+}) {
+  const content = research.answer?.content ?? '';
+  const label = active ? research.activityLabel : research.scene === 'completed' ? '研究已完成' : research.scene === 'cancelled' ? '已停止' : '研究未完成';
   return (
-    <section className="dr-answer" aria-label="研究快答">
+    <section className="dr-answer" aria-label="Pro 研究回答" aria-busy={active}>
+      <div className="dr-answer__status" role="status"><Sparkles size={15} /><span>{label}</span></div>
       <p className="dr-answer__strip">知乎直答生成内容 · 未附原始来源</p>
-      <div className="dr-answer__body">{answer.content}</div>
-      <p className="dr-answer__meta">模型 {answer.model} · 快答不替代 Ultra 的来源核验报告</p>
+      {content && <div className="dr-answer__body"><StreamingRichText text={content} live={active} /></div>}
+      {active
+        ? <button type="button" className="dr-text-button" onClick={onStop}><Square size={13} />停止生成</button>
+        : research.scene !== 'completed' && <button type="button" className="dr-text-button" onClick={onRetry}><ArrowLeft size={13} />返回问题</button>}
     </section>
   );
 }

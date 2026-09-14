@@ -1,4 +1,6 @@
-import { requestJson } from "../../api";
+import { ApiError, requestJson } from "../../api";
+import { EventSourceParserStream } from "eventsource-parser/stream";
+import { ResearchProEvent } from "@contracts/research";
 import type {
   ResearchReport,
   ResearchSource,
@@ -22,16 +24,56 @@ async function call<T>(path: string, init?: RequestInit): Promise<T> {
   throw new Error(body.error?.message ?? "研究服务返回失败。");
 }
 
-export function createResearchTask(input: {
+export async function createResearchTask(input: {
   requestId: string;
   question: string;
   allowWebSupplement: boolean;
   tier: "pro" | "ultra";
-}): Promise<TaskDetail> {
+}, options: { signal?: AbortSignal; onEvent?: (event: ResearchProEvent) => void } = {}): Promise<TaskDetail> {
+  if (input.tier === "pro") {
+    const response = await fetch(BASE, {
+      method: "POST",
+      headers: { "content-type": "application/json", accept: "text/event-stream" },
+      body: JSON.stringify(input),
+      signal: options.signal,
+    });
+    if (!response.ok) {
+      const body = await response.json().catch(() => ({})) as { code?: string; message?: string; error?: { code?: string; message?: string } };
+      throw new ApiError(response.status, body.error?.code ?? body.code, body.error?.message ?? body.message ?? `研究请求失败：${response.status}`);
+    }
+    // 已部署的 JSON 服务在升级前仍可响应；不能为协商失败重发一次生成请求。
+    if (!response.headers.get("content-type")?.includes("text/event-stream")) {
+      const body = await response.json() as Envelope<TaskDetail>;
+      if (body.ok) return body.data;
+      throw new ApiError(502, "PROTOCOL_ERROR", "研究服务没有返回答案。");
+    }
+    if (!response.body) throw new ApiError(502, "PROTOCOL_ERROR", "研究服务未返回事件流。");
+    const reader = response.body.pipeThrough(new TextDecoderStream()).pipeThrough(new EventSourceParserStream()).getReader();
+    try {
+      while (true) {
+        const item = await reader.read();
+        if (item.done) break;
+        let event: ResearchProEvent;
+        try {
+          event = ResearchProEvent.parse(JSON.parse(item.value.data));
+        } catch {
+          throw new ApiError(502, "PROTOCOL_ERROR", "研究服务返回了无效事件，请重新研究。");
+        }
+        if (event.type === "failed") throw new ApiError(502, event.error.code, event.error.message);
+        options.onEvent?.(event);
+        if (event.type === "completed") return event.detail;
+      }
+      throw new ApiError(502, "PROTOCOL_ERROR", "连接在研究完成前断开，请重新研究。");
+    } finally {
+      await reader.cancel().catch(() => undefined);
+      reader.releaseLock();
+    }
+  }
   return call<TaskDetail>(BASE, {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify(input),
+    signal: options.signal,
   });
 }
 

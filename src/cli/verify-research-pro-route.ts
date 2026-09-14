@@ -1,183 +1,173 @@
-/**
- * 网页面深度研究 Pro 的路由级验证：用假上游（接管全局 fetch）与内存会话真实驱动
- * `createZhihuApiHandler`，覆盖「Pro 单次直答 → 终端结果」「Ultra 如实拒绝」
- * 「任务列表为空」「未登录拒绝」四条边界。
- *
- * 假上游按知乎直答的 OpenAI 兼容外壳返回；验证的是产品的承接与拒绝规则，
- * 不代表真实直答内容质量，也不消耗真实额度。
- */
-import type { IncomingMessage, ServerResponse } from "node:http";
+/** 真实 HTTP + 可控上游验证 Pro 流式传输、失败和中止；不消耗真实额度。 */
+import assert from "node:assert/strict";
+import { createServer } from "node:http";
+import { once } from "node:events";
+import { setTimeout as delay } from "node:timers/promises";
+import { EventSourceParserStream } from "eventsource-parser/stream";
 import { createRuntime } from "../application/runtime.ts";
+import { ResearchProEvent } from "../contracts/research.ts";
 import { createZhihuApiHandler } from "../server/zhihu-api.ts";
 import { createMemorySessionStore } from "../server/session-store.ts";
-import { SESSION_COOKIE } from "../server/http-utils.ts";
+import { SESSION_COOKIE, writeJson } from "../server/http-utils.ts";
 
-const failures: string[] = [];
-function check(condition: unknown, message: string): void {
-  if (!condition) failures.push(message);
-}
-
-const calls: string[] = [];
-const originalFetch = globalThis.fetch;
-globalThis.fetch = (async (input: string | URL | Request, init?: RequestInit) => {
-  const url = typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
-  calls.push(url);
-  const body = typeof init?.body === "string" ? init.body : "";
-  if (url.includes("/v1/chat/completions")) {
-    const parsed = JSON.parse(body) as { model?: string };
-    return new Response(
-      JSON.stringify({
-        model: parsed.model,
-        choices: [{ message: { role: "assistant", content: "直答正文。", }, finish_reason: "stop" }],
-        usage: { prompt_tokens: 7, completion_tokens: 11 },
-      }),
-      { status: 200, headers: { "Content-Type": "application/json" } },
-    );
+const encoder = new TextEncoder();
+const data = (value: unknown) => `data: ${JSON.stringify(value)}\r\n\r\n`;
+const delta = (content: string) => data({ choices: [{ delta: { content }, finish_reason: null }] });
+const end = data({ choices: [{ delta: {}, finish_reason: "stop" }], usage: { prompt_tokens: 7, completion_tokens: 11 } }) + "data: [DONE]\r\n\r\n";
+let calls = 0;
+let timeoutMs = 5_000;
+let finishUpstream: (() => void) | undefined;
+let upstreamSignal: AbortSignal | undefined;
+const runtime = createRuntime({
+  accessSecret: "test-secret",
+  fetch: async (_url, init) => {
+    calls++;
+    const input = JSON.parse(init.body ?? "{}");
+    assert.equal(input.model, "zhida-agent");
+    assert.equal(input.stream, true);
+    const question = input.messages[0].content;
+    upstreamSignal = init.signal;
+    const body = new ReadableStream<Uint8Array>({
+      start(controller) {
+        const push = (text: string) => {
+          // 在每个 UTF-8 字节边界切分，包括中文和 CRLF。
+          for (const byte of encoder.encode(text)) controller.enqueue(Uint8Array.of(byte));
+        };
+        const abort = () => controller.error(new DOMException("Stopped", "AbortError"));
+        init.signal?.addEventListener("abort", abort, { once: true });
+        const close = () => { init.signal?.removeEventListener("abort", abort); controller.close(); };
+        push(": keep-alive\r\n\r\n");
+        push(data({ choices: [{ delta: { reasoning_content: "内部推理不能作为正文" } }] }));
+        if (question !== "empty") push(delta("第一段中文。"));
+        if (question === "gated") {
+          finishUpstream = () => { push(delta("第二段。") + end); close(); };
+        } else if (question === "timeout" || question === "disconnect") {
+          // 等待路由把超时或断开传到同一个上游信号。
+        } else if (question === "truncated") {
+          close();
+        } else if (question === "failure") {
+          push(data({ choices: [{ delta: {}, finish_reason: "error", error: { message: "test failure" } }] }) + end);
+          close();
+        } else {
+          push(end);
+          close();
+        }
+      },
+    });
+    return new Response(body, { headers: { "content-type": "text/event-stream" } });
+  },
+});
+const sessions = createMemorySessionStore();
+const sessionId = await sessions.create({ accessToken: "test-oauth", tokenType: "Bearer", expiresAt: Date.now() + 60_000 });
+const handle = createZhihuApiHandler({
+  runtime,
+  sessions,
+  oauthConfig: undefined,
+  capabilities: ["research"],
+  surface: "web",
+  researchProEnabled: true,
+  get researchProTimeoutMs() { return timeoutMs; },
+});
+const server = createServer(async (request, response) => {
+  try {
+    if (!await handle(new URL(request.url!, "http://localhost"), request, response)) writeJson(response, 404, {});
+  } catch (cause) {
+    console.error(cause);
+    response.destroy();
   }
-  return new Response(JSON.stringify({ Code: 10001, Message: `unexpected ${url}`, Data: {} }), {
-    status: 200,
-    headers: { "Content-Type": "application/json" },
-  });
-}) as typeof globalThis.fetch;
-
-type Captured = { status?: number; body?: unknown; headers?: Record<string, string> };
-
-function makeRequest(cookie: string | undefined, path: string, method: string, body?: unknown): IncomingMessage {
-  return {
-    method,
-    url: path,
+});
+server.listen(0, "127.0.0.1");
+await once(server, "listening");
+const address = server.address();
+assert(address && typeof address === "object");
+const base = `http://127.0.0.1:${address.port}/api/research-tasks`;
+function post(question: string, options: { accept?: string; anonymous?: boolean; tier?: string; questionOverride?: string } = {}) {
+  return fetch(base, {
+    method: "POST",
+    signal: AbortSignal.timeout(5_000),
     headers: {
-      ...(cookie === undefined ? {} : { cookie }),
-      ...(body === undefined ? {} : { "content-type": "application/json" }),
+      "content-type": "application/json",
+      accept: options.accept ?? "text/event-stream",
+      ...(options.anonymous ? {} : { cookie: `${SESSION_COOKIE}=${sessionId}` }),
     },
-    async *[Symbol.asyncIterator]() {
-      if (body !== undefined) yield Buffer.from(JSON.stringify(body), "utf8");
-    },
-  } as unknown as IncomingMessage;
+    body: JSON.stringify({ requestId: crypto.randomUUID(), question: options.questionOverride ?? question, tier: options.tier ?? "pro", allowWebSupplement: false }),
+  });
 }
-
-function makeResponse(): { response: ServerResponse; captured: Captured } {
-  const captured: Captured = { headers: {} };
-  const response = {
-    setHeader(name: string, value: string) {
-      captured.headers![name] = value;
-    },
-    writeHead(status: number) {
-      captured.status = status;
-    },
-    end(body?: string) {
-      captured.body = body === undefined ? undefined : JSON.parse(body);
-      return this;
-    },
-  } as unknown as ServerResponse;
-  return { response, captured };
+function reader(response: Response) {
+  assert(response.body);
+  return response.body.pipeThrough(new TextDecoderStream()).pipeThrough(new EventSourceParserStream()).getReader();
+}
+async function events(response: Response) {
+  const stream = reader(response);
+  const received: ResearchProEvent[] = [];
+  while (true) {
+    const item = await stream.read();
+    if (item.done) break;
+    received.push(ResearchProEvent.parse(JSON.parse(item.value.data)));
+  }
+  stream.releaseLock();
+  return received;
 }
 
 try {
-  const sessions = createMemorySessionStore();
-  const sessionId = await sessions.create({
-    accessToken: "oauth-token-pro",
-    tokenType: "Bearer",
-    expiresAt: Date.now() + 3600_000,
-  });
-  const runtime = createRuntime({ accessSecret: "test-secret" });
-  const handle = createZhihuApiHandler({
-    runtime,
-    oauthConfig: undefined,
-    sessions,
-    capabilities: ["user_data", "research"],
-    surface: "web",
-    researchProEnabled: true,
-  });
+  // 普通 JSON 客户端仍收到完整答案，上游只调用一次。
+  const json = await post("normal", { accept: "application/json" });
+  assert.equal(json.status, 200);
+  const complete = await json.json() as { data: { answer: { content: string }; status: string; sourceCount: number; usage: { inputTokens: number } } };
+  assert.equal(complete.data.answer.content, "第一段中文。");
+  assert.equal(complete.data.status, "completed");
+  assert.equal(complete.data.sourceCount, 0);
+  assert.equal(complete.data.usage.inputTokens, 7);
+  assert.equal(calls, 1);
 
-  // —— Pro：单次直答，返回终端 TaskDetail ——
-  const pro = makeResponse();
-  const proHandled = await handle(
-    new URL("https://example.test/api/research-tasks"),
-    makeRequest(`${SESSION_COOKIE}=${sessionId}`, "/api/research-tasks", "POST", {
-      requestId: "11111111-1111-4111-8111-111111111111",
-      question: "为什么要给上游调用做缓存？",
-      allowWebSupplement: false,
-      tier: "pro",
-    }),
-    pro.response,
-  );
-  check(proHandled === true, "网页端应承接 /api/research-tasks");
-  check(pro.captured.status === 200, `Pro 提交应返回 200，实际 ${pro.captured.status}`);
-  const envelope = pro.captured.body as { ok?: boolean; data?: { status?: string; tier?: string; answer?: { content?: string } | null; sourceCount?: number } } | undefined;
-  check(envelope?.ok === true, "响应应使用 {ok,data} 外壳");
-  check(envelope?.data?.status === "completed", "Pro 应在创建时即为 completed（无需轮询）");
-  check(envelope?.data?.tier === "pro", "产出档位应为 pro");
-  check((envelope?.data?.answer?.content ?? "").length > 0, "应带上直答正文");
-  const chatCalls = calls.filter((url) => url.includes("/v1/chat/completions"));
-  check(chatCalls.length === 1, `Pro 应只调用一次直答，实际 ${chatCalls.length}`);
+  // 上游尚未完成时，浏览器必须已经收到第一个正文片段。
+  const response = await post("gated");
+  assert.match(response.headers.get("content-type")!, /text\/event-stream/);
+  const stream = reader(response);
+  const started = ResearchProEvent.parse(JSON.parse((await stream.read()).value!.data));
+  assert.equal(started.type, "started");
+  const first = ResearchProEvent.parse(JSON.parse((await stream.read()).value!.data));
+  assert.deepEqual(first, { type: "answer_delta", text: "第一段中文。" });
+  assert(finishUpstream);
+  finishUpstream();
+  const second = ResearchProEvent.parse(JSON.parse((await stream.read()).value!.data));
+  assert.deepEqual(second, { type: "answer_delta", text: "第二段。" });
+  const completed = ResearchProEvent.parse(JSON.parse((await stream.read()).value!.data));
+  assert.equal(completed.type, "completed");
+  if (completed.type === "completed") assert.equal(completed.detail.answer?.content, "第一段中文。第二段。");
+  assert.equal((await stream.read()).done, true);
+  stream.releaseLock();
 
-  // —— Ultra：本侧不承接，如实拒绝（而不是静默降级成 Pro） ——
-  const beforeUltra = calls.filter((url) => url.includes("/v1/chat/completions")).length;
-  const ultra = makeResponse();
-  await handle(
-    new URL("https://example.test/api/research-tasks"),
-    makeRequest(`${SESSION_COOKIE}=${sessionId}`, "/api/research-tasks", "POST", {
-      requestId: "22222222-2222-4222-8222-222222222222",
-      question: "跑一次 Ultra。",
-      allowWebSupplement: false,
-      tier: "ultra",
-    }),
-    ultra.response,
-  );
-  const ultraBody = ultra.captured.body as { code?: string } | undefined;
-  check(ultraBody?.code === "RESEARCH_TIER_UNAVAILABLE", `Ultra 应以 RESEARCH_TIER_UNAVAILABLE 拒绝，实际 ${ultraBody?.code}`);
-  check(
-    calls.filter((url) => url.includes("/v1/chat/completions")).length === beforeUltra,
-    "被拒的 Ultra 请求不应触达直答",
-  );
+  for (const question of ["truncated", "failure", "empty"]) {
+    const received = await events(await post(question));
+    assert.equal(received.at(-1)?.type, "failed", question);
+    assert(!received.some((event) => event.type === "completed"), question);
+  }
 
-  // —— 任务列表：网页端不落库，返回空而不是 404 ——
-  const list = makeResponse();
-  await handle(
-    new URL("https://example.test/api/research-tasks?limit=20&offset=0"),
-    makeRequest(`${SESSION_COOKIE}=${sessionId}`, "/api/research-tasks?limit=20&offset=0", "GET"),
-    list.response,
-  );
-  check(list.captured.status === 200, `任务列表应返回 200，实际 ${list.captured.status}`);
-  const listBody = list.captured.body as { data?: { items?: unknown[] } } | undefined;
-  check(Array.isArray(listBody?.data?.items) && listBody!.data!.items!.length === 0, "网页端任务列表应为空");
+  timeoutMs = 80;
+  const timedOut = await events(await post("timeout"));
+  assert(upstreamSignal?.aborted);
+  assert(timedOut.at(-1)?.type === "failed");
+  assert.equal((timedOut.at(-1) as Extract<ResearchProEvent, { type: "failed" }>).error.code, "TIMEOUT");
+  timeoutMs = 5_000;
 
-  // —— 未登录：额度挂在部署方账号上，不能匿名消耗 ——
-  const anonymous = makeResponse();
-  await handle(
-    new URL("https://example.test/api/research-tasks"),
-    makeRequest(undefined, "/api/research-tasks", "POST", {
-      requestId: "33333333-3333-4333-8333-333333333333",
-      question: "匿名提问。",
-      allowWebSupplement: false,
-      tier: "pro",
-    }),
-    anonymous.response,
-  );
-  check(anonymous.captured.status === 401, `未登录提交应返回 401，实际 ${anonymous.captured.status}`);
+  const disconnectStream = reader(await post("disconnect"));
+  await disconnectStream.read();
+  await disconnectStream.read();
+  await disconnectStream.cancel();
+  await delay(100);
+  assert(upstreamSignal?.aborted, "浏览器停止必须中止上游");
 
-  // —— 开关关闭：本机运行面之外的调用方不应意外获得该路由 ——
-  const disabled = createZhihuApiHandler({
-    runtime,
-    oauthConfig: undefined,
-    sessions,
-    capabilities: ["research"],
-    surface: "web",
-  });
-  const off = makeResponse();
-  const offHandled = await disabled(
-    new URL("https://example.test/api/research-tasks"),
-    makeRequest(`${SESSION_COOKIE}=${sessionId}`, "/api/research-tasks", "GET"),
-    off.response,
-  );
-  check(offHandled === false, "未开启 Pro 时不应承接该路由");
+  const beforeRejected = calls;
+  assert.equal((await post("normal", { anonymous: true })).status, 401);
+  const rejected = await (await post("normal", { tier: "ultra" })).json() as { code?: string };
+  assert.equal(rejected.code, "RESEARCH_TIER_UNAVAILABLE");
+  assert.equal((await post("normal", { questionOverride: "x".repeat(2001) })).status, 400);
+  assert.equal(calls, beforeRejected, "拒绝请求不能消耗上游额度");
+  const list = await (await fetch(base)).json() as { data: { items: unknown[] } };
+  assert.deepEqual(list.data.items, []);
+  console.log(JSON.stringify({ ok: true, checks: "research-pro-route: incremental, utf8, failure, timeout, disconnect, auth, tier, input" }));
 } finally {
-  globalThis.fetch = originalFetch;
+  server.closeAllConnections();
+  await new Promise<void>((resolve) => server.close(() => resolve()));
 }
-
-if (failures.length > 0) {
-  for (const failure of failures) console.error(`✗ ${failure}`);
-  process.exit(1);
-}
-console.log(JSON.stringify({ ok: true, checks: "research-pro-route" }));

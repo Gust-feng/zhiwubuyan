@@ -7,6 +7,7 @@ import type {
   TaskSummary,
   QueryLogEntry,
 } from "@contracts/research";
+import type { ResearchProProgress } from "./research-view-model";
 import type {
   ResearchActivityView,
   ResearchReportMetaView,
@@ -60,6 +61,18 @@ export const EMPTY_RESEARCH: ResearchViewModel = {
   reportMeta: null,
   limitations: [],
 };
+
+export function projectProProgress(progress: ResearchProProgress): ResearchViewModel {
+  return {
+    ...EMPTY_RESEARCH,
+    tier: "pro",
+    scene: progress.status === "running" ? "researching" : progress.status,
+    question: progress.question,
+    title: progress.question,
+    activityLabel: progress.content ? "正在生成回答" : "正在检索与生成",
+    answer: { content: progress.content, model: "zhida-agent" },
+  };
+}
 
 const STOP_REASON_LABELS: Record<ResearchReport["stopReason"], string> = {
   sufficient: "证据已覆盖关键问题",

@@ -1,6 +1,13 @@
 /** 研究界面视图：由真实任务、来源与报告投影填充。 */
 export type ResearchScene = 'idle' | 'researching' | 'writing' | 'completed' | 'cancelled' | 'failed';
 
+export type ResearchProProgress = {
+  question: string;
+  createdAt: string;
+  content: string;
+  status: 'running' | 'failed' | 'cancelled';
+};
+
 export type ResearchSourceView = {
   id: string;
   title: string;

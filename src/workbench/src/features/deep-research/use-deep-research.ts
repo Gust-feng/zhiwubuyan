@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { ResearchReport, ResearchSource, TaskDetail } from "@contracts/research";
 import { ApiError } from "../../api";
+import type { ResearchProProgress } from "./research-view-model";
 import {
   cancelResearchTask,
   createResearchTask,
@@ -26,6 +27,9 @@ export function useDeepResearch(initialTaskId?: string | null, enabled = true) {
   const [report, setReport] = useState<ResearchReport | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [proProgress, setProProgress] = useState<ResearchProProgress | null>(null);
+  const activeRequest = useRef<AbortController | null>(null);
+  const requestGeneration = useRef(0);
   const [errorCode, setErrorCode] = useState<string | null>(null);
   const [now, setNow] = useState(() => Date.now());
   const pendingRequestId = useRef<string | null>(null);
@@ -43,15 +47,16 @@ export function useDeepResearch(initialTaskId?: string | null, enabled = true) {
   useEffect(() => {
     if (!enabled) return;
     let cancelled = false;
+    const generation = requestGeneration.current;
     const load = initialTaskId
       ? fetchResearchTask(initialTaskId)
       : fetchLatestResearchTask().then((summary) => (summary ? fetchResearchTask(summary.id) : null));
     void load
       .then((task) => {
-        if (!cancelled && task) applyDetail(task);
+        if (!cancelled && task && generation === requestGeneration.current) applyDetail(task);
       })
       .catch((reason: unknown) => {
-        if (!cancelled) setError(messageOf(reason));
+        if (!cancelled && generation === requestGeneration.current) setError(messageOf(reason));
       });
     return () => {
       cancelled = true;
@@ -81,7 +86,7 @@ export function useDeepResearch(initialTaskId?: string | null, enabled = true) {
       cancelled = true;
       if (timer !== undefined) clearTimeout(timer);
     };
-  }, [taskId, terminal, status, applyDetail]);
+  }, [taskId, terminal, status, applyDetail, enabled]);
 
   // 来源只在数量变化时重新拉取，避免每次轮询都取回全部快照。
   const sourceCount = detail?.sourceCount ?? 0;
@@ -100,7 +105,7 @@ export function useDeepResearch(initialTaskId?: string | null, enabled = true) {
     return () => {
       cancelled = true;
     };
-  }, [taskId, sourceCount]);
+  }, [taskId, sourceCount, enabled]);
 
   const reportId = detail?.reportId ?? null;
   useEffect(() => {
@@ -116,7 +121,13 @@ export function useDeepResearch(initialTaskId?: string | null, enabled = true) {
     return () => {
       cancelled = true;
     };
-  }, [taskId, reportId]);
+  }, [taskId, reportId, enabled]);
+
+  useEffect(() => () => {
+    const pending = activeRequest.current;
+    activeRequest.current = null;
+    pending?.abort();
+  }, []);
 
   // 进行中每秒刷新已用时长；终态后不再计时。
   useEffect(() => {
@@ -128,8 +139,16 @@ export function useDeepResearch(initialTaskId?: string | null, enabled = true) {
   const submit = useCallback(
     async (question: string, allowWebSupplement: boolean, tier: "pro" | "ultra", requestId: string) => {
       const trimmed = question.trim();
-      if (trimmed.length === 0) return;
+      if (trimmed.length === 0 || activeRequest.current) return;
+      const controller = new AbortController();
+      requestGeneration.current += 1;
+      activeRequest.current = controller;
       setSubmitting(true);
+      setDetail(null);
+      setProProgress(tier === "pro" ? { question: trimmed, createdAt: new Date().toISOString(), content: "", status: "running" } : null);
+      loadedSourceCount.current = 0;
+      setSources([]);
+      setReport(null);
       setError(null);
       setErrorCode(null);
       try {
@@ -139,31 +158,60 @@ export function useDeepResearch(initialTaskId?: string | null, enabled = true) {
           question: trimmed,
           allowWebSupplement,
           tier,
+        }, {
+          signal: controller.signal,
+          onEvent(event) {
+            if (activeRequest.current !== controller || controller.signal.aborted) return;
+            if (event.type === "started") setProProgress({ question: event.question, createdAt: event.createdAt, content: "", status: "running" });
+            if (event.type === "answer_delta") setProProgress((current) => current ? { ...current, content: current.content + event.text } : current);
+          },
         });
-        loadedSourceCount.current = 0;
-        setSources([]);
-        setReport(null);
+        if (activeRequest.current !== controller) return;
+        if (controller.signal.aborted) {
+          setProProgress((current) => current ? { ...current, status: "cancelled" } : current);
+          return;
+        }
+        setProProgress(null);
         applyDetail(created);
       } catch (reason) {
+        if (activeRequest.current !== controller) return;
+        if (controller.signal.aborted) {
+          setProProgress((current) => current ? { ...current, status: "cancelled" } : current);
+          return;
+        }
+        setProProgress((current) => current ? { ...current, status: "failed" } : current);
         setErrorCode(reason instanceof ApiError ? (reason.code ?? null) : null);
         setError(messageOf(reason));
       } finally {
-        setSubmitting(false);
+        if (activeRequest.current === controller) {
+          activeRequest.current = null;
+          setSubmitting(false);
+        }
       }
     },
     [applyDetail],
   );
 
   const cancel = useCallback(async () => {
+    if (activeRequest.current && proProgress) {
+      activeRequest.current.abort();
+      return;
+    }
     if (taskId === null) return;
     try {
       applyDetail(await cancelResearchTask(taskId));
     } catch (reason) {
       setError(messageOf(reason));
     }
-  }, [taskId, applyDetail]);
+  }, [taskId, applyDetail, proProgress]);
 
   const reset = useCallback(() => {
+    requestGeneration.current += 1;
+    const pending = activeRequest.current;
+    activeRequest.current = null;
+    pending?.abort();
+    setSubmitting(false);
+    setProProgress(null);
     pendingRequestId.current = null;
     loadedSourceCount.current = 0;
     setDetail(null);
@@ -173,7 +221,7 @@ export function useDeepResearch(initialTaskId?: string | null, enabled = true) {
     setErrorCode(null);
   }, []);
 
-  return { detail, sources, report, error, errorCode, submitting, now, submit, cancel, reset };
+  return { detail, sources, report, error, errorCode, submitting, proProgress, now, submit, cancel, reset };
 }
 
 function messageOf(reason: unknown): string {
