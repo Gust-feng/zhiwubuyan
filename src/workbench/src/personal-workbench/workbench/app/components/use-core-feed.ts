@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { fetchJsonCached, readCachedJson } from './json-cache'
+import { fetchJsonCached, INITIAL_REUSE_TTL_MS, readCachedJson } from './json-cache'
 
 export interface CoreFeed<T> {
   readonly status: 'loading' | 'ready' | 'error'
@@ -13,13 +13,6 @@ export interface CoreFeedPage<T> {
   readonly items: readonly T[]
   readonly fetchedAt?: string
 }
-
-/**
- * 首帧取上一份结果时允许的缓存年龄。
- * 比请求侧的 30 秒 TTL 长得多：它的唯一用途是**给首帧一个初值**，把「切换视图先闪一次加载」压掉；
- * 数据本身仍按 30 秒 TTL 在后台重新取，列表也照旧显示实际获取时间，不假装是刚取到的。
- */
-const INITIAL_REUSE_TTL_MS = 5 * 60 * 1000
 
 /**
  * 单个内容面的取数：加载、空、失败、重试共用一组状态，过期响应直接丢弃。

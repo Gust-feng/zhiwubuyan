@@ -130,7 +130,9 @@ function HomePersonalSummary() {
   if (sessionState.status === 'loading') {
     return (
       <section className="ui-home__personal ui-home__personal--guest" aria-label="个人摘要">
-        <div className="ui-home__personal-prompt" role="status">正在确认登录状态…</div>
+        <div className="ui-home__personal-prompt" role="status" aria-label="正在确认登录状态">
+          <span className="ui-home__prompt-skeleton" aria-hidden="true" />
+        </div>
       </section>
     )
   }

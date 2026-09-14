@@ -49,6 +49,23 @@
         }
       })();
     </script>
+    <script>
+      // 首屏这三条 GET 各要约一秒（线上每次调用都是 Vercel 函数冷启），
+      // 等 React 挂载后的 effect 再发，身份区就得先空等那一秒。这里在 HTML 解析阶段就发出，
+      // 结果由 /src/workbench/src/workbench/boot-prefetch.ts 认领进 json-cache。
+      // 只存原始响应体：校验与投影由各消费方自己做；失败不写缓存，消费方随后自己重取。
+      window.zhihuBootPrefetch = {};
+      ["/api/auth/session", "/api/status", "/api/home/feed"].forEach((path) => {
+        const task = fetch(path).then((response) => {
+          if (!response.ok) throw new Error(String(response.status));
+          return response.json();
+        });
+        // 认领发生在模块求值时，可能晚于这里的失败：先挂一个空 catch，免得报未处理拒绝。
+        // 消费方拿到的是 task 本身，失败照常传到它自己的 catch。
+        task.catch(() => {});
+        window.zhihuBootPrefetch[path] = task;
+      });
+    </script>
   </head>
   <body>
     <div id="root">

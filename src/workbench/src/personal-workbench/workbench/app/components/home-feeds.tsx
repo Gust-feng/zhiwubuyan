@@ -23,14 +23,12 @@ export function HomeMasthead({ state, profile, onLogin, onRetry }: {
 }) {
   const name = state === 'authenticated'
     ? profile?.fullname.trim() || '我的知乎'
-    : state === 'error' ? '暂时无法确认登录状态'
-      : '正在连接你的知乎'
+    : '暂时无法确认登录状态'
   const avatarUrl = profile?.avatarUrl?.trim()
   const personalized = state === 'authenticated'
   const subtitle = state === 'authenticated'
     ? profile?.headline?.trim() || '把好奇留给问题，也留给自己。'
-    : state === 'error' ? '重新检查后即可继续。'
-      : '正在确认账号状态…'
+    : '重新检查后即可继续。'
   return (
     <header className="ui-home__masthead" data-state={state}>
       <div
@@ -42,7 +40,13 @@ export function HomeMasthead({ state, profile, onLogin, onRetry }: {
           : <span>{name.slice(0, 1)}</span>)}
         {personalized && <i />}
       </div>
-      {state !== 'guest' && <><h1>{name}</h1><p>{subtitle}</p></>}
+      {/* 确认期间只占位：把「正在连接」当标题写出来，等于把管线状态摆成首屏主视觉。 */}
+      {state === 'loading' && (
+        <div className="ui-home__identity-skeleton" role="status" aria-label="正在确认账号状态">
+          <i aria-hidden="true" /><i aria-hidden="true" />
+        </div>
+      )}
+      {(state === 'authenticated' || state === 'error') && <><h1>{name}</h1><p>{subtitle}</p></>}
       {state === 'guest' && (
         <button type="button" className="ui-home__identity-action" onClick={onLogin}>
           <ZhihuLogo />

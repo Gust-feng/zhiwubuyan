@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { fetchJsonCached } from './json-cache'
+import { fetchJsonCached, INITIAL_REUSE_TTL_MS, readCachedJson } from './json-cache'
 
 /**
  * 首页内容流与问答的取数。
@@ -95,6 +95,42 @@ async function readError(response: Response): Promise<string> {
   return body?.message ?? `请求失败（${response.status}）。`
 }
 
+/** 路径同时是缓存 key：检索条件都在 query 里，热榜与各主题检索不会共用一份结果。 */
+function homeFeedPath(topic: string, scope: HomeFeedScope, type: HomeFeedType): string {
+  const params = new URLSearchParams()
+  if (topic !== '') {
+    params.set('topic', topic)
+    params.set('scope', scope)
+    params.set('type', type)
+  }
+  const query = params.toString()
+  return `/api/home/feed${query === '' ? '' : `?${query}`}`
+}
+
+interface HomeFeedPage {
+  readonly channel: HomeFeedChannel
+  readonly items: readonly HomeFeedItem[]
+  readonly fetchedAt?: string
+  readonly stale: boolean
+  readonly empty: boolean
+}
+
+/** 缓存里存的是**原始响应体**（启动预取也写同一个 key），归一放在读出之后。 */
+function projectHomeFeed(body: unknown): HomeFeedPage {
+  if (body === null || typeof body !== 'object' || Array.isArray(body)) {
+    return { channel: 'hot', items: [], fetchedAt: undefined, stale: false, empty: true }
+  }
+  const record = body as Record<string, unknown>
+  const items = readHomeFeedItems(record)
+  return {
+    channel: record.channel === 'topic' ? 'topic' : 'hot',
+    items,
+    fetchedAt: readString(record.fetchedAt) || undefined,
+    stale: record.stale === true,
+    empty: items.length === 0,
+  }
+}
+
 export function useHomeFeed(input: {
   topic?: string
   scope?: HomeFeedScope
@@ -105,12 +141,17 @@ export function useHomeFeed(input: {
   refreshKey?: number
 }): HomeFeedState {
   const { topic = '', scope = 'zhihu', type = 'all', enabled = true, refreshKey = 0 } = input
-  const [state, setState] = useState<HomeFeedState>({
-    status: 'loading',
-    channel: 'hot',
-    items: [],
-    stale: false,
-    empty: false,
+  // 首帧取上一份结果：热榜由启动预取在 HTML 解析阶段就发出，命中就不必先闪一次骨架。
+  const [state, setState] = useState<HomeFeedState>(() => {
+    const fallbackChannel: HomeFeedChannel = topic === '' ? 'hot' : 'topic'
+    const cached = enabled
+      ? readCachedJson<unknown>(homeFeedPath(topic, scope, type), INITIAL_REUSE_TTL_MS)
+      : undefined
+    if (cached === undefined) {
+      return { status: 'loading', channel: fallbackChannel, items: [], stale: false, empty: false }
+    }
+    const page = projectHomeFeed(cached)
+    return { status: 'ready', channel: page.channel, items: page.items, fetchedAt: page.fetchedAt, stale: page.stale, empty: page.empty }
   })
   const seqRef = useRef(0)
 
@@ -127,43 +168,25 @@ export function useHomeFeed(input: {
       })
       return
     }
+    const path = homeFeedPath(topic, scope, type)
     const seq = seqRef.current + 1
     seqRef.current = seq
     const controller = new AbortController()
-    const params = new URLSearchParams()
-    if (topic !== '') {
-      params.set('topic', topic)
-      params.set('scope', scope)
-      params.set('type', type)
-    }
-    const query = params.toString()
-    const path = `/api/home/feed${query === '' ? '' : `?${query}`}`
-    setState((previous) => ({
-      ...previous,
-      status: 'loading',
-      error: undefined,
-    }))
-    // 视图切换会重挂载本组件：命中短时缓存就直接渲染，不再闪一次 loading。
+    // 已经有内容就留在界面上：刷新在后台完成，不回到骨架。
+    // 用户显式重试是例外——那时他需要的正是「重新取过了」的反馈。
+    setState((previous) => previous.status === 'ready' && previous.items.length > 0 && refreshKey === 0
+      ? previous
+      : { ...previous, status: 'loading', error: undefined })
+    // 视图切换会重挂载本组件：命中短时缓存（含启动预取那份）就直接渲染。
     // refreshKey 递增表示用户显式重试，此时跳过缓存。
     fetchJsonCached(path, async () => {
       const response = await fetch(path, { signal: controller.signal })
       if (!response.ok) throw new Error(await readError(response))
-      const body = (await response.json()) as unknown
-      if (body === null || typeof body !== 'object' || Array.isArray(body)) {
-        return { items: [], channel: 'hot' as const, fetchedAt: undefined, stale: false, empty: true }
-      }
-      const record = body as Record<string, unknown>
-      const items = readHomeFeedItems(record)
-      return {
-        items,
-        channel: record.channel === 'topic' ? ('topic' as const) : ('hot' as const),
-        fetchedAt: readString(record.fetchedAt) || undefined,
-        stale: record.stale === true,
-        empty: items.length === 0,
-      }
+      return await response.json()
     }, { force: refreshKey > 0 })
-      .then((page) => {
+      .then((body) => {
         if (seqRef.current !== seq) return
+        const page = projectHomeFeed(body)
         setState({
           status: 'ready',
           channel: page.channel,

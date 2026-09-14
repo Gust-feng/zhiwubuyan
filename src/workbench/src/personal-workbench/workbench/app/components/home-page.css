@@ -110,7 +110,6 @@
   letter-spacing: .05em;
 }
 
-.ui-home__masthead[data-state='loading'] h1,
 .ui-home__masthead[data-state='error'] h1 {
   font-size: 22px;
   letter-spacing: .04em;
@@ -122,6 +121,28 @@
   font-family: "Noto Serif SC Variable", var(--reading-serif);
   font-size: 12px;
   line-height: 1.7;
+}
+
+/* 身份区确认期间只占位：两条线对应 h1 与副标题的粗细，状态落定时版面不跳。 */
+.ui-home__identity-skeleton {
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.ui-home__identity-skeleton i {
+  display: block;
+  width: 186px;
+  height: 18px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--ui-surface-hover), var(--ui-surface-active), var(--ui-surface-hover));
+  animation: ui-home-skeleton 1.4s ease infinite;
+}
+
+.ui-home__identity-skeleton i + i {
+  width: 118px;
+  height: 9px;
 }
 
 .ui-home__identity-action {
@@ -668,6 +689,15 @@ a.ui-home__row:hover .ui-home__row-open {
   background: transparent;
   color: var(--ui-text-3);
   font-size: 12.5px;
+}
+
+/* 确认登录期间占位条里放骨架线，槽位与高度和文案态一致。 */
+.ui-home__prompt-skeleton {
+  flex: 1 1 auto;
+  height: 10px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--ui-surface-hover), var(--ui-surface-active), var(--ui-surface-hover));
+  animation: ui-home-skeleton 1.4s ease infinite;
 }
 
 .ui-home__personal-prompt button {

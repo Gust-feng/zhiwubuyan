@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import type { WorkbenchView } from './navigation-state'
+import { fetchJsonCached, readCachedJson } from '../personal-workbench/workbench/app/components/json-cache'
 
 /**
  * 运行面能力：后端在 /api/status 里声明 surface。
@@ -47,47 +48,49 @@ type SurfaceState =
  */
 const WEB_LOGIN_VIEWS: ReadonlySet<WorkbenchView> = new Set<WorkbenchView>()
 
-/** 能力探测只打一次：同源、幂等，多个消费方共享同一个结果。 */
-let capabilitiesRequest: Promise<SurfaceCapabilities> | undefined
+/** 能力探测的路径：与 index.html 的启动预取共用同一个缓存 key。 */
+const STATUS_PATH = '/api/status'
 
+type StatusBody = {
+  surface?: unknown
+  capabilities?: unknown
+  auth?: { oauthEnabled?: unknown; missingConfig?: unknown; redirectUri?: unknown }
+}
+
+/** /api/status 的投影：服务端声明了什么就启用什么，未声明时如实按不可用处理。 */
+function projectCapabilities(body: unknown): SurfaceCapabilities {
+  const status = (body ?? {}) as StatusBody
+  const surface: WorkbenchSurface = status.surface === 'desktop' ? 'desktop' : 'web'
+  const capabilities = Array.isArray(status.capabilities) ? status.capabilities : []
+  const missingConfig = Array.isArray(status.auth?.missingConfig)
+    ? status.auth.missingConfig.filter((item): item is string => typeof item === 'string')
+    : []
+  return {
+    surface,
+    // 研究路由由服务端声明；未声明时不假装可用。
+    research: { available: capabilities.includes('research') },
+    // Ultra 引擎只在本机运行面承接；未声明时档位菜单不列出 Ultra。
+    researchUltra: { available: capabilities.includes('research_ultra') },
+    // 成象路由由服务端声明；未声明时入口给出未接通说明。
+    conceptAnimation: { available: capabilities.includes('concept_animation') },
+    login: {
+      available: status.auth?.oauthEnabled === true,
+      missingConfig,
+      // 应用固定的回调地址；服务端未配置公开来源时为 undefined。
+      ...(typeof status.auth?.redirectUri === 'string' && status.auth.redirectUri !== ''
+        ? { redirectUri: status.auth.redirectUri }
+        : {}),
+    },
+  }
+}
+
+/** 与启动预取共用同一条请求；失败不写缓存，下一次挂载还会重新探测。 */
 export function loadSurfaceCapabilities(): Promise<SurfaceCapabilities> {
-  capabilitiesRequest ??= fetch('/api/status')
-    .then(async (response) => {
-      if (!response.ok) throw new Error(`status ${response.status}`)
-      const body = (await response.json()) as {
-        surface?: unknown
-        capabilities?: unknown
-        auth?: { oauthEnabled?: unknown; missingConfig?: unknown; redirectUri?: unknown }
-      }
-      const surface: WorkbenchSurface = body.surface === 'desktop' ? 'desktop' : 'web'
-      const capabilities = Array.isArray(body.capabilities) ? body.capabilities : []
-      const missingConfig = Array.isArray(body.auth?.missingConfig)
-        ? body.auth.missingConfig.filter((item): item is string => typeof item === 'string')
-        : []
-      return {
-        surface,
-        // 研究路由由服务端声明；未声明时不假装可用。
-        research: { available: capabilities.includes('research') },
-        // Ultra 引擎只在本机运行面承接；未声明时档位菜单不列出 Ultra。
-        researchUltra: { available: capabilities.includes('research_ultra') },
-        // 成象路由由服务端声明；未声明时入口给出未接通说明。
-        conceptAnimation: { available: capabilities.includes('concept_animation') },
-        login: {
-          available: body.auth?.oauthEnabled === true,
-          missingConfig,
-          // 应用固定的回调地址；服务端未配置公开来源时为 undefined。
-          ...(typeof body.auth?.redirectUri === 'string' && body.auth.redirectUri !== ''
-            ? { redirectUri: body.auth.redirectUri }
-            : {}),
-        },
-      }
-    })
-    .catch((error: unknown) => {
-      // 失败不缓存，让下一次挂载还能重新探测。
-      capabilitiesRequest = undefined
-      throw error
-    })
-  return capabilitiesRequest
+  return fetchJsonCached(STATUS_PATH, async () => {
+    const response = await fetch(STATUS_PATH)
+    if (!response.ok) throw new Error(`status ${response.status}`)
+    return await response.json()
+  }).then(projectCapabilities)
 }
 
 export type WorkbenchSurfaceState = {
@@ -112,17 +115,24 @@ export type WorkbenchSurfaceState = {
 const SurfaceContext = createContext<WorkbenchSurfaceState | undefined>(undefined)
 
 export function WorkbenchSurfaceProvider({ children }: { readonly children: ReactNode }) {
-  const [state, setState] = useState<SurfaceState>({ status: 'loading' })
+  // 首帧直接认领已就绪的探测结果：预取让 /api/status 在 HTML 解析阶段就发出，通常先于首帧回来，
+  // 界面因此不会先渲染一帧未就绪。
+  const [state, setState] = useState<SurfaceState>(() => {
+    const body = readCachedJson<unknown>(STATUS_PATH)
+    return body === undefined
+      ? { status: 'loading' }
+      : { status: 'ready', capabilities: projectCapabilities(body) }
+  })
 
   useEffect(() => {
     let alive = true
-    setState({ status: 'loading' })
     loadSurfaceCapabilities()
       .then((capabilities) => {
         if (alive) setState({ status: 'ready', capabilities })
       })
       .catch(() => {
-        if (alive) setState({ status: 'error' })
+        // 已经探测到能力就保留：一次网络抖动不该把可用的界面打回未就绪。
+        if (alive) setState((previous) => previous.status === 'ready' ? previous : { status: 'error' })
       })
     return () => {
       alive = false
