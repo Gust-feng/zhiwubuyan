@@ -82,19 +82,6 @@ export type FavlistContentsResult = {
   items: CollectedItem[];
 };
 
-export type RecommendedQuestion = {
-  id: string;
-  kind: "question_recommendations";
-  title: string;
-  url: string;
-};
-
-export type QuestionRecommendationsResult = {
-  kind: "question_recommendations";
-  fetchedAt: string;
-  items: RecommendedQuestion[];
-};
-
 /**
  * 用户数据能力门面。所有列表都只返回上游当页数据；翻页由应用层按 `paging`/`hasMore`
  * 驱动，适配层不替调用方决定取多少页，也不吞掉游标。
@@ -106,7 +93,6 @@ export type UserDataGateway = {
   followees(input?: { limit?: number; offset?: number }): Promise<FolloweesResult>;
   favlists(input?: { limit?: number }): Promise<FavlistsResult>;
   favlistContents(input: { favlistUrlToken: string; limit?: number; offset?: number }): Promise<FavlistContentsResult>;
-  questionRecommendations(input?: { count?: number }): Promise<QuestionRecommendationsResult>;
 };
 
 type Client = ReturnType<typeof createOpenPlatformClient>;
@@ -183,20 +169,6 @@ export function createUserDataGateway(
         hasMore: readBooleanField(data.HasMore),
         paging: readPaging(data.Paging),
         items: mapCollected(asArray(data.Items), "favlist_contents"),
-      };
-    },
-    // 问题推荐与收藏等用户数据同一套 Bearer 鉴权；额度在 creator 创作能力组（默认每日 100 次），
-    // 所以这里只按面板需要的条数请求，不做翻页。
-    async questionRecommendations(input = {}) {
-      const envelope = await client.get("/api/v1/user/question_recommendations", identity, {
-        Count: clampLimit(input.count, 10),
-      });
-      const data = asRecord(envelope.data) ?? {};
-      const fetchedAt = clock().toISOString();
-      return {
-        kind: "question_recommendations",
-        fetchedAt,
-        items: mapRecommendedQuestions(asArray(data.Items), fetchedAt),
       };
     },
   };
@@ -334,20 +306,4 @@ const NAMED_HTML_ENTITIES: Readonly<Record<string, string>> = {
 
 function decodeHtmlEntities(value: string): string {
   return value.replace(/&(?:amp|lt|gt|quot|#39|apos|nbsp);/g, (match) => NAMED_HTML_ENTITIES[match] ?? match);
-}
-
-function mapRecommendedQuestions(items: unknown[], fetchedAt: string): RecommendedQuestion[] {
-  return items.flatMap((item, index) => {
-    const record = asRecord(item);
-    if (!record) return [];
-    const title = readString(record.Title).trim();
-    const url = readString(record.Url).trim();
-    if (!title || !url) return [];
-    return [{
-      id: `question_recommendations:${index + 1}`,
-      kind: "question_recommendations" as const,
-      title,
-      url,
-    }];
-  });
 }

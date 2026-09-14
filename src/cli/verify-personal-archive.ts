@@ -295,13 +295,6 @@ function makeGateway(options: {
         items: [],
       };
     },
-    async questionRecommendations() {
-      return {
-        kind: "question_recommendations" as const,
-        fetchedAt: "2026-09-13T00:00:00.000Z",
-        items: [],
-      };
-    },
     calls,
   };
   return gateway;

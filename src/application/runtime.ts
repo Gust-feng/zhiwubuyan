@@ -5,11 +5,10 @@ import { createZhidaGateway } from "../platform/zhihu/zhida.ts";
 import { createUserDataGateway } from "../platform/zhihu/user-data.ts";
 import { createResearchBriefCommand } from "./research-brief.ts";
 import { createVoicesCommand } from "./voices.ts";
-import { createSeedQuestionsCommand } from "./seed-questions.ts";
+import { createEntrySeedsCommand } from "./entry-seeds.ts";
 import { createHomeFeedCommand } from "./home-feed.ts";
 import { createHomeAnswerCommand } from "./home-answer.ts";
 import { createResearchProCommand } from "./research-pro.ts";
-import { createQuestionRecommendationsCommand } from "./question-recommendations.ts";
 import { createPersonalArchiveCommand, type PersonalArchiveStore } from "./personal-archive.ts";
 import { createUserFeedCache, USER_FEED_IDS } from "./user-feed-cache.ts";
 import { createMemoryResearchSessionStore, createResearchSessionApplication } from "./research-session.ts";
@@ -67,8 +66,8 @@ export function createRuntime(options: RuntimeOptions = {}) {
     homeAnswer: createHomeAnswerCommand({ zhida, clock: options.clock }),
     /** 网页端的深度研究 Pro：单次直答，不落库。自研 Ultra 引擎由本机运行面单独承接。 */
     researchPro: createResearchProCommand({ zhida, clock: options.clock }),
-    seedQuestions: createSeedQuestionsCommand({ zhida, clock: options.clock }),
-    recommendations: createQuestionRecommendationsCommand({ clock: options.clock }),
+    /** 入口种子：深度研究与众声共用，素材是登录用户自己的收藏标题。 */
+    entrySeeds: createEntrySeedsCommand({ zhida, clock: options.clock }),
     personalArchive: createPersonalArchiveCommand({
       store: options.personalArchiveStore,
       lock: options.archiveLock,
