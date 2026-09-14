@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react'
 import { rememberZhihuLoginReturn } from './zhihu-auth-navigation'
 import { clearJsonCache } from '../personal-workbench/workbench/app/components/json-cache'
+import { forgetEntrySeeds } from './entry-seeds'
 
 /** 会话随附的展示资料；端点无正式契约，读取不到时整个 profile 缺省。 */
 export type ZhihuAccountProfile = {
@@ -127,6 +128,7 @@ export async function logoutZhihuAccount(): Promise<void> {
   // 清掉已知会话与取数缓存，避免继续按已登出身份渲染。
   forgetZhihuSession()
   clearJsonCache()
+  forgetEntrySeeds()
 }
 
 /**
