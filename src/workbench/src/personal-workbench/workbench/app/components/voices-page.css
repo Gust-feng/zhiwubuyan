@@ -46,44 +46,8 @@
   line-height: 1.35;
 }
 
-/* 建议议题卡：轻容器，有描边没有阴影，主角仍是提问卡片 */
-.voices-seeds {
-  margin: 0 0 26px;
-  padding: 12px 14px 9px;
-  border: 1px solid var(--ui-border);
-  border-radius: var(--vp-radius-card);
-  background: var(--ui-surface);
-}
-.voices-seeds__head {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  padding-bottom: 6px;
-}
-.voices-seeds__head > svg { flex-shrink: 0; color: var(--ui-accent); }
-.voices-seeds__head h2 { margin: 0; color: var(--ui-text-1); font-size: 12px; font-weight: 600; }
-.voices-seeds__role { color: var(--ui-text-3); font-size: 11px; }
-.voices-seeds__list { margin: 0; padding: 0; list-style: none; }
-.voices-seed {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  width: 100%;
-  min-height: 30px;
-  padding: 5px 6px;
-  border: 0;
-  border-radius: 6px;
-  background: transparent;
-  color: var(--ui-text-2);
-  font: inherit;
-  font-size: 13px;
-  line-height: 1.6;
-  text-align: left;
-  cursor: pointer;
-  transition: background var(--motion-duration-quick), color var(--motion-duration-quick);
-}
-.voices-seed:hover { background: var(--ui-surface-hover); color: var(--ui-text-1); }
-.voices-seed__title { flex: 1 1 auto; min-width: 0; }
+/* 建议议题卡与条目已并入共享入口外壳（entry-surface.css 的 .entry-seeds）；
+   这里不再保留第二套排法，避免两个入口同一列表出现两种字。 */
 
 /* 提问卡片：输入区 + 底部参数条，中间用整宽分隔线断开 */
 .voices-composer {

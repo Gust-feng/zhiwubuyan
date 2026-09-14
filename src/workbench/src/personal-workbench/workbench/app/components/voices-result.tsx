@@ -1,6 +1,7 @@
 import { useState } from 'react'
-import { ArrowUpRight, ChevronDown, CircleAlert, Compass, Scale } from 'lucide-react'
+import { ArrowUpRight, ChevronDown, CircleAlert, Compass } from 'lucide-react'
 import type { VoicesView, VoiceSource } from '../../../../contracts/voices'
+import { VoicesLoading } from './voices-loading'
 import './voices-page.css'
 
 export type VoicesStage = 'busy' | 'done' | 'error'
@@ -16,18 +17,17 @@ export function VoicesResult({ stage, issue, voices, error, onRetry, onReset }: 
   onRetry: (anchorQuestionId?: string) => void
   onReset: () => void
 }) {
-  return (
-    <div className="ui-view voices-page">
-      <div className="voices-result">
-        {stage === 'busy' && (
-          <div className="voices-notice" role="status">
-            <Scale size={15} aria-hidden />
-            <div>
-              <strong>正在整理「{issue.trim()}」</strong>
-            </div>
-          </div>
-        )}
+  if (stage === 'busy') {
+    return (
+      <div className="ui-view voices-page" key="busy">
+        <VoicesLoading issue={issue} />
+      </div>
+    )
+  }
 
+  return (
+    <div className="ui-view voices-page" key={stage}>
+      <div className="voices-result">
         {stage === 'error' && (
           <div className="voices-notice" role="alert">
             <CircleAlert size={15} aria-hidden />

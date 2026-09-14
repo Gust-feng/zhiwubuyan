@@ -1,11 +1,15 @@
 import type { RefObject } from 'react'
 import { ArrowUp, Globe, Sparkles } from 'lucide-react'
+import { EntrySeedsList } from '@ui/components/entry-surface/entry-seeds'
 import type { VoicesRecency, VoicesScope } from '../../../../contracts/voices'
 
+/** 众声的内置示例议题：还没生成出当前热榜议题时的兜底，任何状态下都有内容可点。
+ *  它不参与取数，也不代表此刻大家在争什么；条数与深度研究入口一致，切换时卡片高度不变。 */
 const EXAMPLE_ISSUES = [
   '远程办公三年后，团队协作效率到底是升还是降？',
   'AI 写作工具会让人类写作能力退化吗？',
   '年轻人为什么开始反向消费？',
+  '短视频把人的注意力变短了吗？',
 ] as const
 
 /** 检索范围与时间范围都是预置选项，界面不开放自由填写。 */
@@ -22,28 +26,21 @@ const RECENCY_OPTIONS: ReadonlyArray<{ value: VoicesRecency; label: string }> = 
 ]
 
 /** 众声入口的建议议题卡：点一条直接用该议题开始整理。
- *  bare 为真时不画卡片外框（外框由共享入口外壳持有，切换时它不重画）。 */
-export function VoicesSeeds({ onPick, bare = false }: { onPick: (issue: string) => void; bare?: boolean }) {
-  const body = (
-    <>
-      <div className="voices-seeds__head">
-        <Sparkles size={14} aria-hidden />
-        <h2>试试这些议题</h2>
-        <span className="voices-seeds__role">点一条开始整理</span>
-      </div>
-      <ol className="voices-seeds__list">
-        {EXAMPLE_ISSUES.map((item) => (
-          <li key={item}>
-            <button type="button" className="voices-seed" onClick={() => onPick(item)}>
-              <span className="voices-seed__title">{item}</span>
-            </button>
-          </li>
-        ))}
-      </ol>
-    </>
+ *  议题由此刻的知乎热榜提炼而来，所以标题说的是「大家在争什么」而不是「为你推荐」——
+ *  它不是按你的口味挑的，是你进来时大家正好在争的。没有提炼结果就用内置示例。
+ *  条目右侧不给「+」：研究侧那个是把问题填进输入框，这里点一下就直接开始消耗额度。 */
+export function VoicesSeeds({ onPick }: { onPick: (issue: string) => void }) {
+  return (
+    <EntrySeedsList
+      kind="voices"
+      fallback={EXAMPLE_ISSUES}
+      icon={<Sparkles size={14} aria-hidden />}
+      heading="此刻大家在争"
+      headingFallback="试试这些议题"
+      label="此刻大家在争的议题"
+      onPick={onPick}
+    />
   );
-  if (bare) return body;
-  return <section className="voices-seeds" aria-label="可以试试的议题">{body}</section>;
 }
 
 /** 众声入口的输入卡内容：议题输入 + 检索范围/时间范围预置项。
