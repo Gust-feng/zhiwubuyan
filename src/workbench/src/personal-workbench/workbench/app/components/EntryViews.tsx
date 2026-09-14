@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Scale, Telescope } from 'lucide-react'
+import { Clapperboard, Scale, Telescope } from 'lucide-react'
 import { kanshanDirector } from '@ui/components/kanshan-mascot/kanshan-director'
 import { EntrySurface, type EntryView } from '@ui/components/entry-surface/entry-surface'
 import { EMPTY_RESEARCH, projectResearch } from '@ui/features/deep-research/research-projection'
@@ -9,6 +9,10 @@ import { getDefaultResearchTier, getDefaultResearchWebSupplement } from '@ui/fea
 import { ResearchSeeds } from '@ui/features/deep-research/research-seeds'
 import { useDeepResearch } from '@ui/features/deep-research/use-deep-research'
 import type { ResearchViewModel } from '@ui/features/deep-research/research-view-model'
+import { ImageryComposer } from '@ui/features/concept-animation/imagery-composer'
+import { ImageryGenerating } from '@ui/features/concept-animation/imagery-generating'
+import { ImageryResult } from '@ui/features/concept-animation/imagery-result'
+import { useImagery } from '@ui/features/concept-animation/use-imagery'
 import { useWorkbenchSurface } from '../../../../workbench/surface'
 import { useZhihuSession } from '@ui/workbench/zhihu-account'
 import { useZhihuLogin } from '@ui/features/auth/login-request'
@@ -17,18 +21,19 @@ import { requestVoices } from './voices-client'
 import { VoicesEntryComposer, VoicesSeeds } from './voices-slots'
 import { VoicesResult, type VoicesStage } from './voices-result'
 
-/** 深度研究与众声的入口编排。
- *  两页入口是同一套版式，所以由这一个常驻组件持有：两侧状态同时挂着，
+/** 深度研究、众声与成象的入口编排。
+ *  三页入口是同一套版式，所以由这一个常驻组件持有：三侧状态同时挂着，
  *  切换时外壳（EntrySurface）不重建，只有每一格里的对象就地交替。
- *  各自的结果态仍按原来的页面呈现；切到另一页时研究继续轮询，回来不用重来。 */
+ *  各自的结果态仍按原来的页面呈现；切到另一页时研究继续轮询、成象结果保留，回来不用重来。 */
 export function EntryViews({ view, researchTaskId, voicesIssue }: {
   view: EntryView
   researchTaskId: string | null
   voicesIssue: string | null
 }) {
-  const { researchAvailable, researchUltraAvailable } = useWorkbenchSurface()
+  const { researchAvailable, researchUltraAvailable, conceptAnimationAvailable } = useWorkbenchSurface()
   // 查看不需要登录：页面结构、输入框与入口都照常渲染。
   // 只在真正消耗额度时（发起研究 / 整理众声）拉起登录弹窗，而不是把整页换成一堵登录墙。
+  // 入口里的种子内容不看这里：它由会话层的预取结果决定，与前台在哪一页无关。
   const { state: sessionState } = useZhihuSession()
   const { openLogin } = useZhihuLogin()
   const needsLogin = sessionState.status === 'ready' && !sessionState.session.authenticated
@@ -61,6 +66,23 @@ export function EntryViews({ view, researchTaskId, voicesIssue }: {
   const voicesFieldRef = useRef<HTMLTextAreaElement>(null)
   const attentionCooldownUntil = useRef(0)
   const startedIssueRef = useRef<string | null>(null)
+  // ── 成象状态（常驻） ──
+  const imagery = useImagery(conceptAnimationAvailable)
+  const [imageryDraft, setImageryDraft] = useState('')
+  const [imageryFocusSignal, setImageryFocusSignal] = useState(0)
+  const imageryUnavailableMessage = conceptAnimationAvailable
+    ? null
+    : '成象由服务端承接，当前这一步还没有接通；接通后可直接在这里生成动画。'
+  const startImagery = useCallback(() => {
+    // 生成同时消耗知乎搜索与模型两类额度：未登录先拉起登录，草稿不丢。
+    if (needsLogin) {
+      openLogin('imagery')
+      return
+    }
+    const topic = imageryDraft.trim()
+    if (!topic) return
+    void imagery.generate({ topic, useMaterial: true })
+  }, [needsLogin, openLogin, imageryDraft, imagery])
   // 看山常驻侧栏，反馈手势统一交给全局导演，这里不持有角色手柄。
   const triggerAttention = useCallback(() => {
     const now = Date.now()
@@ -149,16 +171,27 @@ export function EntryViews({ view, researchTaskId, voicesIssue }: {
       />
     )
   }
+  // 成象出结果后独占版面：播放器 + 历史，与入口不同构。
+  if (view === 'imagery' && imagery.result !== null) {
+    return <ImageryResult imagery={imagery} onReset={() => { imagery.reset(); setImageryDraft('') }} />
+  }
+  // 生成要几十秒：换成专门的等待版面，而不是停在输入卡上像卡住。
+  if (view === 'imagery' && imagery.generating) {
+    return <ImageryGenerating topic={imageryDraft.trim()} />
+  }
 
-  // 入口态：两页共用同一个外壳，切换只发生在每一格内部。
+  // 入口态：三页共用同一个外壳，切换只发生在每一格内部。
+  // 成象没有建议格，也不挂底部题款——它的题款就是标题本身。
   return (
     <EntrySurface
       view={view}
-      emblem={view === 'ask' ? <Telescope size={54} /> : <Scale size={54} />}
-      title={view === 'ask' ? '你想深入了解什么？' : '听听TA们怎么说？'}
+      emblem={view === 'ask' ? <Telescope size={54} /> : view === 'voices' ? <Scale size={54} /> : <Clapperboard size={54} />}
+      title={view === 'ask' ? '你想深入了解什么？' : view === 'voices' ? '听听TA们怎么说？' : '概念成型，可见为象'}
       seeds={view === 'ask'
-        ? <ResearchSeeds bare onPick={(question) => { setDraft(question); setResearchFocusSignal((value) => value + 1) }} />
-        : <VoicesSeeds bare onPick={(nextIssue) => { setIssue(nextIssue); void runVoices(nextIssue) }} />}
+        ? <ResearchSeeds onPick={(question) => { setDraft(question); setResearchFocusSignal((value) => value + 1) }} />
+        : view === 'voices'
+          ? <VoicesSeeds onPick={(nextIssue) => { setIssue(nextIssue); void runVoices(nextIssue) }} />
+          : undefined}
       composer={view === 'ask'
         ? (
           <ResearchEntryComposer
@@ -181,19 +214,31 @@ export function EntryViews({ view, researchTaskId, voicesIssue }: {
             }}
           />
         )
-        : (
-          <VoicesEntryComposer
-            issue={issue}
-            scope={scope}
-            recency={recency}
-            fieldRef={voicesFieldRef}
-            onIssueChange={setIssue}
-            onScopeChange={setScope}
-            onRecencyChange={setRecency}
-            onSubmit={() => void runVoices(issue)}
-            onInputFocus={triggerAttention}
-          />
-        )}
+        : view === 'voices'
+          ? (
+            <VoicesEntryComposer
+              issue={issue}
+              scope={scope}
+              recency={recency}
+              fieldRef={voicesFieldRef}
+              onIssueChange={setIssue}
+              onScopeChange={setScope}
+              onRecencyChange={setRecency}
+              onSubmit={() => void runVoices(issue)}
+              onInputFocus={triggerAttention}
+            />
+          )
+          : (
+            <ImageryComposer
+              draft={imageryDraft}
+              disabled={false}
+              unavailableMessage={imageryUnavailableMessage}
+              error={imagery.error}
+              focusSignal={imageryFocusSignal}
+              onDraftChange={setImageryDraft}
+              onStart={startImagery}
+            />
+          )}
     />
   )
 }

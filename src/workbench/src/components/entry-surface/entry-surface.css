@@ -78,6 +78,43 @@
   background: var(--ui-surface);
 }
 
+/* 建议条目只有这一份排法：深度研究与众声共用同一套类名，字体、行高、条目高度与图标都对齐。
+   条目的文字色必须比 `.entry-live button { color: inherit }` 更具体才压得住，
+   所以选择器带上 .entry-live 前缀（权重 (0,2,0) > (0,1,1)），而不是靠 !important。 */
+.entry-seeds__head { display: flex; align-items: center; gap: 7px; padding-bottom: 6px; }
+.entry-seeds__head > svg { flex-shrink: 0; color: var(--ui-accent); }
+.entry-seeds__head h2 { margin: 0; color: var(--ui-text-1); font-size: 12px; font-weight: 600; }
+.entry-seeds__meta { margin-left: auto; color: var(--ui-text-3); font-size: 11px; font-variant-numeric: tabular-nums; }
+.entry-seeds__list { padding: 0; margin: 0; list-style: none; }
+.entry-live .entry-seeds__item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 28px;
+  padding: 3px 6px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--ui-text-2);
+  font-size: 13px;
+  line-height: 1.6;
+  text-align: left;
+  transition: background var(--motion-duration-quick), color var(--motion-duration-quick);
+}
+.entry-live .entry-seeds__item:hover,
+.entry-live .entry-seeds__item:focus-visible { background: var(--ui-surface-hover); color: var(--ui-text-1); }
+.entry-seeds__item-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.entry-seeds__add { flex-shrink: 0; color: var(--ui-text-3); transition: color var(--motion-duration-quick); }
+.entry-live .entry-seeds__item:hover .entry-seeds__add,
+.entry-live .entry-seeds__item:focus-visible .entry-seeds__add { color: var(--ui-accent); }
+
+/* 文字格的换场：标题与建议卡都是「同一处内容被换掉」，把两侧内容叠进同一个网格单元，
+   都不脱离文档流，于是外框不重画、中间也不会出现空格子把下面的输入卡顶动一下。
+   两张字一前一后（先退后进、不重叠），见 entry-surface.tsx 的 SWAP_VARIANTS。 */
+.entry-swap { display: grid; }
+.entry-swap > * { grid-area: 1 / 1; min-width: 0; }
+
 /* 输入卡外框由外壳持有，卡内内容由每一格替换；卡片外观由 .dr-composer / .voices-composer 提供。 */
 
 /* 窄容器：收窄版心与留白，观察对象是研究容器而不是视口。 */
@@ -88,7 +125,7 @@
   .entry-emblem svg { width: 40px; height: 40px; }
   .entry-title { font-size: 25px; }
   .entry-seeds { margin-bottom: 20px; padding: 12px 12px 8px; }
-  .entry-seeds .dr-seed, .entry-seeds .voices-seed { font-size: 12px !important; }
-  /* 窄容器只留最新几条，避免把提问卡片顶到很下面。 */
-  .entry-seeds .dr-seeds__list li:nth-child(n + 4) { display: none; }
+  .entry-live .entry-seeds__item { font-size: 12px; }
+  /* 窄容器只留前三条，避免把提问卡片顶到很下面；两个入口取同一条数，高度仍一致。 */
+  .entry-seeds__list li:nth-child(n + 4) { display: none; }
 }
