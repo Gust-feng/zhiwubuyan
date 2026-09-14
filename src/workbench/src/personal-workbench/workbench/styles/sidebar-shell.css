@@ -1,0 +1,130 @@
+.ui-sidebar {
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--ui-accent) 2.5%, var(--ui-surface)), var(--ui-surface) 58%);
+  color: var(--ui-text-1);
+}
+
+.ui-sidebar__inner {
+  position: relative;
+}
+
+.ui-sidebar__brand {
+  display: grid;
+  flex: 0 0 auto;
+  gap: 5px;
+  padding: 36px 22px 30px;
+}
+
+.ui-sidebar__brand-name {
+  color: color-mix(in srgb, var(--ui-accent) 22%, var(--ui-text-1));
+  font-family: "Noto Serif SC Variable", var(--reading-serif);
+  font-size: 25px;
+  font-weight: 700;
+  letter-spacing: .09em;
+  line-height: 1.2;
+}
+
+.ui-sidebar__brand-line {
+  color: var(--ui-text-3);
+  font-family: "Noto Serif SC Variable", var(--reading-serif);
+  font-size: 10px;
+  letter-spacing: .15em;
+  white-space: nowrap;
+}
+
+.ui-sidebar__nav {
+  padding: 14px 12px;
+}
+
+.ui-sidebar__nav-list {
+  display: grid;
+  gap: 7px;
+}
+
+.ui-sidebar__nav-row {
+  display: grid;
+  width: 100%;
+  height: 44px;
+  grid-template-columns: 30px minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  padding: 0 12px;
+  color: color-mix(in srgb, var(--ui-text-2) 86%, var(--ui-accent));
+  cursor: pointer;
+  font-family: "Noto Serif SC Variable", var(--reading-serif);
+  font-size: 14px;
+  letter-spacing: .04em;
+  transition:
+    background-color var(--motion-duration-quick) ease,
+    border-color var(--motion-duration-quick) ease,
+    color var(--motion-duration-quick) ease;
+}
+
+.ui-sidebar__nav-row:hover {
+  background: color-mix(in srgb, var(--ui-accent) 3.5%, transparent);
+  color: var(--ui-text-1);
+}
+
+.ui-sidebar__nav-row[data-active='true'] {
+  border-color: color-mix(in srgb, var(--ui-accent) 6%, transparent);
+  background: color-mix(in srgb, var(--ui-accent) 9%, transparent);
+  color: var(--ui-accent);
+}
+
+.ui-sidebar__nav-icon {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+}
+
+.ui-sidebar__nav-row[data-active='true'] .ui-sidebar__nav-icon {
+  border-radius: 50%;
+  background: var(--ui-accent);
+  color: var(--ui-accent-fg);
+}
+
+.ui-sidebar__nav-copy {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 4px;
+  overflow: hidden;
+  opacity: 0;
+  transform: translateX(-5px);
+  transition: opacity 160ms ease, transform 160ms ease;
+  white-space: nowrap;
+}
+
+.ui-sidebar__nav-copy[data-visible='true'] {
+  opacity: 1;
+  transform: none;
+}
+
+.ui-sidebar__credo {
+  display: grid;
+  flex: 0 0 auto;
+  gap: 10px;
+  margin: 0;
+  padding: 0 24px 18px;
+  color: var(--ui-text-3);
+  font-family: "Noto Serif SC Variable", var(--reading-serif);
+  font-size: 10.5px;
+  letter-spacing: .08em;
+}
+
+.ui-sidebar__credo span {
+  width: 22px;
+  height: 1px;
+  background: color-mix(in srgb, var(--ui-accent) 38%, var(--ui-border));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ui-sidebar__nav-row,
+  .ui-sidebar__nav-copy {
+    transition: none;
+  }
+}

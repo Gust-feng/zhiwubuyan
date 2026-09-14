@@ -15,79 +15,22 @@ export interface SidebarNavRowProps {
 
 /** Fixed-geometry navigation row used by the workbench rail. */
 export function SidebarNavRow({ active, onClick, labelsVisible, collapsed, icon, label, meta }: SidebarNavRowProps) {
-  const [hovered, setHovered] = useState(false)
-
   return (
     <button
+      type="button"
       onClick={onClick}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-      className="relative w-full text-sm"
-      style={{
-        display: 'block',
-        height: 32,
-        transition: 'color 120ms ease',
-        color: active ? 'var(--ui-accent)' : hovered ? 'var(--ui-text-1)' : 'var(--ui-text-2)',
-      }}
+      className="ui-sidebar__nav-row"
+      data-active={active || undefined}
+      aria-current={active ? 'page' : undefined}
     >
-      <span
-        aria-hidden="true"
-        style={{
-          position: 'absolute',
-          top: 0,
-          bottom: 0,
-          left: 0,
-          width: collapsed ? 40 : '100%',
-          borderRadius: 8,
-          background: active ? 'var(--ui-accent-bg)' : hovered ? 'rgba(45,40,34,0.04)' : 'transparent',
-          transition: 'background 120ms ease, width 240ms cubic-bezier(0.4,0,0.2,1)',
-        }}
-      />
-
-      {active && (
-        <span aria-hidden="true" style={{
-          position: 'absolute',
-          left: 3,
-          top: '50%',
-          transform: 'translateY(-50%)',
-          width: 3,
-          height: 14,
-          borderRadius: 2,
-          background: 'var(--ui-accent)',
-          zIndex: 1,
-        }}/>
-      )}
-
-      <span style={{
-        position: 'absolute',
-        left: 10,
-        top: '50%',
-        transform: 'translateY(-50%)',
-        width: 20,
-        height: 20,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-      }}>
+      <span className="ui-sidebar__nav-icon" aria-hidden="true">
         {icon}
       </span>
-
-      <span style={{
-        position: 'absolute',
-        left: 38,
-        right: 10,
-        top: '50%',
-        transform: labelsVisible ? 'translateY(-50%)' : 'translateY(-50%) translateX(-6px)',
-        display: 'flex',
-        alignItems: 'center',
-        gap: 4,
-        opacity: labelsVisible ? 1 : 0,
-        transition: 'opacity 160ms ease, transform 160ms ease',
-        overflow: 'hidden',
-        whiteSpace: 'nowrap',
-        minWidth: 0,
-        pointerEvents: labelsVisible ? 'auto' : 'none',
-      }}>
+      <span
+        className="ui-sidebar__nav-copy"
+        data-visible={labelsVisible || undefined}
+        aria-hidden={!labelsVisible || collapsed}
+      >
         <span className="flex-1 text-left truncate">{label}</span>
         {meta && <span style={{ flexShrink: 0 }}>{meta}</span>}
       </span>

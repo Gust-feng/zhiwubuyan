@@ -1,36 +1,114 @@
-/* 首页采用知乎式视觉：白卡、发丝线、蓝做标点、灰蓝元信息。
-   颜色走工作台 --ui-* 令牌，跟随明/暗主题整体切换。 */
-.ui-home {
+/* 首页用留白、衬线标题与发丝线建立阅读层级；蓝色只承担标点和动作。 */
+.ui-view.ui-home {
   position: relative;
   isolation: isolate;
   min-height: 0;
   flex: 1;
   overflow-y: auto;
-  background: var(--ui-canvas);
+  background: var(--ui-surface);
   color: var(--ui-text-1);
   font-family: inherit;
 }
 
-.ui-home__frame {
-  width: min(1080px, 100%);
+.ui-view__frame.ui-home__frame {
+  width: min(1240px, 100%);
   margin: 0 auto;
-  padding: 28px 28px 56px;
+  padding: 0 42px 60px;
 }
 
-/* ── 刊头：日期 ───────────────────────────────────────────── */
+/* ── 个人刊头 ─────────────────────────────────────────────── */
 
 .ui-home__masthead {
+  position: relative;
   display: flex;
-  align-items: baseline;
-  justify-content: flex-end;
-  gap: 16px;
-  padding: 2px 2px 14px;
+  min-height: 250px;
+  align-items: center;
+  flex-direction: column;
+  justify-content: center;
+  padding: 30px 210px 24px;
+  text-align: center;
+}
+
+.ui-home__identity-avatar {
+  position: relative;
+  display: grid;
+  width: 92px;
+  height: 92px;
+  overflow: visible;
+  place-items: center;
+  border: 4px solid var(--ui-surface);
+  border-radius: 50%;
+  background: var(--ui-accent-bg);
+  color: var(--ui-accent);
+  font-family: "Noto Serif SC Variable", var(--reading-serif);
+  font-size: 31px;
+  box-shadow: 0 10px 30px color-mix(in srgb, var(--ui-accent) 12%, transparent);
+}
+
+.ui-home__identity-avatar img {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  border-radius: inherit;
+  object-fit: cover;
+}
+
+.ui-home__identity-avatar i {
+  position: absolute;
+  right: 1px;
+  bottom: 4px;
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--ui-surface);
+  border-radius: 50%;
+  background: var(--ui-status-done);
+}
+
+.ui-home__masthead h1 {
+  margin: 9px 0 0;
+  color: color-mix(in srgb, var(--ui-accent) 14%, var(--ui-text-1));
+  font-family: "Noto Serif SC Variable", var(--reading-serif);
+  font-size: 29px;
+  font-weight: 700;
+  letter-spacing: .1em;
+  line-height: 1.25;
+}
+
+.ui-home__masthead:not([data-personalized='true']) h1 {
+  margin-top: 6px;
+  font-size: clamp(42px, 5vw, 58px);
+}
+
+.ui-home__masthead > p {
+  margin: 5px 0 0;
+  color: var(--ui-text-3);
+  font-family: "Noto Serif SC Variable", var(--reading-serif);
+  font-size: 12px;
+  line-height: 1.7;
+}
+
+.ui-home__masthead blockquote {
+  position: absolute;
+  top: 54px;
+  right: 0;
+  width: 196px;
+  margin: 0;
+  color: var(--ui-text-3);
+  font-family: "Noto Serif SC Variable", var(--reading-serif);
+  font-size: 11.5px;
+  line-height: 1.9;
+  text-align: left;
 }
 
 .ui-home__date {
   flex: 0 0 auto;
   color: var(--ui-text-3);
-  font-size: 13px;
+  font-size: 10.5px;
+  letter-spacing: .06em;
+}
+
+.ui-home__masthead[data-personalized='true'] .ui-home__date {
+  margin-top: 10px;
 }
 
 /* ── 知乎式搜索框：全局入口，但不是唯一主角 ────────────────── */
@@ -91,13 +169,13 @@
   line-height: 1.4;
 }
 
-/* ── 多核网格：四个核心等权切入，谁也不是主角 ───────────────── */
+/* ── 检索结果与直答 ────────────────────────────────────────── */
 
 /* 首页正文：检索条下方的问答面板与内容流按竖向堆叠。 */
 .ui-home__content {
   display: grid;
   gap: 16px;
-  margin-top: 16px;
+  margin-top: 18px;
 }
 
 .ui-home__grid {
@@ -109,23 +187,25 @@
 }
 
 .ui-home__core {
-  border: 1px solid var(--ui-border);
-  border-radius: 8px;
-  background: var(--ui-surface);
+  min-width: 0;
+  background: transparent;
   overflow: hidden;
 }
 
 .ui-home__core-head {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  padding: 12px 16px;
-  border-bottom: 1px solid var(--ui-border);
+  display: grid;
+  min-height: 78px;
+  align-items: baseline;
+  grid-template-columns: 18px minmax(0, 1fr) auto auto;
+  gap: 5px 8px;
+  padding: 22px 22px 14px;
 }
 
 .ui-home__core-glyph {
+  grid-column: 1;
+  grid-row: 1;
   flex: 0 0 auto;
-  color: var(--ui-text-3);
+  color: var(--ui-accent);
 }
 
 .ui-home__core-glyph.is-accent {
@@ -133,30 +213,40 @@
 }
 
 .ui-home__core-name {
+  grid-column: 2;
+  grid-row: 1;
   margin: 0;
-  color: var(--ui-text-1);
-  font-size: 15px;
-  font-weight: 600;
+  color: color-mix(in srgb, var(--ui-accent) 12%, var(--ui-text-1));
+  font-family: "Noto Serif SC Variable", var(--reading-serif);
+  font-size: 21px;
+  font-weight: 700;
+  letter-spacing: .05em;
   line-height: 1.4;
 }
 
 .ui-home__core-role {
+  grid-column: 2 / -1;
+  grid-row: 2;
   color: var(--ui-text-3);
-  font-size: 12px;
+  font-family: "Noto Serif SC Variable", var(--reading-serif);
+  font-size: 10.5px;
   line-height: 1.4;
 }
 
 .ui-home__core-meta {
-  margin-left: auto;
+  grid-column: 3;
+  grid-row: 1;
   color: var(--ui-text-3);
-  font-size: 12px;
+  font-size: 9.5px;
 }
 
 .ui-home__core-more {
+  grid-column: 4;
+  grid-row: 1;
   flex: 0 0 auto;
   padding: 2px 5px;
   border: 0;
-  border-radius: 5px;
+  border-radius: 4px;
   background: transparent;
   color: var(--ui-accent);
   font-family: inherit;
@@ -181,7 +271,7 @@
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: baseline;
   gap: 2px 12px;
-  padding: 10px 42px 10px 16px;
+  padding: 11px 38px 11px 22px;
   border-bottom: 1px solid var(--ui-border);
   color: inherit;
   text-decoration: none;
@@ -207,7 +297,7 @@ a.ui-home__row:hover .ui-home__row-title {
 .ui-home__row-open {
   position: absolute;
   top: 50%;
-  right: 16px;
+  right: 20px;
   transform: translateY(-50%);
   width: 13px;
   height: 13px;
@@ -246,7 +336,8 @@ a.ui-home__row:hover .ui-home__row-open {
   text-overflow: ellipsis;
   white-space: nowrap;
   color: var(--ui-text-1);
-  font-size: 13.5px;
+  font-family: "Noto Serif SC Variable", var(--reading-serif);
+  font-size: 12.5px;
   font-weight: 500;
   line-height: 1.55;
   transition: color 140ms ease;
@@ -259,7 +350,7 @@ a.ui-home__row:hover .ui-home__row-open {
   text-overflow: ellipsis;
   white-space: nowrap;
   color: var(--ui-text-3);
-  font-size: 12px;
+  font-size: 10.5px;
   line-height: 1.5;
 }
 
@@ -330,11 +421,11 @@ a.ui-home__row:hover .ui-home__row-open {
 }
 
 .ui-home__core-notice {
-  padding: 22px 16px;
+  padding: 28px 22px;
   color: var(--ui-text-3);
   font-size: 12.5px;
   line-height: 1.6;
-  text-align: center;
+  text-align: left;
 }
 
 .ui-home__core-notice button {
@@ -353,7 +444,7 @@ a.ui-home__row:hover .ui-home__row-open {
   border-color: color-mix(in srgb, var(--ui-accent) 45%, transparent);
 }
 
-/* ── 提问入口：降为第二动作，紧凑条 ───────────────────────── */
+/* ── 提问入口 ─────────────────────────────────────────────── */
 
 .ui-home__composer {
   margin-top: 16px;
@@ -361,6 +452,23 @@ a.ui-home__row:hover .ui-home__row-open {
   border-radius: 8px;
   background: var(--ui-surface);
   overflow: hidden;
+}
+
+.ui-home > .ui-home__frame > .uha {
+  height: 50px;
+  border-radius: 7px;
+  box-shadow: 0 7px 24px color-mix(in srgb, var(--ui-accent) 5%, transparent);
+}
+
+.ui-home > .ui-home__frame > .uha:focus-within {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ui-accent) 10%, transparent);
+}
+
+.ui-home .uhf,
+.ui-home .uha-panel {
+  border-right: 0;
+  border-left: 0;
+  border-radius: 0;
 }
 
 .ui-home__composer .ui-conversation-composer__input {
@@ -384,9 +492,7 @@ a.ui-home__row:hover .ui-home__row-open {
 /* ── 首页底部：登录用户的轻量个人摘要 ─────────────────────── */
 
 .ui-home__personal {
-  margin-top: 30px;
-  padding-top: 22px;
-  border-top: 1px solid var(--ui-border);
+  margin-top: 48px;
 }
 
 .ui-home__personal-head {
@@ -394,18 +500,35 @@ a.ui-home__row:hover .ui-home__row-open {
   align-items: flex-end;
   justify-content: space-between;
   gap: 16px;
-  margin-bottom: 12px;
-  padding: 0 2px;
+  margin-bottom: 20px;
+  padding: 0;
+}
+
+.ui-home__personal-head > div {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  align-items: center;
+  gap: 4px 10px;
+}
+
+.ui-home__section-rule {
+  width: 16px;
+  height: 3px;
+  border-radius: 999px;
+  background: var(--ui-accent);
 }
 
 .ui-home__personal-head h2 {
   margin: 0;
-  color: var(--ui-text-1);
-  font-size: 15px;
-  font-weight: 600;
+  color: color-mix(in srgb, var(--ui-accent) 12%, var(--ui-text-1));
+  font-family: "Noto Serif SC Variable", var(--reading-serif);
+  font-size: 23px;
+  font-weight: 700;
+  letter-spacing: .06em;
 }
 
 .ui-home__personal-head p {
+  grid-column: 2;
   margin: 3px 0 0;
   color: var(--ui-text-3);
   font-size: 12px;
@@ -415,21 +538,25 @@ a.ui-home__row:hover .ui-home__row-open {
 .ui-home__personal-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
   align-items: start;
+  border-top: 1px solid var(--ui-border);
+  border-bottom: 1px solid var(--ui-border);
 }
 
-.ui-home__personal-grid .ui-home__core-head {
-  padding: 11px 13px;
+.ui-home__personal-grid .ui-home__core {
+  min-height: 272px;
+}
+
+.ui-home__personal-grid .ui-home__core + .ui-home__core {
+  border-left: 1px solid var(--ui-border);
 }
 
 .ui-home__personal-grid .ui-home__row {
-  min-height: 54px;
-  padding: 9px 34px 9px 13px;
+  min-height: 58px;
 }
 
 .ui-home__personal-grid .ui-home__row-open {
-  right: 12px;
+  right: 20px;
 }
 
 .ui-home__personal-grid .ui-home__followers {
@@ -438,14 +565,14 @@ a.ui-home__row:hover .ui-home__row-open {
 
 .ui-home__personal-prompt {
   display: flex;
-  min-height: 62px;
+  min-height: 74px;
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  padding: 14px 16px;
-  border: 1px solid var(--ui-border);
-  border-radius: 8px;
-  background: var(--ui-surface);
+  padding: 16px 0;
+  border-top: 1px solid var(--ui-border);
+  border-bottom: 1px solid var(--ui-border);
+  background: transparent;
   color: var(--ui-text-3);
   font-size: 12.5px;
 }
@@ -453,9 +580,8 @@ a.ui-home__row:hover .ui-home__row-open {
 .ui-home__personal-prompt button {
   flex: 0 0 auto;
   padding: 5px 11px;
-  border: 1px solid var(--ui-border);
-  border-radius: 7px;
-  background: var(--ui-surface);
+  border: 0;
+  background: transparent;
   color: var(--ui-accent);
   font-family: inherit;
   font-size: 12px;
@@ -463,7 +589,7 @@ a.ui-home__row:hover .ui-home__row-open {
 }
 
 .ui-home__personal-prompt button:hover {
-  background: var(--ui-accent-bg);
+  text-decoration: underline;
 }
 
 @media (max-width: 860px) {
@@ -472,13 +598,44 @@ a.ui-home__row:hover .ui-home__row-open {
   }
 
   .ui-home__personal-grid {
-    grid-template-columns: minmax(0, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .ui-home__personal-grid .ui-home__core:nth-child(3) {
+    grid-column: 1 / -1;
+    border-top: 1px solid var(--ui-border);
+    border-left: 0;
   }
 }
 
 @media (max-width: 720px) {
-  .ui-home__frame {
-    padding: 20px 16px 40px;
+  .ui-view__frame.ui-home__frame {
+    padding: 0 18px 40px;
+  }
+
+  .ui-home__masthead {
+    min-height: 220px;
+    padding: 28px 0 20px;
+  }
+
+  .ui-home__masthead blockquote {
+    display: none;
+  }
+
+  .ui-home__personal-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .ui-home__personal-grid .ui-home__core,
+  .ui-home__personal-grid .ui-home__core:nth-child(3) {
+    min-height: auto;
+    grid-column: auto;
+    border-top: 1px solid var(--ui-border);
+    border-left: 0;
+  }
+
+  .ui-home__personal-grid .ui-home__core:first-child {
+    border-top: 0;
   }
 }
 

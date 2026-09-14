@@ -1,10 +1,10 @@
-/* 左上角账号区：这里只呈现当前知乎账号，不重复产品标志与品牌文案。 */
+/* 账号入口位于侧栏底部，登录与“我的知乎”行为保持同一入口。 */
 .ui-sidebar-account {
   position: relative;
   flex: 0 0 auto;
   min-width: 0;
-  border-bottom: 1px solid var(--ui-border);
-  padding: 12px 10px;
+  border-top: 1px solid var(--ui-border);
+  padding: 10px 12px 8px;
 }
 
 .ui-sidebar-account__trigger {
@@ -12,11 +12,11 @@
   width: 100%;
   min-width: 0;
   align-items: center;
-  gap: 10px;
+  gap: 9px;
   border: 1px solid transparent;
   border-radius: 10px;
   background: transparent;
-  padding: 8px 10px;
+  padding: 7px 9px;
   color: var(--ui-text-1);
   cursor: pointer;
   text-align: left;
@@ -33,6 +33,11 @@
   background: var(--ui-accent-bg);
 }
 
+.ui-sidebar-account[data-active='true'] .ui-sidebar-account__trigger {
+  background: var(--ui-accent-bg);
+  color: var(--ui-accent);
+}
+
 .ui-sidebar-account__trigger:disabled {
   cursor: default;
 }
@@ -45,15 +50,15 @@
 
 .ui-sidebar-account__avatar {
   display: grid;
-  width: 36px;
-  height: 36px;
-  flex: 0 0 36px;
+  width: 32px;
+  height: 32px;
+  flex: 0 0 32px;
   place-items: center;
   border-radius: 50%;
   object-fit: cover;
   background: var(--ui-surface-hover);
   color: var(--ui-text-2);
-  font-size: 15px;
+  font-size: 13px;
   font-weight: 600;
 }
 
@@ -75,8 +80,8 @@
   max-width: 100%;
   overflow: hidden;
   color: var(--ui-text-1);
-  font-size: 15px;
-  font-weight: 600;
+  font-size: 13px;
+  font-weight: 500;
   line-height: 1.25;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -112,7 +117,8 @@
   position: absolute;
   left: 8px;
   right: 8px;
-  top: calc(100% - 6px);
+  top: auto;
+  bottom: calc(100% - 4px);
   z-index: 90;
   display: grid;
   gap: 2px;

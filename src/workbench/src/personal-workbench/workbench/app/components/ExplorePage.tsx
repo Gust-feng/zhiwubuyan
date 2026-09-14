@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { BookOpen, Compass, ExternalLink, Flame, MessageCircle } from 'lucide-react'
+import { BookOpen, ExternalLink, Flame } from 'lucide-react'
 import { useZhihuLogin } from '@ui/features/auth/login-request'
 import { useZhihuSession } from '@ui/workbench/zhihu-account'
 import { FeedCard } from './home-feed-view'
@@ -21,12 +21,12 @@ export function ExplorePage() {
   const retry = (): void => setRefreshKey((current) => current + 1)
 
   return (
-    <div className="ui-view">
+    <div className="ui-view ui-explore">
       <div className="ui-view__frame ui-explore__frame">
         <header className="ui-explore__header">
-          <div>
-            <span className="ui-explore__eyebrow"><Compass size={13} aria-hidden />{formatDateLabel()}</span>
-            <h1>探索</h1>
+          <h1>探索</h1>
+          <div className="ui-explore__context">
+            <span>{formatDateLabel()}</span>
             <p>从今天正在发生的讨论里，找到值得继续追问的问题。</p>
           </div>
         </header>
@@ -38,7 +38,7 @@ export function ExplorePage() {
           </main>
           <aside className="ui-explore__aside" aria-label="探索侧栏">
             <HotRanking feed={feed} onRetry={retry} />
-            <KnowledgePicks />
+            <KnowledgePicks feed={feed} onRetry={retry} />
           </aside>
         </div>
       </div>
@@ -51,9 +51,7 @@ function FeatureIssue({ feed, onRetry }: { readonly feed: HomeFeedState; readonl
   return (
     <section className="ui-explore__feature" aria-labelledby="explore-feature-title">
       <div className="ui-explore__section-head">
-        <span className="ui-explore__section-glyph is-hot"><Flame size={15} aria-hidden /></span>
-        <h2 id="explore-feature-title">主议题</h2>
-        <span>热榜第 1 条</span>
+        <h2 id="explore-feature-title">今日主议题</h2>
         <UpdatedAt feed={feed} />
       </div>
 
@@ -75,7 +73,6 @@ function FeatureCard({ item }: { readonly item: HomeFeedItem }) {
   )
   return (
     <article className="ui-explore__feature-body">
-      <span className="ui-explore__feature-rank" aria-hidden>TOP 1</span>
       {title}
       {item.summary !== '' && <p className="ui-explore__feature-summary">{item.summary}</p>}
       <div className="ui-explore__feature-meta">
@@ -97,9 +94,8 @@ function DiscussionList({ feed, onRetry }: { readonly feed: HomeFeedState; reado
   return (
     <section className="ui-explore__discussion" aria-labelledby="explore-discussion-title">
       <div className="ui-explore__section-head">
-        <span className="ui-explore__section-glyph"><MessageCircle size={15} aria-hidden /></span>
         <h2 id="explore-discussion-title">正在讨论</h2>
-        <span>热榜第 2–6 条</span>
+        <span>来自今日热榜</span>
       </div>
       {feed.status === 'loading' && (
         <div className="ui-explore__list-skeleton" aria-label="正在获取讨论">
@@ -110,7 +106,12 @@ function DiscussionList({ feed, onRetry }: { readonly feed: HomeFeedState; reado
       {feed.status === 'ready' && items.length === 0 && <ExploreNotice message="暂时没有更多讨论。" />}
       {feed.status === 'ready' && items.length > 0 && (
         <ol className="uhf__list ui-explore__discussion-list">
-          {items.map((item) => <li key={item.id}><FeedCard item={item} /></li>)}
+          {items.map((item, index) => (
+            <li key={item.id}>
+              <span className="ui-explore__discussion-rank" aria-hidden>{String(index + 1).padStart(2, '0')}</span>
+              <FeedCard item={item} />
+            </li>
+          ))}
         </ol>
       )}
     </section>
@@ -123,7 +124,8 @@ function HotRanking({ feed, onRetry }: { readonly feed: HomeFeedState; readonly 
     <section className="ui-explore__side-card" aria-labelledby="explore-hot-title">
       <div className="ui-explore__side-head">
         <Flame size={15} className="is-hot" aria-hidden />
-        <h2 id="explore-hot-title">热榜 Top 5</h2>
+        <h2 id="explore-hot-title">知乎热榜</h2>
+        <span>Top 5</span>
       </div>
       {feed.status === 'loading' && (
         <div className="ui-explore__side-skeleton" aria-label="正在获取热榜">
@@ -141,28 +143,59 @@ function HotRanking({ feed, onRetry }: { readonly feed: HomeFeedState; readonly 
   )
 }
 
-function KnowledgePicks() {
+/**
+ * 知识精选。未登录时给出**公开**的问题入口（来自同一份热榜），而不是留一堵登录墙：
+ * 个性化推荐按账号画像生成、必须登录才拿得到，这里如实说明差别，不用假数据顶替。
+ */
+function KnowledgePicks({ feed, onRetry }: { readonly feed: HomeFeedState; readonly onRetry: () => void }) {
   const { state: sessionState } = useZhihuSession()
   const { openLogin } = useZhihuLogin()
+  const personalized = sessionState.status === 'ready' && sessionState.session.authenticated
   return (
     <section className="ui-explore__side-card" aria-labelledby="explore-knowledge-title">
       <div className="ui-explore__side-head">
         <BookOpen size={15} aria-hidden />
-        <h2 id="explore-knowledge-title">知识精选</h2>
+        <h2 id="explore-knowledge-title">{personalized ? '知识精选' : '值得追问的问题'}</h2>
       </div>
       {sessionState.status === 'loading' && (
         <div className="ui-explore__side-skeleton" aria-label="正在确认登录状态">
           {Array.from({ length: 3 }, (_, index) => <span key={index} />)}
         </div>
       )}
-      {sessionState.status === 'error' && <ExploreNotice message={sessionState.message} compact />}
-      {sessionState.status === 'ready' && !sessionState.session.authenticated && (
-        <div className="ui-explore__login-note">
-          <p>登录后查看按你的知乎画像推荐的问题。</p>
-          <button type="button" onClick={() => openLogin('explore')}>登录查看</button>
-        </div>
+      {sessionState.status === 'ready' && personalized && <KnowledgeList />}
+      {/* 未登录：给公开问题入口，并说明登录后这里会换成按画像推荐的版本。 */}
+      {sessionState.status === 'ready' && !personalized && (
+        <>
+          {feed.status === 'loading' && (
+            <div className="ui-explore__side-skeleton" aria-label="正在获取热榜">
+              {Array.from({ length: 3 }, (_, index) => <span key={index} />)}
+            </div>
+          )}
+          {feed.status === 'error' && <ExploreNotice message="暂时无法获取问题。" onRetry={onRetry} compact />}
+          {feed.status === 'ready' && feed.items.length === 0 && (
+            <ExploreNotice message="暂时没有可展示的问题。" compact />
+          )}
+          {feed.status === 'ready' && feed.items.length > 0 && (
+            <>
+              <ol className="ui-home__core-list">
+                {feed.items.slice(5, 8).map((item) => (
+                  <li key={item.id}>
+                    <a className="ui-explore__pick" href={item.url} target="_blank" rel="noreferrer">
+                      <ExternalLink size={12} aria-hidden />
+                      <span>{item.title}</span>
+                    </a>
+                  </li>
+                ))}
+              </ol>
+              <div className="ui-explore__login-note">
+                <p>登录后这里会换成按你的知乎画像推荐的问题。</p>
+                <button type="button" onClick={() => openLogin('explore')}>登录查看</button>
+              </div>
+            </>
+          )}
+        </>
       )}
-      {sessionState.status === 'ready' && sessionState.session.authenticated && <KnowledgeList />}
+      {sessionState.status === 'error' && <ExploreNotice message={sessionState.message} compact />}
     </section>
   )
 }

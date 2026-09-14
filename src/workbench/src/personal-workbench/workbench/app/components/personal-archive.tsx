@@ -1,280 +1,280 @@
-import type { ReactNode } from 'react'
-import { Bookmark, Layers, Sparkles, TrendingUp, type LucideIcon } from 'lucide-react'
+import { ArrowRight, Bookmark, FileText, Network, RefreshCw, UsersRound, type LucideIcon } from 'lucide-react'
 import { formatCount } from './home-feeds'
 import type {
   ArchiveCollectionEntry,
   ArchiveFolloweeTier,
   ArchiveQuestionCluster,
-  ArchiveResponseLabel,
+  ArchiveResponseItem,
   PersonalArchive,
 } from './use-personal-archive'
 import './personal-archive.css'
 
-/**
- * 个人档案视图：把登录用户自己的创作、收藏与关注按规则组织成几个面。
- *
- * 每一屏的措辞都严格对应后端的可验证规则——同题、比例、天数、粉丝分层、关键词命中，
- * 不含对内容质量或用户兴趣的判断；档案覆盖不全时在页首如实标注，不显示为完整数据。
- */
-
-export function PersonalArchiveView({ archive }: { readonly archive: PersonalArchive }) {
-  const { views, counts, truncated, persistent, stale, syncedAt } = archive
-  const { creationYear, responseStructure, collectionTimeline, followeeTiers, headlineKeywords } = views
-
+/** 个人档案只重排既有 DTO；同步、聚合和统计规则仍由应用层拥有。 */
+export function PersonalArchiveView({ archive, onRefresh }: {
+  readonly archive: PersonalArchive
+  readonly onRefresh: () => void
+}) {
+  const { views, counts } = archive
   return (
     <div className="ui-archive">
-      <ArchiveNotice
-        truncated={truncated}
-        persistent={persistent}
-        stale={stale}
-        syncedAt={syncedAt}
-        counts={counts}
-      />
-
-      <ArchiveBlock
-        icon={Layers}
-        title="同题聚合"
-        hint="同一个问题下你写过或收藏过的内容"
-        empty="还没有出现「同一个问题下有多条内容」的情况。"
-        hasContent={views.questionClusters.length > 0}
-      >
-        <ul className="ui-archive__clusters">
-          {views.questionClusters.map((cluster) => <ClusterCard key={cluster.questionId} cluster={cluster} />)}
-        </ul>
-      </ArchiveBlock>
-
-      <ArchiveBlock
-        icon={TrendingUp}
-        title="创作年轮"
-        hint="按天统计的创作节奏与反响结构"
-        empty="还没有可统计的创作时间。"
-        hasContent={creationYear.total > 0 || responseStructure.length > 0}
-      >
-        <CreationYearPanel year={creationYear} />
-        {responseStructure.length > 0 && (
-          <ul className="ui-archive__responses">
-            {responseStructure.slice(0, 12).map((item) => (
-              <li key={item.url}>
-                <a href={item.url} target="_blank" rel="noreferrer">
-                  <span className="ui-archive__response-title">{item.title}</span>
-                  <span className="ui-archive__response-meta">
-                    {item.label !== undefined && (
-                      <span className={`ui-archive__label ui-archive__label--${item.label}`}>{labelText(item.label)}</span>
-                    )}
-                    赞同 {formatCount(item.likeCount)} · 评论 {formatCount(item.commentCount)} · 收藏 {formatCount(item.favoriteCount)}
-                  </span>
-                </a>
-              </li>
-            ))}
-          </ul>
-        )}
-      </ArchiveBlock>
-
-      <ArchiveBlock
-        icon={Bookmark}
-        title="收藏时间线"
-        hint="按收藏月份排列，较早的单独列出以便重温"
-        empty="还没有带收藏时间的条目。"
-        hasContent={collectionTimeline.buckets.length > 0 || collectionTimeline.dormant.length > 0}
-      >
-        {collectionTimeline.buckets.length > 0 && (
-          <ul className="ui-archive__timeline">
-            {collectionTimeline.buckets.map((bucket) => (
-              <li key={bucket.period}>
-                <span className="ui-archive__period">{bucket.period}</span>
-                <span className="ui-archive__period-count">{bucket.count} 条</span>
-              </li>
-            ))}
-          </ul>
-        )}
-        {collectionTimeline.dormant.length > 0 && (
-          <div className="ui-archive__dormant">
-            <h4>收藏超过 30 天</h4>
-            <ul>
-              {collectionTimeline.dormant.slice(0, 8).map((item) => (
-                <li key={item.id}><CollectionEntryLink item={item} /></li>
-              ))}
-            </ul>
-          </div>
-        )}
-      </ArchiveBlock>
-
-      <ArchiveBlock
-        icon={Sparkles}
-        title="关注圈层"
-        hint="按粉丝数分层，并统计简介里的高频词"
-        empty="还没有关注数据。"
-        hasContent={followeeTiers.some((tier) => tier.count > 0)}
-      >
-        <ul className="ui-archive__tiers">
-          {followeeTiers.map((tier) => <TierRow key={tier.tier} tier={tier} />)}
-        </ul>
-        {headlineKeywords.length > 0 && (
-          <div className="ui-archive__keywords">
-            {headlineKeywords.map((keyword) => (
-              <span key={keyword.keyword} title={keyword.sampleNames.join('、')}>
-                {keyword.keyword} <small>{keyword.count}</small>
-              </span>
-            ))}
-          </div>
-        )}
-      </ArchiveBlock>
+      <ProfileHero archive={archive} onRefresh={onRefresh} />
+      <FootprintSection archive={archive} />
+      <div className="ui-archive__panels" aria-label="个人档案摘要">
+        <CreationPanel count={counts.creations} items={views.responseStructure} />
+        <CollectionPanel count={counts.collections} timeline={views.collectionTimeline} />
+        <FollowPanel count={counts.followees} tiers={views.followeeTiers} keywords={views.headlineKeywords} />
+        <KnowledgePanel clusters={views.questionClusters} />
+      </div>
+      <ArchiveStatus archive={archive} />
     </div>
   )
 }
 
-function ArchiveNotice({ truncated, persistent, stale, syncedAt, counts }: {
-  readonly truncated: PersonalArchive['truncated']
-  readonly persistent: boolean
-  readonly stale: boolean
-  readonly syncedAt: string
-  readonly counts: PersonalArchive['counts']
+function ProfileHero({ archive, onRefresh }: {
+  readonly archive: PersonalArchive
+  readonly onRefresh: () => void
 }) {
-  const clipped: string[] = []
-  if (truncated.creations) clipped.push('创作')
-  if (truncated.followees) clipped.push('关注')
-  if (truncated.favlistContents) clipped.push('收藏夹内容')
+  const profile = archive.profile
+  const name = profile?.fullname ?? '我的知乎'
   return (
-    <div className="ui-archive__notice">
-      <p>
-        {stale ? '知乎本次未能返回新数据，以下为上一次同步于 ' : '本次档案同步于 '}
-        {formatSyncedAt(syncedAt)} 的档案，共 {counts.creations} 篇创作、{counts.collections} 条近期收藏、
-        {counts.followees} 位关注、{counts.favlists} 个收藏夹。
-      </p>
-      {stale && (
-        <p className="ui-archive__warn">展示的是上一次同步结果，可能在知乎侧已有变化。</p>
-      )}
-      {clipped.length > 0 && (
-        <p className="ui-archive__warn">
-          {clipped.join('、')}已达本次同步上限，以下内容不是完整列表。
-        </p>
-      )}
-      {!persistent && (
-        <p className="ui-archive__warn">本次未能识别稳定身份，档案只在本会话内有效，退出后不会保留。</p>
-      )}
-      <p className="ui-archive__hint">内容为标题与摘要，判断请回原文核对。</p>
-    </div>
+    <header className="ui-archive__hero">
+      <div className="ui-archive__portrait" aria-hidden="true">
+        {profile?.avatarUrl !== undefined && profile.avatarUrl !== ''
+          ? <img src={profile.avatarUrl} alt="" referrerPolicy="no-referrer" />
+          : <span>{name.slice(0, 1)}</span>}
+      </div>
+      <h1>{name}</h1>
+      <p>{profile?.headline ?? '好奇心，带我们去更大的世界。'}</p>
+      <blockquote>“在问题里，看见更大的世界。”<cite>知无不言</cite></blockquote>
+      <button type="button" className="ui-archive__refresh" onClick={onRefresh}>
+        <RefreshCw size={14} aria-hidden />
+        重新同步
+      </button>
+    </header>
   )
 }
 
-function ClusterCard({ cluster }: { readonly cluster: ArchiveQuestionCluster }) {
-  const parts: string[] = []
-  if (cluster.collectionCount > 0) parts.push(`收藏 ${cluster.collectionCount} 条`)
-  if (cluster.creationCount > 0) parts.push(`创作 ${cluster.creationCount} 条`)
-  return (
-    <li className="ui-archive__cluster">
-      <a className="ui-archive__cluster-head" href={cluster.questionUrl} target="_blank" rel="noreferrer">
-        <span>{parts.join(' · ')}</span>
-        <small>共 {cluster.total} 条</small>
-      </a>
-      <ul>
-        {cluster.items.map((item) => (
-          <li key={item.url}>
-            <a href={item.url} target="_blank" rel="noreferrer">
-              <span className={`ui-archive__kind ui-archive__kind--${item.kind}`}>
-                {item.kind === 'creation' ? '创作' : '收藏'}
-              </span>
-              {item.title}
-            </a>
-          </li>
-        ))}
-      </ul>
-    </li>
-  )
-}
-
-function CreationYearPanel({ year }: { readonly year: PersonalArchive['views']['creationYear'] }) {
-  if (year.total === 0) return null
-  // 前端补窗口起点前的一周空位，让列按星期对齐；空格不携带数据。
+function FootprintSection({ archive }: { readonly archive: PersonalArchive }) {
+  const year = archive.views.creationYear
+  const months = monthLabels(year.buckets.map((bucket) => bucket.date))
   const lead = year.windowWeekday ?? 0
-  const leadSlots = Array.from({ length: lead }, (_, index) => <span key={`lead-${index}`} className="ui-archive__heat-cell ui-archive__heat-cell--void" />)
   return (
-    <div className="ui-archive__year">
-      <div className="ui-archive__year-stats">
-        <span><strong>{year.total}</strong> 篇</span>
-        <span><strong>{year.activeDays}</strong> 个创作日</span>
-        <span><strong>{year.longestStreak}</strong> 天最长连续</span>
+    <section className="ui-archive__footprint" aria-labelledby="archive-footprint-title">
+      <div className="ui-archive__footprint-head">
+        <div>
+          <h2 id="archive-footprint-title">知识足迹</h2>
+          <p>这一年，你在知乎有 <strong>{year.activeDays}</strong> 个创作日</p>
+        </div>
+        <span>{formatYearRange(year.firstDate, year.lastDate)}</span>
       </div>
-      <div className="ui-archive__heat" role="img" aria-label={`创作日历，共 ${year.activeDays} 个创作日`}>
-        {leadSlots}
-        {year.buckets.map((bucket) => (
-          <span
-            key={bucket.date}
-            className="ui-archive__heat-cell"
-            data-level={heatLevel(bucket.count)}
-            title={`${bucket.date}：${bucket.count} 篇`}
-          />
-        ))}
-      </div>
-      {year.firstDate !== undefined && year.lastDate !== undefined && (
-        <p className="ui-archive__year-range">{year.firstDate} 至 {year.lastDate}</p>
+
+      {year.total === 0 ? (
+        <p className="ui-archive__empty">还没有可统计的创作时间。</p>
+      ) : (
+        <div className="ui-archive__heatmap-scroll">
+          <div className="ui-archive__heatmap-layout">
+            <div className="ui-archive__weekdays" aria-hidden>
+              <span>周一</span><span>周三</span><span>周五</span><span>周日</span>
+            </div>
+            <div className="ui-archive__heatmap-track">
+              <div className="ui-archive__months" aria-hidden>
+                {months.map((month) => <span key={month}>{month}</span>)}
+              </div>
+              <div className="ui-archive__heat" role="img" aria-label={`创作日历，共 ${year.activeDays} 个创作日`}>
+                {Array.from({ length: lead }, (_, index) => (
+                  <span key={`lead-${index}`} className="ui-archive__heat-cell ui-archive__heat-cell--void" />
+                ))}
+                {year.buckets.map((bucket) => (
+                  <span
+                    key={bucket.date}
+                    className="ui-archive__heat-cell"
+                    data-level={heatLevel(bucket.count)}
+                    title={`${bucket.date}：${bucket.count} 篇`}
+                  />
+                ))}
+              </div>
+            </div>
+          </div>
+          <div className="ui-archive__heatmap-foot">
+            <div className="ui-archive__legend" aria-label="创作频率图例">
+              <span><i data-level="1" />较少</span>
+              <span><i data-level="2" />一般</span>
+              <span><i data-level="4" />活跃</span>
+            </div>
+            <p>共 {year.total} 篇创作，最长连续创作 {year.longestStreak} 天。</p>
+          </div>
+        </div>
       )}
-    </div>
-  )
-}
-
-function TierRow({ tier }: { readonly tier: ArchiveFolloweeTier }) {
-  return (
-    <li className="ui-archive__tier">
-      <span className="ui-archive__tier-name">{tierText(tier.tier)}</span>
-      <span className="ui-archive__tier-count">{tier.count} 位</span>
-      <span className="ui-archive__tier-samples">
-        {tier.items.slice(0, 3).map((item) => item.name).join('、')}
-        {tier.count > 3 && ' 等'}
-      </span>
-    </li>
-  )
-}
-
-function CollectionEntryLink({ item }: { readonly item: ArchiveCollectionEntry }) {
-  return (
-    <a href={item.url} target="_blank" rel="noreferrer">
-      {item.title}
-      {item.favTime !== undefined && <small>{formatDay(item.favTime)}</small>}
-    </a>
-  )
-}
-
-function ArchiveBlock({ icon: Icon, title, hint, empty, hasContent, children }: {
-  readonly icon: LucideIcon
-  readonly title: string
-  readonly hint: string
-  readonly empty: string
-  readonly hasContent: boolean
-  readonly children: ReactNode
-}) {
-  return (
-    <section className="ui-archive__block">
-      <header className="ui-archive__block-head">
-        <Icon size={15} aria-hidden />
-        <h3>{title}</h3>
-        <span>{hint}</span>
-      </header>
-      <div className="ui-archive__block-body">
-        {hasContent ? children : <p className="ui-archive__empty">{empty}</p>}
-      </div>
     </section>
   )
 }
 
-function labelText(label: ArchiveResponseLabel): string {
-  if (label === 'discussion') return '评论居多'
-  if (label === 'reference') return '收藏居多'
-  return '赞同居多'
+function CreationPanel({ count, items }: {
+  readonly count: number
+  readonly items: readonly ArchiveResponseItem[]
+}) {
+  const featured = items[0]
+  return (
+    <ArchivePanel icon={FileText} title="创作" subtitle="记录思考，分享见解" count={`${count} 篇`}>
+      {featured === undefined ? <PanelEmpty>暂无公开创作。</PanelEmpty> : (
+        <a className="ui-archive__creation" href={featured.url} target="_blank" rel="noreferrer">
+          <strong>{featured.title}</strong>
+          <p>赞同 {formatCount(featured.likeCount)} · 评论 {formatCount(featured.commentCount)} · 收藏 {formatCount(featured.favoriteCount)}</p>
+          <span>打开这篇创作 <ArrowRight size={13} aria-hidden /></span>
+        </a>
+      )}
+    </ArchivePanel>
+  )
 }
 
-function tierText(tier: ArchiveFolloweeTier['tier']): string {
-  if (tier === 'large') return '十万粉以上'
-  if (tier === 'peer') return '一万至十万粉'
-  return '一万粉以下'
+function CollectionPanel({ count, timeline }: {
+  readonly count: number
+  readonly timeline: PersonalArchive['views']['collectionTimeline']
+}) {
+  const items = collectionHighlights(timeline)
+  return (
+    <ArchivePanel icon={Bookmark} title="收藏" subtitle="好的想法，值得反复阅读" count={`${count} 条`}>
+      {items.length === 0 ? <PanelEmpty>暂无近期收藏。</PanelEmpty> : (
+        <ul className="ui-archive__compact-list">
+          {items.map((item) => (
+            <li key={item.id}>
+              <a href={item.url} target="_blank" rel="noreferrer">
+                <span>{item.title}</span>
+                {item.favTime !== undefined && <small>{formatDay(item.favTime)}</small>}
+              </a>
+            </li>
+          ))}
+        </ul>
+      )}
+    </ArchivePanel>
+  )
 }
 
-/** 热力等级：把当日篇数压到 1–4 档，避免单日高产把整张图拉平。 */
+function FollowPanel({ count, tiers, keywords }: {
+  readonly count: number
+  readonly tiers: readonly ArchiveFolloweeTier[]
+  readonly keywords: PersonalArchive['views']['headlineKeywords']
+}) {
+  const people = tiers.flatMap((tier) => tier.items).slice(0, 5)
+  return (
+    <ArchivePanel icon={UsersRound} title="关注" subtitle="与有趣的人，一起看更大的世界" count={`${count} 人`}>
+      {people.length === 0 ? <PanelEmpty>暂无关注数据。</PanelEmpty> : (
+        <>
+          <div className="ui-archive__people" aria-label="关注的人">
+            {people.map((person) => (
+              <a key={person.url} href={person.url} target="_blank" rel="noreferrer" title={person.name}>
+                {person.avatarUrl !== undefined
+                  ? <img src={person.avatarUrl} alt="" loading="lazy" referrerPolicy="no-referrer" />
+                  : <span>{person.name.slice(0, 1)}</span>}
+              </a>
+            ))}
+          </div>
+          <p className="ui-archive__people-names">{people.slice(0, 3).map((person) => person.name).join('、')}</p>
+          {keywords.length > 0 && (
+            <div className="ui-archive__keywords">
+              {keywords.slice(0, 5).map((keyword) => <span key={keyword.keyword}>{keyword.keyword}</span>)}
+            </div>
+          )}
+        </>
+      )}
+    </ArchivePanel>
+  )
+}
+
+function KnowledgePanel({ clusters }: { readonly clusters: readonly ArchiveQuestionCluster[] }) {
+  const visible = clusters.slice(0, 5)
+  return (
+    <ArchivePanel icon={Network} title="知识脉络" subtitle="从同题内容，看见自己的知识连接" count={`${clusters.length} 组`}>
+      {visible.length === 0 ? <PanelEmpty>还没有可串联的同题内容。</PanelEmpty> : (
+        <div className="ui-archive__network" aria-label="同题聚合">
+          <span className="ui-archive__network-center">我</span>
+          {visible.map((cluster, index) => (
+            <a
+              key={cluster.questionId}
+              className={`ui-archive__network-node is-${index + 1}`}
+              href={cluster.questionUrl}
+              target="_blank"
+              rel="noreferrer"
+              title={cluster.items[0]?.title ?? `同题内容 ${index + 1}`}
+            >
+              同题 {index + 1}
+            </a>
+          ))}
+        </div>
+      )}
+    </ArchivePanel>
+  )
+}
+
+function ArchivePanel({ icon: Icon, title, subtitle, count, children }: {
+  readonly icon: LucideIcon
+  readonly title: string
+  readonly subtitle: string
+  readonly count: string
+  readonly children: React.ReactNode
+}) {
+  return (
+    <section className="ui-archive__panel">
+      <header>
+        <div><Icon size={18} aria-hidden /><h2>{title}</h2></div>
+        <span>{count}</span>
+        <p>{subtitle}</p>
+      </header>
+      <div className="ui-archive__panel-body">{children}</div>
+    </section>
+  )
+}
+
+function PanelEmpty({ children }: { readonly children: React.ReactNode }) {
+  return <p className="ui-archive__panel-empty">{children}</p>
+}
+
+function ArchiveStatus({ archive }: { readonly archive: PersonalArchive }) {
+  const clipped: string[] = []
+  if (archive.truncated.creations) clipped.push('创作')
+  if (archive.truncated.followees) clipped.push('关注')
+  if (archive.truncated.favlistContents) clipped.push('收藏夹内容')
+  return (
+    <footer className="ui-archive__status">
+      <span>{archive.stale ? '当前展示上次同步结果' : `同步于 ${formatSyncedAt(archive.syncedAt)}`}</span>
+      {clipped.length > 0 && <span>{clipped.join('、')}已达本次同步上限</span>}
+      {!archive.persistent && <span>档案仅在本次会话内有效</span>}
+    </footer>
+  )
+}
+
+function collectionHighlights(timeline: PersonalArchive['views']['collectionTimeline']): ArchiveCollectionEntry[] {
+  const recent = timeline.buckets.flatMap((bucket) => bucket.items)
+  const unique = new Map<string, ArchiveCollectionEntry>()
+  for (const item of [...recent, ...timeline.dormant]) unique.set(item.id, item)
+  return [...unique.values()].slice(0, 3)
+}
+
+function monthLabels(dates: readonly string[]): string[] {
+  const months: string[] = []
+  for (const date of dates) {
+    const parsed = new Date(date)
+    if (Number.isNaN(parsed.getTime())) continue
+    const label = `${parsed.getMonth() + 1}月`
+    if (months[months.length - 1] !== label) months.push(label)
+  }
+  return months
+}
+
 function heatLevel(count: number): number {
+  if (count <= 0) return 0
   if (count <= 1) return 1
   if (count <= 3) return 2
   if (count <= 6) return 3
   return 4
+}
+
+function formatYearRange(firstDate: string | undefined, lastDate: string | undefined): string {
+  if (firstDate === undefined || lastDate === undefined) return '过去一年'
+  const first = new Date(firstDate)
+  const last = new Date(lastDate)
+  if (Number.isNaN(first.getTime()) || Number.isNaN(last.getTime())) return '过去一年'
+  return `${first.getFullYear()} 年 ${first.getMonth() + 1} 月 – ${last.getMonth() + 1} 月`
 }
 
 function formatSyncedAt(iso: string): string {
@@ -287,5 +287,5 @@ function formatSyncedAt(iso: string): string {
 function formatDay(iso: string): string {
   const time = new Date(iso)
   if (Number.isNaN(time.getTime())) return ''
-  return `${time.getFullYear()}-${String(time.getMonth() + 1).padStart(2, '0')}-${String(time.getDate()).padStart(2, '0')}`
+  return `${time.getMonth() + 1}.${String(time.getDate()).padStart(2, '0')}`
 }

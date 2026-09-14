@@ -69,10 +69,14 @@ export function HomePage({ onOpenVoices }: HomePageProps) {
   }
 
   return (
-    <div className="ui-view">
-      <div className="ui-view__frame">
+    <div className="ui-view ui-home">
+      <div className="ui-view__frame ui-home__frame">
         <div className="ui-home__masthead-wrap">
-          <HomeMasthead />
+          <HomeMasthead
+            profile={sessionState.status === 'ready' && sessionState.session.authenticated
+              ? sessionState.session.profile
+              : undefined}
+          />
         </div>
 
         <HomeAskBar
@@ -126,6 +130,7 @@ function HomePersonalSummary() {
     <section className="ui-home__personal" aria-labelledby="home-personal-title">
       <header className="ui-home__personal-head">
         <div>
+          <span className="ui-home__section-rule" aria-hidden />
           <h2 id="home-personal-title">我的知乎摘要</h2>
           <p>从最近的创作、收藏与关注继续阅读。</p>
         </div>

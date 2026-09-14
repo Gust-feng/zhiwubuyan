@@ -36,11 +36,14 @@ type SurfaceState =
   | { readonly status: 'error' }
 
 /**
- * 网页端需要知乎账号才能使用的视图：调用方额度挂在部署方账号上，
- * 不能让匿名访客直接消耗。热榜是公开内容、匿名响应才能被 CDN 共享缓存，不在其列。
- * 「我的知乎」由页面自身门禁承接（它还要呈现授权失败原因），不在此重复拦截。
+ * 按视图整页拦截的名单，当前为空。
+ *
+ * 登录只约束**消耗额度或读写个人数据的动作**（直答、主题检索、众声、研究 Pro、
+ * 个人档案同步），不约束**查看**：页面结构、公开内容（热榜）与入口都应能匿名看到，
+ * 由各页面在动作处拉起登录弹窗，而不是把整页换成一堵登录墙。
+ * 保留这个机制供将来确有整页需要登录的板块使用。
  */
-const WEB_LOGIN_VIEWS: ReadonlySet<WorkbenchView> = new Set<WorkbenchView>(['voices'])
+const WEB_LOGIN_VIEWS: ReadonlySet<WorkbenchView> = new Set<WorkbenchView>()
 
 /** 能力探测只打一次：同源、幂等，多个消费方共享同一个结果。 */
 let capabilitiesRequest: Promise<SurfaceCapabilities> | undefined

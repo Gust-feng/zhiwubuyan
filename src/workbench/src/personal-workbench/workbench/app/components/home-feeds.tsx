@@ -9,12 +9,27 @@ import {
   readStringField,
   type CoreFeed,
 } from './use-core-feed'
+import type { ZhihuAccountProfile } from '@ui/workbench/zhihu-account'
 import './home-page.css'
 
-export function HomeMasthead() {
+export function HomeMasthead({ profile }: { readonly profile?: ZhihuAccountProfile }) {
+  const name = profile?.fullname.trim() || '首页'
+  const avatarUrl = profile?.avatarUrl?.trim()
+  const personalized = profile !== undefined
   return (
-    <header className="ui-home__masthead">
+    <header className="ui-home__masthead" data-personalized={personalized || undefined}>
+      {personalized && (
+        <div className="ui-home__identity-avatar" aria-hidden="true">
+          {avatarUrl !== undefined && avatarUrl !== ''
+            ? <img src={avatarUrl} alt="" referrerPolicy="no-referrer" />
+            : <span>{name.slice(0, 1)}</span>}
+          <i />
+        </div>
+      )}
       <span className="ui-home__date">{formatDateLabel()}</span>
+      <h1>{name}</h1>
+      <p>{profile?.headline?.trim() || (personalized ? '把好奇留给问题，也留给自己。' : '搜索知乎内容，或直接问一句。')}</p>
+      {personalized && <blockquote>“在别人的问题里，看见更大的世界。”</blockquote>}
     </header>
   )
 }
@@ -283,7 +298,7 @@ export function formatCount(count: number): string {
 export function formatDateLabel(): string {
   const now = new Date()
   const week = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'][now.getDay()]
-  return `${now.getMonth() + 1}月${now.getDate()}日 · ${week}`
+  return `${now.getFullYear()}年${now.getMonth() + 1}月${now.getDate()}日 · ${week}`
 }
 
 function formatUpdatedLabel(feed: CoreFeed<unknown>): string {

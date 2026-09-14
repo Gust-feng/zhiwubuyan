@@ -1,5 +1,4 @@
 import { useEffect, useRef } from 'react'
-import { Layers } from 'lucide-react'
 import { useZhihuLogin } from '@ui/features/auth/login-request'
 import { readLoginError } from '@ui/workbench/zhihu-auth-navigation'
 import { useZhihuSession } from '@ui/workbench/zhihu-account'
@@ -28,7 +27,18 @@ export function MinePage() {
     return <MineStatus message={sessionState.message} actionLabel="重新检查" onAction={reload} />
   }
   if (unauthenticated) {
-    return <MineStatus message="登录后查看你的个人档案。" />
+    // 未登录也保留页面结构：说明这项由什么数据组织而成，并给出登录入口，
+    // 而不是把整页换成一堵墙。
+    return (
+      <div className="ui-view">
+        <div className="ui-view__frame">
+          <div className="ui-view__sub" role="status">
+            个人档案由你自己的创作、收藏与关注组织而成，需要登录后才能同步。
+          </div>
+          <button type="button" className="ui-ask__submit" onClick={() => openLogin('mine')}>登录知乎</button>
+        </div>
+      </div>
+    )
   }
   return <ArchivePage />
 }
@@ -38,17 +48,6 @@ function ArchivePage() {
   return (
     <div className="ui-mine-route">
       <main className="ui-mine__archive-page">
-        <header className="ui-mine__archive-head">
-          <span className="ui-mine__archive-icon"><Layers size={17} aria-hidden /></span>
-          <div>
-            <h1>个人档案</h1>
-            <p>由你自己的创作、收藏与关注按规则组织而成。</p>
-          </div>
-          {archive.status === 'ready' && (
-            <button type="button" className="ui-mine__archive-refresh" onClick={archive.refresh}>重新同步</button>
-          )}
-        </header>
-
         {archive.status === 'loading' && (
           <div className="ui-mine__archive-skeleton" role="status" aria-label="正在同步个人档案">
             {Array.from({ length: 5 }, (_, index) => <span key={index} />)}
@@ -61,7 +60,7 @@ function ArchivePage() {
           </div>
         )}
         {archive.status === 'ready' && archive.archive !== undefined && (
-          <PersonalArchiveView archive={archive.archive} />
+          <PersonalArchiveView archive={archive.archive} onRefresh={archive.refresh} />
         )}
       </main>
     </div>

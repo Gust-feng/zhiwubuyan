@@ -5,7 +5,6 @@ import {
   Sparkles,
 } from 'lucide-react'
 import { SidebarAccount } from './SidebarAccount'
-import { SidebarResearchPrompt } from './SidebarResearchPrompt'
 import { SidebarFooter } from './SidebarFooter'
 import {
   SidebarNavRow,
@@ -21,7 +20,7 @@ interface SidebarProps {
   collapsed: boolean
 }
 
-const SIDEBAR_W           = 236
+const SIDEBAR_W           = 208
 const SIDEBAR_COLLAPSED_W = 0
 
 // ── Sidebar ──────────────────────────────────────────────────────────────────
@@ -37,16 +36,12 @@ export function Sidebar({
 
   return (
     <aside
-      className="relative h-full shrink-0 select-none overflow-hidden"
+      className="ui-sidebar relative h-full shrink-0 select-none overflow-hidden"
+      aria-label="主导航"
       style={{
         width:    collapsed ? SIDEBAR_COLLAPSED_W : SIDEBAR_W,
         minWidth: collapsed ? SIDEBAR_COLLAPSED_W : SIDEBAR_W,
-        background:  'var(--ui-surface)',
-        // 收起后连边框都不留,做到真正意义上的「消失」。
         borderRight: collapsed ? 'none' : '1px solid var(--ui-border)',
-        // Only the outer rail width animates. The inner column stays a fixed
-        // width and is simply clipped, so no descendant ever reflows / drifts
-        // while the rail glides between states.
         transition: 'width 260ms cubic-bezier(0.4,0,0.2,1), min-width 260ms cubic-bezier(0.4,0,0.2,1)',
       }}
     >
@@ -54,22 +49,17 @@ export function Sidebar({
         .ui-conversation-scroll { scrollbar-width: none; -ms-overflow-style: none; }
         .ui-conversation-scroll::-webkit-scrollbar { display: none; }
       `}</style>
-      {/* 侧边栏常驻显示，不再提供收起开关。 */}
-
-      {/* Fixed-width inner column — never resizes, so nothing inside can be
-          compressed or pushed around during the collapse animation. Sits above
-          the line-art backdrop. */}
       <div
-        className="relative flex flex-col h-full"
+        className="ui-sidebar__inner relative flex flex-col h-full"
         style={{ width: SIDEBAR_W, minWidth: SIDEBAR_W }}
       >
-      <SidebarAccount onOpenMine={() => onNavigate('mine')} />
+      <header className="ui-sidebar__brand">
+        <span className="ui-sidebar__brand-name">知无不言</span>
+        <span className="ui-sidebar__brand-line">更大的问题 · 更清晰的世界</span>
+      </header>
 
-      {/* ── Navigation ── */}
-      {/* Collapsed: the whole nav column is hidden (fade out). Kept mounted so
-          it can be restored instantly if we decide to bring it back. */}
       <nav
-        className="flex-1 overflow-y-auto py-2 px-2"
+        className="ui-sidebar__nav flex-1 overflow-y-auto"
         style={{
           scrollbarWidth: 'none',
           opacity: collapsed ? 0 : 1,
@@ -79,8 +69,7 @@ export function Sidebar({
             : 'opacity 260ms ease 160ms',
         }}
       >
-        {/* 核心动作入口 */}
-        <div className="space-y-0.5">
+        <div className="ui-sidebar__nav-list">
           <SidebarNavRow
             active={view === 'home'}
             onClick={() => onNavigate('home')}
@@ -116,7 +105,8 @@ export function Sidebar({
         </div>
       </nav>
 
-      <SidebarResearchPrompt collapsed={collapsed} onStartResearch={() => onNavigate('ask')} />
+      <p className="ui-sidebar__credo"><span />让问题成为一种习惯</p>
+      <SidebarAccount active={view === 'mine'} onOpenMine={() => onNavigate('mine')} />
       <SidebarFooter />
       </div>
 

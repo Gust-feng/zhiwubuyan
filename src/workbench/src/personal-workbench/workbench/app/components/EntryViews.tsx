@@ -10,6 +10,8 @@ import { ResearchSeeds } from '@ui/features/deep-research/research-seeds'
 import { useDeepResearch } from '@ui/features/deep-research/use-deep-research'
 import type { ResearchViewModel } from '@ui/features/deep-research/research-view-model'
 import { useWorkbenchSurface } from '../../../../workbench/surface'
+import { useZhihuSession } from '@ui/workbench/zhihu-account'
+import { useZhihuLogin } from '@ui/features/auth/login-request'
 import type { VoicesRecency, VoicesScope, VoicesView } from '../../../../contracts/voices'
 import { requestVoices } from './voices-client'
 import { VoicesEntryComposer, VoicesSeeds } from './voices-slots'
@@ -25,6 +27,11 @@ export function EntryViews({ view, researchTaskId, voicesIssue }: {
   voicesIssue: string | null
 }) {
   const { researchAvailable, researchUltraAvailable } = useWorkbenchSurface()
+  // 查看不需要登录：页面结构、输入框与入口都照常渲染。
+  // 只在真正消耗额度时（发起研究 / 整理众声）拉起登录弹窗，而不是把整页换成一堵登录墙。
+  const { state: sessionState } = useZhihuSession()
+  const { openLogin } = useZhihuLogin()
+  const needsLogin = sessionState.status === 'ready' && !sessionState.session.authenticated
   // 深度研究由服务端承接：服务端未声明研究能力时，这里不发研究请求，
   // 只如实说明这一步还在接通。众声与它共用入口外壳，外壳常驻时不能顺带打一轮研究接口。
   const researchEnabled = researchAvailable
@@ -68,6 +75,11 @@ export function EntryViews({ view, researchTaskId, voicesIssue }: {
       voicesFieldRef.current?.focus()
       return
     }
+    // 整理会消耗调用方额度：未登录时先拉起登录，输入内容保留在输入框里。
+    if (needsLogin) {
+      openLogin('voices')
+      return
+    }
     setStage('busy')
     setVoiceError('')
     try {
@@ -80,7 +92,7 @@ export function EntryViews({ view, researchTaskId, voicesIssue }: {
       setVoiceError(cause instanceof Error && cause.message !== '' ? cause.message : '知乎那边暂时没有响应，可以再试一次')
       setStage('error')
     }
-  }, [scope, recency])
+  }, [scope, recency, needsLogin, openLogin])
 
   // 从首页带着议题进来时直接开始整理。离开众声就清掉记录，下次带同一议题进来会重新整理
   // （与旧的整页重挂载语义一致）；停留在众声期间不会因为状态变化重复触发。
@@ -159,7 +171,14 @@ export function EntryViews({ view, researchTaskId, voicesIssue }: {
             focusSignal={researchFocusSignal}
             onDraftChange={setDraft}
             onTierChange={setTier}
-            onStart={() => void researchTask.submit(draft, getDefaultResearchWebSupplement(), tier, crypto.randomUUID())}
+            onStart={() => {
+              // 研究与 Pro 都消耗调用方额度：未登录先拉起登录，草稿不丢。
+              if (needsLogin) {
+                openLogin('ask')
+                return
+              }
+              void researchTask.submit(draft, getDefaultResearchWebSupplement(), tier, crypto.randomUUID())
+            }}
           />
         )
         : (

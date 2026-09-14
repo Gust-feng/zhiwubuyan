@@ -6,14 +6,15 @@ import { useZhihuLogin } from '@ui/features/auth/login-request'
 import type { ZhihuAccountProfile, ZhihuSessionState } from '@ui/workbench/zhihu-account'
 
 interface SidebarAccountProps {
+  readonly active: boolean
   readonly onOpenMine: () => void
 }
 
 /**
- * 侧栏左上角账号区：只呈现当前知乎账号，不放产品标志与品牌文案。
+ * 侧栏底部账号区：只呈现当前知乎账号，不重复产品标志与品牌文案。
  * 登录后显示头像与昵称，其余状态如实呈现登录入口；登录与「我的知乎」门禁共用一次跳转。
  */
-export function SidebarAccount({ onOpenMine }: SidebarAccountProps) {
+export function SidebarAccount({ active, onOpenMine }: SidebarAccountProps) {
   const { state } = useZhihuSession()
   const { openLogin } = useZhihuLogin()
   const reducedMotion = useReducedMotion()
@@ -68,12 +69,13 @@ export function SidebarAccount({ onOpenMine }: SidebarAccountProps) {
   const nameChars = Array.from(view.name)
   // 身份动效的唯一状态源。每个字各自持有 variants 并直接接收这个标签：
   // 动效按字符索引错开，且不依赖父级 variants 向 motion 子树透传。
-  const identityState = menuOpen ? 'active' : hovered ? 'hover' : 'rest'
+  const identityState = menuOpen || active ? 'active' : hovered ? 'hover' : 'rest'
 
   return (
     <div
       ref={rootRef}
       className="ui-sidebar-account"
+      data-active={active || undefined}
       // 悬停从整块账号区采集：行内还包含头像与留白，外层容器能覆盖整块区域，
       // 动效也因此在任何登录状态下都一致生效。
       onPointerEnter={() => setHovered(true)}
