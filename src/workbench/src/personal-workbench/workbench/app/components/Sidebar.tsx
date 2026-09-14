@@ -1,4 +1,5 @@
 import {
+  Clapperboard,
   Compass,
   Home,
   Scale,
@@ -100,6 +101,14 @@ export function Sidebar({
             collapsed={collapsed}
             icon={<Scale size={17}/>}
             label="众声"
+          />
+          <SidebarNavRow
+            active={view === 'imagery'}
+            onClick={() => onNavigate('imagery')}
+            labelsVisible={labelsVisible}
+            collapsed={collapsed}
+            icon={<Clapperboard size={17}/>}
+            label="成象"
           />
         </div>
       </nav>

@@ -42,7 +42,7 @@ export function useWorkbenchNavigation(): WorkbenchNavigationController {
 
 function createInitialNavigationState(): WorkbenchNavigationState {
   const initial = createInitialWorkbenchNavigationState();
-  const restored = consumeZhihuLoginReturn(["home", "explore", "mine", "ask", "voices"]);
+  const restored = consumeZhihuLoginReturn(["home", "explore", "mine", "ask", "voices", "imagery"]);
   if (restored === undefined) return initial;
   return { ...initial, view: restored as WorkbenchView };
 }

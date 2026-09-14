@@ -1,4 +1,4 @@
-export type WorkbenchView = "home" | "explore" | "ask" | "voices" | "mine";
+export type WorkbenchView = "home" | "explore" | "ask" | "voices" | "imagery" | "mine";
 
 export type WorkbenchNavigationState = {
   readonly view: WorkbenchView;

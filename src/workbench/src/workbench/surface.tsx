@@ -21,6 +21,8 @@ export type SurfaceCapabilities = {
   readonly research: ServerBackedCapability
   /** 自研 Ultra 引擎是否由本侧承接。网页端只承接 Pro，故为 false。 */
   readonly researchUltra: ServerBackedCapability
+  /** 成象（概念动画）是否由服务端承接；未就绪时入口保留但如实说明。 */
+  readonly conceptAnimation: ServerBackedCapability
   /** 知乎登录是否已接通；未接通时列出缺少的配置项名称（服务端只回名称）。 */
   readonly login: {
     readonly available: boolean
@@ -68,6 +70,8 @@ export function loadSurfaceCapabilities(): Promise<SurfaceCapabilities> {
         research: { available: capabilities.includes('research') },
         // Ultra 引擎只在本机运行面承接；未声明时档位菜单不列出 Ultra。
         researchUltra: { available: capabilities.includes('research_ultra') },
+        // 成象路由由服务端声明；未声明时入口给出未接通说明。
+        conceptAnimation: { available: capabilities.includes('concept_animation') },
         login: {
           available: body.auth?.oauthEnabled === true,
           missingConfig,
@@ -93,6 +97,8 @@ export type WorkbenchSurfaceState = {
   readonly researchAvailable: boolean
   /** 自研 Ultra 引擎是否由本侧承接（网页端为 false，只有 Pro）。 */
   readonly researchUltraAvailable: boolean
+  /** 成象（概念动画）是否由服务端承接。 */
+  readonly conceptAnimationAvailable: boolean
   /** 知乎登录是否已接通。 */
   readonly loginAvailable: boolean
   /** 登录未接通时缺少的配置项名称；已接通为空。 */
@@ -133,6 +139,7 @@ export function WorkbenchSurfaceProvider({ children }: { readonly children: Reac
       ready: capabilities !== undefined,
       researchAvailable: capabilities?.research.available ?? false,
       researchUltraAvailable: capabilities?.researchUltra.available ?? false,
+      conceptAnimationAvailable: capabilities?.conceptAnimation.available ?? false,
       loginAvailable: capabilities?.login.available ?? false,
       loginMissingConfig: capabilities?.login.missingConfig ?? [],
       ...(capabilities?.login.redirectUri === undefined ? {} : { loginRedirectUri: capabilities.login.redirectUri }),
@@ -152,6 +159,7 @@ export function useWorkbenchSurface(): WorkbenchSurfaceState {
     ready: false,
     researchAvailable: false,
     researchUltraAvailable: false,
+    conceptAnimationAvailable: false,
     loginAvailable: false,
     loginMissingConfig: [],
     requiresLogin: () => false,
