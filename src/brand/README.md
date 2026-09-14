@@ -15,7 +15,7 @@
 
 | 文件 | 用途 |
 | --- | --- |
-| `symbol-color.svg` | 首选独立图标，透明背景；工作台侧栏、网页侧栏与登录提示都用它 |
+| `symbol-color.svg` | 首选独立图标，透明背景；需要随主题反白时的内联来源 |
 | `symbol-reverse.svg` | 深色背景上的独立图标 |
 | `symbol-mono-black.svg` | 单色印刷或受限场景 |
 | `lockup-horizontal-color.svg` | 横向组合标，透明背景，文字已转轮廓 |
@@ -26,6 +26,8 @@
 | `logo-system-preview.png` | 标志系统总览，仅供查阅 |
 
 界面上按文字颜色随主题变化的标志，由 `src/workbench/src/components/brand-mark.tsx` 内联 `symbol-color.svg` 并把石墨黑替换为 `currentColor`，蓝色方点保持品牌固定色。需要静态图片时（`<img>`、`public/` 目录）直接引用 SVG 文件本身。
+
+本目录只管知无不言自身的标志。登录按钮上标明账号来源的知乎标志是独立图形，见 `src/workbench/src/components/zhihu-logo.tsx`，不从本目录取用。
 
 ## 使用约定
 
