@@ -1,0 +1,379 @@
+/* 成象：入口、生成中与结果态。视觉沿用工作台墨水蓝主题令牌，不新造颜色体系。 */
+
+/* 生成中：独占版面的等待界面。散乱的方块聚拢成整齐的 2×2，循环往复，
+   对应「概念成型」——不是转圈，而是"正在把概念收拢成形"。 */
+.imagery-generating {
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 0;
+  flex: 1;
+  min-height: 0;
+  height: 100%;
+  padding: 40px 24px;
+  color: var(--ui-text-1);
+  background: var(--ui-canvas);
+  font-family: 'Noto Sans SC Variable', var(--reading-sans);
+  font-size: 13px;
+  text-align: center;
+}
+
+.imagery-generating__stage {
+  position: relative;
+  width: 120px;
+  height: 120px;
+  margin-bottom: 26px;
+}
+
+/* 每个方块默认停在中心，由 --form-x/y 指到成型位、--scatter-x/y 指到散开位。 */
+.imagery-generating__tile {
+  position: absolute;
+  inset: 50% auto auto 50%;
+  width: 20px;
+  height: 20px;
+  margin: -10px 0 0 -10px;
+  border-radius: 6px;
+  background: var(--ui-accent);
+  opacity: .25;
+  animation: imagery-tile-form 3.6s cubic-bezier(.45, 0, .25, 1) infinite;
+}
+
+.imagery-generating__tile:nth-child(1) { --form-x: -12px; --form-y: -12px; --scatter-x: -40px; --scatter-y: -30px; --tile-rotate: -28deg; }
+.imagery-generating__tile:nth-child(2) { --form-x: 12px; --form-y: -12px; --scatter-x: 38px; --scatter-y: -34px; --tile-rotate: 22deg; }
+.imagery-generating__tile:nth-child(3) { --form-x: -12px; --form-y: 12px; --scatter-x: -34px; --scatter-y: 32px; --tile-rotate: 18deg; }
+.imagery-generating__tile:nth-child(4) { --form-x: 12px; --form-y: 12px; --scatter-x: 40px; --scatter-y: 28px; --tile-rotate: -20deg; }
+
+@keyframes imagery-tile-form {
+  0% { transform: translate(var(--scatter-x), var(--scatter-y)) rotate(var(--tile-rotate)) scale(.78); opacity: .22; }
+  30% { transform: translate(var(--form-x), var(--form-y)) rotate(0deg) scale(1); opacity: 1; }
+  74% { transform: translate(var(--form-x), var(--form-y)) rotate(0deg) scale(1); opacity: 1; }
+  100% { transform: translate(var(--scatter-x), var(--scatter-y)) rotate(var(--tile-rotate)) scale(.78); opacity: .22; }
+}
+
+.imagery-generating__title {
+  margin: 0 0 8px;
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--ui-text-1);
+}
+
+.imagery-generating__hint {
+  margin: 0;
+  max-width: 30em;
+  color: var(--ui-text-2);
+  line-height: 1.7;
+}
+
+.imagery-generating__track {
+  position: relative;
+  width: 168px;
+  height: 2px;
+  margin-top: 24px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--ui-text-1) 8%, transparent);
+}
+
+.imagery-generating__track > span {
+  position: absolute;
+  inset-block: 0;
+  left: -56px;
+  width: 56px;
+  border-radius: inherit;
+  background: var(--ui-accent);
+  animation: imagery-generating-progress 1.3s cubic-bezier(.65, 0, .35, 1) infinite;
+}
+
+@keyframes imagery-generating-progress {
+  from { transform: translateX(0); }
+  to { transform: translateX(224px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .imagery-generating__tile {
+    transform: translate(var(--form-x), var(--form-y));
+    opacity: 1;
+    animation: none;
+  }
+  .imagery-generating__track > span {
+    left: 56px;
+    animation: none;
+  }
+}
+
+/* 输入卡外框由共享入口外壳的 slot 持有（与 .dr-composer / .voices-composer 同一模式），
+   这里只给"成象这一格"的卡片外观，卡内对象由 .imagery-composer 渲染。 */
+.imagery-composer-slot {
+  position: relative;
+  padding: 20px 22px 16px;
+  border: 1px solid var(--ui-border-strong);
+  border-radius: var(--dr-radius-card);
+  background: var(--ui-composer);
+  box-shadow: var(--ui-composer-shadow);
+  transition: border-color var(--motion-duration-quick), box-shadow var(--motion-duration-interaction);
+}
+.imagery-composer-slot:focus-within {
+  border-color: var(--ui-accent);
+  box-shadow: var(--ui-composer-shadow-focus);
+}
+
+/* 卡内对象：输入行 + 附加要求 + 参数条 */
+.imagery-composer {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.imagery-composer textarea {
+  width: 100%;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: var(--ui-text-1);
+  font: inherit;
+  resize: none;
+}
+
+.imagery-composer textarea {
+  display: block;
+  min-height: 32px;
+  max-height: 200px;
+  padding: 0;
+  field-sizing: content;
+  font-size: 18px;
+  line-height: 1.6;
+}
+
+.imagery-composer textarea::placeholder {
+  color: var(--ui-text-2);
+}
+
+/* 参数条：只有主按钮，靠右。不带通栏分隔线——左侧没有内容时那条线会显得空。 */
+.imagery-composer__bar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  margin-top: 12px;
+}
+.imagery-primary-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: none;
+  border-radius: 10px;
+  padding: 9px 16px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ui-accent-fg);
+  background: var(--ui-accent);
+  cursor: pointer;
+}
+
+.imagery-primary-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.imagery-text-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: 1px solid var(--ui-border);
+  border-radius: 9px;
+  background: var(--ui-surface);
+  color: var(--ui-text-2);
+  font-size: 13px;
+  padding: 6px 11px;
+  cursor: pointer;
+}
+
+.imagery-text-button:hover {
+  background: var(--ui-surface-hover);
+  color: var(--ui-text-1);
+}
+
+.imagery-composer__notice {
+  margin: 0;
+  font-size: 13px;
+  color: var(--ui-status-error);
+}
+
+.imagery-composer__hint {
+  margin: 0;
+  font-size: 13px;
+  color: var(--ui-text-3);
+}
+
+/* 结果态：与深度研究结果态（.dr-live）同底同字，独占版面。 */
+.imagery-live {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 300px;
+  gap: 20px;
+  align-items: start;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  padding: 24px;
+  overflow: auto;
+  color: var(--ui-text-1);
+  background: var(--ui-canvas);
+  font-family: 'Noto Sans SC Variable', var(--reading-sans);
+  font-size: 13px;
+}
+
+.imagery-live *,
+.imagery-live *::before,
+.imagery-live *::after { box-sizing: border-box; }
+.imagery-live button,
+.imagery-live textarea { font: inherit; }
+.imagery-live button { cursor: pointer; color: inherit; }
+.imagery-live button:focus-visible,
+.imagery-live a:focus-visible { outline: 2px solid var(--ui-accent); outline-offset: 3px; }
+
+.imagery-stage {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+}
+
+.imagery-stage__bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.imagery-stage__title {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--ui-text-1);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.imagery-stage__actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.imagery-stage__frame {
+  border: 1px solid var(--ui-border);
+  border-radius: 16px;
+  overflow: hidden;
+  background: var(--ui-surface);
+  box-shadow: 0 10px 30px rgba(18, 24, 33, 0.06);
+}
+
+.imagery-stage__iframe {
+  display: block;
+  width: 100%;
+  height: min(72vh, 760px);
+  border: 0;
+  background: #fff;
+}
+
+/* 历史 */
+.imagery-live__history {
+  min-width: 0;
+}
+
+.imagery-history__heading {
+  margin: 0 0 10px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ui-text-2);
+}
+
+.imagery-history {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.imagery-history__row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--ui-border);
+  border-radius: 11px;
+  background: var(--ui-surface);
+  padding: 8px 10px;
+}
+
+.imagery-history__row[data-active] {
+  border-color: var(--ui-accent);
+  background: var(--ui-accent-bg);
+}
+
+.imagery-history__open {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  border: none;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+  padding: 0;
+  color: var(--ui-text-1);
+}
+
+.imagery-history__title {
+  font-size: 14px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.imagery-history__meta {
+  font-size: 12px;
+  color: var(--ui-text-3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.imagery-history__remove {
+  border: none;
+  background: none;
+  color: var(--ui-text-3);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 7px;
+}
+
+.imagery-history__remove:hover {
+  background: var(--ui-surface-hover);
+  color: var(--ui-status-error);
+}
+
+.imagery-history__empty {
+  margin: 0;
+  font-size: 13px;
+  color: var(--ui-text-3);
+}
+
+@media (max-width: 960px) {
+  .imagery-live {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* 窄容器（外壳的 research 容器查询）：收窄输入卡留白，与深度研究/众声一致。 */
+@container research (max-width: 520px) {
+  .imagery-composer-slot { padding: 15px; }
+  .imagery-composer textarea { min-height: 28px; font-size: 16px; }
+  .imagery-composer__bar { gap: 8px; }
+}
