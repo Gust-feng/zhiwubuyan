@@ -150,6 +150,34 @@ export function createZhihuApiHandler(deps: ZhihuApiDeps) {
   }
 
   /**
+   * 「我的知乎」摘要列表的取数：按会话用户做短时缓存后走统一授权取数。
+   *
+   * 缓存键用**会话标识**而不是 access token——token 会随时间更换，
+   * 用它当键会让同一用户每次换令牌都拿不到上一份缓存。会话标识只用于
+   * 区分用户，不参与任何对外请求。
+   */
+  async function cachedUserFeed<T>(
+    request: IncomingMessage,
+    response: ServerResponse,
+    url: URL,
+    feed: string,
+    run: (userData: UserDataGateway) => Promise<T>,
+  ): Promise<T> {
+    const active = requireRuntime();
+    const sessionId = readSessionId(request);
+    const force = url.searchParams.get("refresh") === "1";
+    // 未登录（仅开发者模式）时没有稳定身份，直接取数，不写缓存。
+    if (sessionId === undefined || force) {
+      return await withAuthorizedUser(request, response, run);
+    }
+    return await active.userFeeds.load({
+      userId: sessionId,
+      feed,
+      load: () => withAuthorizedUser(request, response, run),
+    });
+  }
+
+  /**
    * 个人档案：一次同步采集登录用户自己的创作/关注/收藏，再派生组装视图。
    * 快照的身份键取 `/user` 的 `hash_id`；取不到时降级为会话内临时档案（不落盘），
    * 并如实告诉前端本次档案不跨会话保存，而不是编一个键把它写进磁盘。
@@ -300,6 +328,8 @@ export function createZhihuApiHandler(deps: ZhihuApiDeps) {
             await runtime?.personalArchive.clear(archiveKey);
             sessionArchiveKeys.delete(sessionId);
           }
+          // 摘要列表按会话隔离，登出必须清掉，避免残留给下一个使用者。
+          await runtime?.userFeeds.clear(sessionId);
         }
         await sessions.drop(sessionId);
         response.setHeader("Set-Cookie", clearedSessionCookie(isSecureRequest(request)));
@@ -352,16 +382,22 @@ export function createZhihuApiHandler(deps: ZhihuApiDeps) {
         });
         return writeJson(response, 200, answer);
       }
+      // 「我的知乎」三张摘要列表：数据不会分钟级变化，而每次刷新页面都会重新问一次知乎。
+      // 按会话用户做短时缓存（见 user-feed-cache），刷新与切页复用同一份；
+      // `?refresh=1` 表示用户显式要求新数据，跳过缓存。
       if (url.pathname === "/api/user/collections" && request.method === "GET") {
-        const result = await withAuthorizedUser(request, response, (userData) => userData.recentCollections({ limit: 10 }));
+        const result = await cachedUserFeed(request, response, url, "collections", (userData) =>
+          userData.recentCollections({ limit: 10 }));
         return writeJson(response, 200, result);
       }
       if (url.pathname === "/api/user/contents" && request.method === "GET") {
-        const result = await withAuthorizedUser(request, response, (userData) => userData.myContents({ limit: 10 }));
+        const result = await cachedUserFeed(request, response, url, "contents", (userData) =>
+          userData.myContents({ limit: 10 }));
         return writeJson(response, 200, result);
       }
       if (url.pathname === "/api/user/followees" && request.method === "GET") {
-        const result = await withAuthorizedUser(request, response, (userData) => userData.followees({ limit: 10 }));
+        const result = await cachedUserFeed(request, response, url, "followees", (userData) =>
+          userData.followees({ limit: 10 }));
         return writeJson(response, 200, result);
       }
       // 官方「问题路由」：按当前账号画像推荐适合回答的问题（creator 额度组，每日有限）。

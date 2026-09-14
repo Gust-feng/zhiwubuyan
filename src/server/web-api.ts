@@ -53,6 +53,8 @@ const runtime = accessSecret
       hotCacheStore: createSharedCacheHomeFeedCacheStore(sharedCache),
       personalArchiveStore: createSharedCachePersonalArchiveStore(sharedCache),
       archiveLock: sharedCache,
+      // 「我的知乎」摘要列表也走共享缓存：刷新与切页不重复用凭证问知乎。
+      userFeedCache: sharedCache,
     })
   : undefined;
 

@@ -11,6 +11,7 @@ import { createHomeAnswerCommand } from "./home-answer.ts";
 import { createResearchProCommand } from "./research-pro.ts";
 import { createQuestionRecommendationsCommand } from "./question-recommendations.ts";
 import { createPersonalArchiveCommand, type PersonalArchiveStore } from "./personal-archive.ts";
+import { createUserFeedCache, USER_FEED_IDS } from "./user-feed-cache.ts";
 import { createMemoryResearchSessionStore, createResearchSessionApplication } from "./research-session.ts";
 import type { HomeFeedCacheStore } from "./home-feed.ts";
 import type { SharedCache } from "./shared-cache.ts";
@@ -29,6 +30,8 @@ export type RuntimeOptions = {
   personalArchiveStore?: PersonalArchiveStore;
   /** 跨实例单飞：网页端多实例并发进入同一入口时只让一个真正打上游。 */
   archiveLock?: Pick<SharedCache, "acquire">;
+  /** 个人数据列表的短时缓存：网页端接共享存储，缺省只在进程内复用。 */
+  userFeedCache?: SharedCache;
 };
 
 export function createRuntime(options: RuntimeOptions = {}) {
@@ -70,6 +73,12 @@ export function createRuntime(options: RuntimeOptions = {}) {
       store: options.personalArchiveStore,
       lock: options.archiveLock,
       clock: options.clock,
+    }),
+    /** 「我的知乎」摘要列表：按会话用户做短时缓存，刷新与切页不重复消耗额度。 */
+    userFeeds: createUserFeedCache({
+      cache: options.userFeedCache,
+      clock: options.clock,
+      feeds: USER_FEED_IDS,
     }),
   };
 }
