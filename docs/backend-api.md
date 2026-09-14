@@ -11,13 +11,17 @@
 - 创建 requestId 是必填 UUID；question 去首尾空白后 1–2,000 字符；allowWebSupplement 默认 false；拒绝未知请求字段；JSON body ≤ 16 KiB。
 - 输入哈希包含规范化 question 与补齐默认后的 allowWebSupplement；不含 requestId。相同 requestId 输入一致返回原任务，不重新启动，不重新取资料。
 - 公共 DTO 不含框架 run/thread、完整上游响应、凭证、数据库路径或模型内部推理。
-- 浏览器断开不取消任务。轮询约 1–2 秒一次，终态停止。当前没有 SSE，也没有 plan/start/pause/resume/retry 接口。
+- Ultra 浏览器断开不取消任务，继续用轮询观察；Pro 使用一次性 SSE 请求，浏览器断开会中止这次直答，不提供重连、重放或自动重试。
 
 ## 2. 端点
 
+网页端只交付 Pro，完整应用边界见 [ADR-0012](architecture/decisions/0012-pro-streaming.md)。`Accept: text/event-stream` 的响应为单次 SSE：`started` 携带 question/createdAt，`answer_delta` 携带 text，`completed` 携带最终 detail，`failed` 携带 error。事件结构由 `ResearchProEvent` 定义。仅完成事件代表成功，连接关闭本身不代表完成。
+
+网页端 Pro 不落库、不恢复历史、不承诺 requestId 幂等；重新提交可能再次消耗额度。以下列表、详情、去重和异步运行描述适用于本机持久任务；网页端列表固定为空。Pro 执行窗口为 290 秒，专用函数上限 300 秒。
+
 | 方法与路径 | 应用命令 | 行为 |
 | --- | --- | --- |
-| POST /api/research-tasks | createResearchTask | `{requestId,question,allowWebSupplement?,tier?}`；202 返回 TaskDetail（异步执行），重复请求与同步完成的快答返回 200 |
+| POST /api/research-tasks | createResearchTask | `{requestId,question,allowWebSupplement?,tier}`；Pro 协商 `Accept: text/event-stream` 时返回 `started/answer_delta/completed/failed`，普通客户端返回完整 TaskDetail；Ultra 异步受理返回 202 |
 | GET /api/research-tasks | listResearchTasks | limit 默认 20、1–100；offset 默认 0、非负整数；按 createdAt、id 倒序；返回 `{items:TaskSummary[],hasMore}` |
 | GET /api/research-tasks/{id} | getResearchTask | 返回 TaskDetail；读取不触发执行 |
 | POST /api/research-tasks/{id}/cancel | cancelResearchTask | 空 JSON 对象；活动执行取消返回 202，已终态幂等返回 200；均返回 TaskDetail |
@@ -35,7 +39,7 @@
 | --- | --- | --- | --- | --- |
 | `fast` | 首页问答·快速 | 直答 `zhida-fast-1p5` | 快答 | 同步执行，200 返回完成态 |
 | `thinking` | 首页问答·深度思考 | 直答 `zhida-thinking-1p5` | 快答 | 同步执行 |
-| `pro` | 深度研究 Pro | 直答 `zhida-agent`（检索增强） | 快答 | 同步执行 |
+| `pro` | 深度研究 Pro | 直答 `zhida-agent`（检索增强） | 快答 | SSE 流式执行 |
 | `ultra` | 深度研究 Ultra | 主管 + 最多三个并行调查单元 + 核验回查 | 研究报告（findings/来源/引用） | 异步；需已配置研究模型与知乎凭证，未配置返回 503 |
 
 首页问答模式（fast/thinking）与深度研究 Pro 的产出是**独立快答对象**：TaskDetail 中 `answer={content,model,generatedAt}`，无 plan/findings/sources/报告，不进入证据体系，并注明"知乎直答生成内容，未附原始来源"（直答接口不返回原始条目）。快答复用 requestId 幂等与 outcome 语义；usage 记 1 次模型请求，token 取自上游返回（缺失为 null）。`ultra` 由服务端承接（见 [ADR-0008](architecture/decisions/0008-web-only-server-hosted-research.md)），创建时要求已配置研究模型（`MODEL_NOT_CONFIGURED`）与知乎凭证（`ZHIHU_NOT_CONFIGURED`），不按客户端声明判定。
