@@ -112,7 +112,9 @@
      横线到题款的距离单独给（见下面的 span），两行题款之间只用正常行距。 */
   gap: 0;
   margin: 0;
-  padding: 4px 24px 20px;
+  /* 题款块贴在侧栏底部：padding-bottom 就是文字离底边的距离，
+     所以上移靠加大它、右移靠加大 padding-left。 */
+  padding: 4px 24px 36px 36px;
   color: var(--ui-text-3);
   font-family: "Noto Serif SC Variable", var(--reading-serif);
   font-size: 11.5px;
