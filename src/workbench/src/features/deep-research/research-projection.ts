@@ -1,4 +1,5 @@
 import type {
+  AnswerMaterial,
   ResearchAnalysis,
   ResearchPlan,
   ResearchReport,
@@ -7,7 +8,7 @@ import type {
   TaskSummary,
   QueryLogEntry,
 } from "@contracts/research";
-import type { ResearchProProgress } from "./research-view-model";
+import type { ResearchProProgress, ProCoverageRound } from "./research-view-model";
 import type {
   ResearchActivityView,
   ResearchReportMetaView,
@@ -63,15 +64,96 @@ export const EMPTY_RESEARCH: ResearchViewModel = {
 };
 
 export function projectProProgress(progress: ResearchProProgress): ResearchViewModel {
+  // 编排阶段由真实事件驱动：拆题未回时说明过程，拆题后展示子问题与取证状态，
+  // 开始成稿后进入正文。不按时长推演进度。
+  const hasContent = progress.content.length > 0;
+  const startedWriting = progress.material !== undefined || hasContent;
+  const activityLabel = startedWriting
+    ? "正在整理报告"
+    : (progress.coverageRounds?.length ?? 0) > 0
+      ? "正在检索取证"
+      : progress.plan
+        ? "正在按子问题查找资料"
+        : "正在拆解问题";
+  const rounds = progress.coverageRounds ?? [];
+  const latest = rounds[rounds.length - 1]?.analysis ?? null;
   return {
     ...EMPTY_RESEARCH,
     tier: "pro",
     scene: progress.status === "running" ? "researching" : progress.status,
     question: progress.question,
-    title: progress.question,
-    activityLabel: progress.content ? "正在生成回答" : "正在检索与生成",
-    answer: { content: progress.content, model: "zhida-agent" },
+    title: progress.plan?.objective ?? progress.question,
+    activityLabel,
+    plan: projectPlan(progress.plan ?? null, latest),
+    planVersion: progress.plan?.version ?? null,
+    activities: proActivities({
+      plan: progress.plan ?? null,
+      rounds,
+      hasReport: hasContent,
+      createdAt: progress.createdAt,
+    }),
+    sources: answerSources(progress.material),
+    // Pro 不产生已保存来源；检索次数在完成前无法确定，保持 0 不用估算冒充。
+    searchCount: 0,
+    answer: { content: progress.content, model: "zhida-agent", material: progress.material },
   };
+}
+
+/** 参考资料 → 视图来源：编号即引用编号，供面板列表与引用定位共用。 */
+function answerSources(material: AnswerMaterial | undefined): ResearchSourceView[] {
+  return (material?.sources ?? []).map((source) => ({
+    id: `s${source.number}`,
+    title: source.title,
+    author: source.author ?? "未署名",
+    kind: source.channel === "web" ? "web" : "answer",
+    excerpt: source.excerpt,
+    context: source.channel === "web" ? "全网检索摘要" : "知乎检索摘要",
+    dateLabel: "检索摘要",
+    url: source.url,
+  }));
+}
+
+/** Pro 研究活动：拆题 → 每轮取证判断 → 成稿。不伪造来源归属与耗时。 */
+function proActivities(args: {
+  plan: ResearchPlan | null;
+  rounds: readonly ProCoverageRound[];
+  hasReport: boolean;
+  createdAt?: string;
+}): ResearchActivityView[] {
+  const { plan, rounds, hasReport, createdAt } = args;
+  const activities: ResearchActivityView[] = [];
+  if (plan) {
+    activities.push({
+      id: "plan",
+      kind: "planning",
+      time: createdAt === undefined ? "" : formatClock(createdAt),
+      title: `拆解为 ${plan.questions.length} 个子问题`,
+      summary: plan.objective,
+      sourceIds: [],
+    });
+  }
+  for (const round of rounds) {
+    activities.push({
+      id: `round-${round.round}`,
+      kind: "searching",
+      time: "",
+      // 轮次未知（刷新后从任务详情恢复）时不编造序号。
+      title: round.round > 0 ? `第 ${round.round} 轮检索取证` : "检索取证与覆盖判断",
+      summary: summarizeCoverage(round.analysis),
+      sourceIds: [],
+    });
+  }
+  if (hasReport) {
+    activities.push({
+      id: "writing",
+      kind: "writing",
+      time: "",
+      title: "撰写报告",
+      summary: "按子问题组织资料，写成完整报告。",
+      sourceIds: [],
+    });
+  }
+  return activities;
 }
 
 const STOP_REASON_LABELS: Record<ResearchReport["stopReason"], string> = {
@@ -95,22 +177,35 @@ export function projectResearch(args: {
 
   const scene = projectScene(detail.status, detail.stage);
   const isQuickAnswer = detail.answer !== null;
+  const proMaterial = detail.answer?.material;
+  const hasProReport = (detail.answer?.content.length ?? 0) > 0;
   return {
     scene,
     question: detail.question,
-    title: isQuickAnswer ? detail.question : (detail.plan?.objective ?? detail.question),
-    activityLabel: [
-      taskStageText(detail.status, detail.stage),
-      `已收集 ${detail.sourceCount} 个来源`,
-      `已检索 ${detail.usage.searchRequests} 次`,
-    ]
-      .filter(Boolean)
-      .join(" · "),
+    // 标题优先用研究目标：Pro 编排会给出目标，Ultra 有计划时同理，都没有则退回问题本身。
+    title: detail.plan?.objective ?? detail.question,
+    activityLabel: isQuickAnswer
+      ? taskStageText(detail.status, detail.stage)
+      : [
+          taskStageText(detail.status, detail.stage),
+          `已收集 ${detail.sourceCount} 个来源`,
+          `已检索 ${detail.usage.searchRequests} 次`,
+        ]
+          .filter(Boolean)
+          .join(" · "),
     searchCount: detail.usage.searchRequests,
     elapsedLabel: formatElapsed(elapsedMs(detail.createdAt, detail.endedAt, now)),
     plan: projectPlan(detail.plan, detail.analysis),
-    activities: projectActivities(detail),
-    sources: sources.map(projectSource),
+    activities: isQuickAnswer
+      ? proActivities({
+          plan: detail.plan,
+          // 刷新后只有最终覆盖判断，没有逐轮历史；用轮次 0 表示序号未知。
+          rounds: detail.analysis ? [{ round: 0, analysis: detail.analysis }] : [],
+          hasReport: hasProReport,
+          createdAt: detail.createdAt,
+        })
+      : projectActivities(detail),
+    sources: isQuickAnswer ? answerSources(proMaterial) : sources.map(projectSource),
     report: report ? projectReport(report) : [],
     outcomeNote: projectOutcomeNote(detail),
     stopping: detail.status === "cancelling" ? true : undefined,
@@ -120,7 +215,7 @@ export function projectResearch(args: {
     answer:
       detail.answer === null
         ? null
-        : { content: detail.answer.content, model: detail.answer.model },
+        : { content: detail.answer.content, model: detail.answer.model, material: detail.answer.material },
     reportMeta: report
       ? ({
           completeness: report.completeness,

@@ -1,7 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { ArrowLeft, ArrowUp, BookOpen, Check, ChevronDown, ListChecks, Lock, PanelRight, Plus, Search, SlidersHorizontal, Sparkles, Square } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { ArrowLeft, ArrowUp, ArrowUpRight, BookOpen, Check, ChevronDown, Copy, Download, ListChecks, LoaderCircle, Lock, PanelRight, Plus, Search, Sparkles, Square } from 'lucide-react';
+import type { Components } from 'react-markdown';
+import type { AnswerSource } from '@contracts/research';
 import { kanshanDirector } from '@ui/components/kanshan-mascot/kanshan-director';
 import { handleComposerEnter } from '@ui/components/entry-surface/entry-composer-keys';
+import { ResearchPlanItems } from '@ui/components/research-plan-items';
 import { StreamingRichText } from '@ui/components/rich-text';
 import { ResearchInspector, type ResearchInspectorTab } from './research-inspector';
 import { ResearchReport } from './research-report';
@@ -10,19 +13,29 @@ import './research-workspace.css';
 
 /** 深度研究结果态：进行中的计划、报告、快答与详情面板。
  *  提问入口不在这里——它由共享入口外壳的输入卡格承载，见 ResearchEntryComposer。 */
-export function ResearchWorkspace({ research, submitting, onStop, onNew, reportMarkdownUrl }: {
+type ResearchWorkspaceProps = {
   research: ResearchViewModel;
   submitting: boolean;
   onStop: () => void;
   onNew: (keepQuestion?: boolean) => void;
   reportMarkdownUrl?: string;
-}) {
+  error?: string | null;
+};
+
+export function ResearchWorkspace(props: ResearchWorkspaceProps) {
+  return <ResearchWorkspaceShell {...props} />;
+}
+
+/** 深度研究工作区：Pro 与 Ultra 共用同一套壳（主栏成果 + 右侧详情面板）。
+ *  两者的差别只在主栏放什么：Ultra 放已保存报告，Pro 放本次编排生成的报告。 */
+function ResearchWorkspaceShell({ research, submitting, onStop, onNew, reportMarkdownUrl, error }: ResearchWorkspaceProps) {
   const [inspector, setInspector] = useState<'auto' | 'open' | 'closed'>('auto');
   const [tab, setTab] = useState<ResearchInspectorTab>('activity');
   const [selectedSourceId, setSelectedSourceId] = useState<string | null>(null);
   const detailsButtonRef = useRef<HTMLButtonElement>(null);
   const inspectorRef = useRef<HTMLDivElement>(null);
   const active = research.scene === 'researching' || research.scene === 'writing';
+  const isPro = research.tier === 'pro';
 
   function openInspector(nextTab: ResearchInspectorTab = 'activity', sourceId: string | null = null) {
     setTab(nextTab);
@@ -37,40 +50,95 @@ export function ResearchWorkspace({ research, submitting, onStop, onNew, reportM
     requestAnimationFrame(() => detailsButtonRef.current?.focus());
   }
 
+  // Pro 编排成稿后，正文随 answer 流式到达；Ultra 的成果是已保存报告。
+  const proHasReport = isPro && (research.answer?.content.length ?? 0) > 0;
+  const ultraHasReport = !isPro && research.scene === 'completed' && reportMarkdownUrl !== undefined;
+  // 报告要能长滚动；运行中的计划卡要一屏容下，两种内容的滚动与呼吸方式不同。
+  const contentMode = proHasReport || ultraHasReport ? 'report' : 'plan';
+
   return (
     <section className="dr-workspace" aria-label="深度研究工作区">
       <header className="dr-toolbar">
         <div className="dr-toolbar__actions">
           <button type="button" className="dr-button" onClick={() => onNew()}><Plus size={14} /><span>新研究</span></button>
-          {research.tier !== 'pro' && <button type="button" className="dr-icon-button" ref={detailsButtonRef} onClick={() => openInspector(tab, selectedSourceId)} aria-label="查看研究活动与来源" title="研究活动与来源"><PanelRight size={18} /></button>}
+          <button type="button" className="dr-icon-button" ref={detailsButtonRef} onClick={() => openInspector(tab, selectedSourceId)} aria-label="查看研究活动与来源" title="研究活动与来源"><PanelRight size={18} /></button>
         </div>
       </header>
-      <div className="dr-layout" data-inspector={research.tier === 'pro' ? 'closed' : inspector}>
+      <div className="dr-layout" data-inspector={inspector}>
         <div className="dr-main">
-          <div className="dr-main__content">
+          <div className="dr-main__content" data-mode={contentMode}>
             <div className="dr-question"><span className="dr-kicker">研究问题</span><p>{research.question}</p></div>
-            {research.tier === 'pro' ? (
-              <QuickAnswerBlock research={research} active={active} onStop={onStop} onRetry={() => onNew(true)} />
-            ) : research.scene === 'completed' ? (
-              reportMarkdownUrl ? (
-                <>
-                  <ResearchReport research={research} markdownUrl={reportMarkdownUrl} onSelectSource={(id) => openInspector('sources', id)} />
-                  <details className="dr-completed-plan"><summary><ListChecks size={15} />查看研究计划<ChevronDown size={14} /></summary><PlanItems research={research} /></details>
-                </>
-              ) : <p className="dr-plan__outcome">{research.outcomeNote ?? '报告尚未保存。'}</p>
+            {proHasReport ? (
+              <ProReport research={research} active={active} onSelectSource={(id) => openInspector('sources', id)} onNew={() => onNew(true)} error={error ?? undefined} />
+            ) : ultraHasReport ? (
+              <ResearchReport research={research} markdownUrl={reportMarkdownUrl!} onSelectSource={(id) => openInspector('sources', id)} />
+            ) : isPro && research.scene !== 'researching' && research.scene !== 'writing' ? (
+              // Pro 未产出正文（失败或中途停止）：如实说明，并把服务错误带出来。
+              <p className="dr-plan__outcome">{error ?? research.outcomeNote ?? (research.scene === 'cancelled' ? '研究已停止，尚未生成报告。' : '本次没有生成报告。')}</p>
+            ) : !isPro && research.scene === 'completed' ? (
+              <p className="dr-plan__outcome">{research.outcomeNote ?? '报告尚未保存。'}</p>
             ) : (
               <ResearchPlan research={research} active={active} submitting={submitting} onStop={onStop} onOpenActivity={() => openInspector('activity')} onOpenSources={() => openInspector('sources')} onNew={() => onNew(true)} />
             )}
-            {research.tier !== 'pro' && <p className="dr-main__note"><BookOpen size={13} />研究不止于一种观点，也保留结论成立的条件。</p>}
           </div>
-          {research.tier !== 'pro' && <div className="dr-main__footer"><span>每个判断，都有来路。</span><button type="button" className="dr-text-button" onClick={() => openInspector('sources')}>查看 {research.sources.length} 个来源<ArrowUp size={12} /></button></div>}
         </div>
-        {research.tier !== 'pro' && <div className="dr-inspector-slot" ref={inspectorRef} tabIndex={-1} aria-label="研究详情面板" onKeyDown={(event) => { if (event.key === 'Escape') { event.preventDefault(); closeInspector(); } }}>
+        <div className="dr-inspector-slot" ref={inspectorRef} tabIndex={-1} aria-label="研究详情面板" onKeyDown={(event) => { if (event.key === 'Escape') { event.preventDefault(); closeInspector(); } }}>
           <button type="button" className="dr-mobile-back dr-text-button" onClick={closeInspector}><ArrowLeft size={15} />返回研究</button>
-          <ResearchInspector activities={research.activities} sources={research.sources} tab={tab} selectedSourceId={selectedSourceId} running={active} onTabChange={(nextTab) => { setTab(nextTab); setSelectedSourceId(null); }} onSelectSource={(id) => { setTab('sources'); setSelectedSourceId(id); }} onClose={closeInspector} />
-        </div>}
+          <ResearchInspector activities={research.activities} sources={research.sources} plan={isPro ? research.plan : undefined} tab={tab} selectedSourceId={selectedSourceId} running={active} onTabChange={(nextTab) => { setTab(nextTab); setSelectedSourceId(null); }} onSelectSource={(id) => { setTab('sources'); setSelectedSourceId(id); }} onClose={closeInspector} />
+        </div>
       </div>
     </section>
+  );
+}
+
+/** Pro 编排报告：与 Ultra 报告同一版式，正文是本次生成、随事件流到达的 Markdown。
+ *  [编号](链接) 由既有 linkRenderer 转成可点击的引用，定位到右侧来源。 */
+function ProReport({ research, active, error, onSelectSource, onNew }: {
+  research: ResearchViewModel;
+  active: boolean;
+  error?: string | null;
+  onSelectSource: (id: string) => void;
+  onNew: () => void;
+}) {
+  const [copyStatus, setCopyStatus] = useState<'idle' | 'copied' | 'failed'>('idle');
+  const content = research.answer?.content ?? '';
+  const sources = research.answer?.material?.sources ?? [];
+  const byUrl = useMemo(() => new Map(sources.map((source) => [source.url, source])), [sources]);
+
+  const linkRenderer = useMemo<Components['a']>(() => function ReferenceLink({ href, children }) {
+    const source = href === undefined ? undefined : byUrl.get(href);
+    if (!source) return <span>{children}</span>;
+    return <button type="button" className="dr-citation" aria-label={`引用 ${source.number}：${source.title}`} title={source.title} onClick={() => onSelectSource(`s${source.number}`)}>{source.number}</button>;
+  }, [byUrl, onSelectSource]);
+
+  const markdown = [`# ${research.title}`, '', content, sources.length ? '\n## 参考资料\n\n' + sources.map((source) => `${source.number}. [${source.title}](${source.url})`).join('\n') : ''].filter(Boolean).join('\n');
+  async function copyReport() {
+    try { await navigator.clipboard.writeText(markdown); setCopyStatus('copied'); } catch { setCopyStatus('failed'); }
+  }
+  function downloadReport() {
+    const url = URL.createObjectURL(new Blob([markdown], { type: 'text/markdown;charset=utf-8' }));
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `深度研究-${research.question.slice(0, 20)}.md`;
+    document.body.append(link); link.click(); link.remove();
+    URL.revokeObjectURL(url);
+  }
+
+  return (
+    <article className="dr-report" aria-label="研究报告">
+      <div className="dr-report__eyebrow"><span className="dr-kicker">RESEARCH REPORT</span><span>{active ? <><LoaderCircle size={13} className="dr-spin" />正在撰写</> : <><Check size={13} />研究已完成</>}</span></div>
+      <h1>{research.title}</h1>
+      <div className="dr-report__meta"><span>知乎深度研究 · Pro</span><span>{research.sources.length} 个来源</span><span>{research.activityLabel}</span></div>
+      {error && <div className="dr-report__error" role="alert"><p>{error}</p><button type="button" className="dr-text-button" onClick={onNew}>返回问题重试<ArrowUpRight size={13} /></button></div>}
+      <div className="dr-report__prose"><StreamingRichText text={content} live={active} linkRenderer={linkRenderer} /></div>
+      {!active && (
+        <footer className="dr-report__actions">
+          <button className="dr-button" type="button" onClick={() => void copyReport()}>{copyStatus === 'copied' ? <Check size={14} /> : <Copy size={14} />}{copyStatus === 'copied' ? '已复制' : '复制报告'}</button>
+          <button className="dr-button" type="button" onClick={downloadReport}><Download size={14} />下载 Markdown</button>
+          <span role="status">{copyStatus === 'failed' ? '复制失败，可下载。' : ''}</span>
+        </footer>
+      )}
+    </article>
   );
 }
 
@@ -190,7 +258,6 @@ function ResearchPlan({ research, active, submitting, onStop, onOpenActivity, on
   onOpenSources: () => void;
   onNew: () => void;
 }) {
-  const [expanded, setExpanded] = useState(true);
   const stopped = research.scene === 'cancelled';
   const failed = research.scene === 'failed';
   const stopping = research.stopping === true;
@@ -201,14 +268,9 @@ function ResearchPlan({ research, active, submitting, onStop, onOpenActivity, on
     <section className="dr-plan" aria-label="研究计划">
       <div className="dr-plan__header"><span className="dr-plan__symbol"><ListChecks size={18} /></span><span>研究计划{research.planVersion !== null ? <span className="dr-plan__version">v{research.planVersion}</span> : null}</span><span className="dr-state" data-scene={research.scene}>{active && <span className="dr-live-dot" />}{label}</span></div>
       <h1>{research.title}</h1>
-      {planPending ? (
-        <p className="dr-plan__pending"><span className="dr-live-dot" />正在拆解问题，生成研究计划…</p>
-      ) : (
-        <>
-          <button className="dr-plan__disclosure" type="button" onClick={() => setExpanded(!expanded)} aria-expanded={expanded}><span>{expanded ? '收起计划' : `展开 ${research.plan.length} 项研究目标`}</span><ChevronDown size={13} data-expanded={expanded} /></button>
-          {expanded && <PlanItems research={research} />}
-        </>
-      )}
+      {planPending
+        ? <p className="dr-plan__pending"><span className="dr-live-dot" />正在拆解问题，生成研究计划…</p>
+        : <PlanItems research={research} />}
       <div className="dr-plan__progress">
         <div className="dr-plan__current" role="status"><span>{research.activityLabel}</span><span>{research.elapsedLabel}</span></div>
         {research.usage && <UsageBlock usage={research.usage} />}
@@ -225,8 +287,7 @@ function ResearchPlan({ research, active, submitting, onStop, onOpenActivity, on
 }
 
 function PlanItems({ research }: { research: ResearchViewModel }) {
-  const stateNames = { complete: '已完成', active: '当前', pending: '待处理' };
-  return <ol className="dr-plan__items">{research.plan.map((item) => <li key={item.id} data-state={item.state} data-closed={item.closed || undefined}><span className="dr-plan__check" role="img" aria-label={stateNames[item.state]}>{item.state === 'complete' ? <Check size={12} /> : item.state === 'active' ? <span /> : null}</span><span className="dr-plan__text">{item.title}</span>{item.priority === 'high' && !item.closed && <span className="dr-plan__priority">重点</span>}{item.tag && <span className="dr-plan__tag">{item.tag}</span>}</li>)}</ol>;
+  return <ResearchPlanItems items={research.plan} />;
 }
 
 function UsageBlock({ usage }: { usage: NonNullable<ResearchViewModel['usage']> }) {
@@ -236,24 +297,4 @@ function UsageBlock({ usage }: { usage: NonNullable<ResearchViewModel['usage']> 
     { label: '来源', value: usage.sources },
   ];
   return <div className="dr-usage">{items.map((item) => <span key={item.label} className="dr-usage__item">{item.label} {item.value.used}/{item.value.max}</span>)}</div>;
-}
-
-function QuickAnswerBlock({ research, active, onStop, onRetry }: {
-  research: ResearchViewModel;
-  active: boolean;
-  onStop: () => void;
-  onRetry: () => void;
-}) {
-  const content = research.answer?.content ?? '';
-  const label = active ? research.activityLabel : research.scene === 'completed' ? '研究已完成' : research.scene === 'cancelled' ? '已停止' : '研究未完成';
-  return (
-    <section className="dr-answer" aria-label="Pro 研究回答" aria-busy={active}>
-      <div className="dr-answer__status" role="status"><Sparkles size={15} /><span>{label}</span></div>
-      <p className="dr-answer__strip">知乎直答生成内容 · 未附原始来源</p>
-      {content && <div className="dr-answer__body"><StreamingRichText text={content} live={active} /></div>}
-      {active
-        ? <button type="button" className="dr-text-button" onClick={onStop}><Square size={13} />停止生成</button>
-        : research.scene !== 'completed' && <button type="button" className="dr-text-button" onClick={onRetry}><ArrowLeft size={13} />返回问题</button>}
-    </section>
-  );
 }

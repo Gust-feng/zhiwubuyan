@@ -333,12 +333,31 @@ export const ReviewModelOutput = z.object({
 });
 export type ReviewModelOutput = z.infer<typeof ReviewModelOutput>;
 
-/** 直答快答：独立产物，无来源引用；正文是知乎直答生成内容。 */
+export const AnswerSource = z.object({
+  number: z.number().int().positive(),
+  title: z.string(),
+  url: z.string().url(),
+  excerpt: z.string(),
+  author: z.string().nullable(),
+  channel: z.enum(CHANNEL),
+});
+export type AnswerSource = z.infer<typeof AnswerSource>;
+
+export const AnswerMaterial = z.object({
+  status: z.enum(["ready", "empty", "partial", "failed"]),
+  // 多轮编排跨子问题收集资料，上限高于单轮；由应用按去重结果裁剪。
+  sources: z.array(AnswerSource).max(24),
+  warning: z.string().nullable(),
+});
+export type AnswerMaterial = z.infer<typeof AnswerMaterial>;
+
+/** 直答生成内容；Pro 可附带本次检索并提供给模型的摘要资料。 */
 export const QuickAnswer = z
   .object({
     content: z.string().min(1),
     model: z.string().min(1).max(100),
     generatedAt: isoTimestamp,
+    material: AnswerMaterial.optional(),
   })
   .strict();
 export type QuickAnswer = z.infer<typeof QuickAnswer>;
@@ -377,14 +396,64 @@ export const TaskDetail = TaskSummary.and(
 );
 export type TaskDetail = z.infer<typeof TaskDetail>;
 
-/** Pro 单次请求的流式事件，不参与 Ultra 的工作流状态。 */
+/** Pro 单次请求的流式事件，不参与 Ultra 的工作流状态。
+ *  多轮编排在同一请求内完成：plan 给出子问题，coverage 每轮更新取证状态，成稿沿用 answer_delta。 */
 export const ResearchProEvent = z.discriminatedUnion("type", [
   z.object({ type: z.literal("started"), question: z.string(), createdAt: isoTimestamp }),
+  z.object({ type: z.literal("plan"), plan: ResearchPlan, round: z.number().int().min(0).max(3) }),
+  z.object({ type: z.literal("coverage"), analysis: ResearchAnalysis, round: z.number().int().min(1).max(3) }),
+  z.object({ type: z.literal("material"), material: AnswerMaterial }),
   z.object({ type: z.literal("answer_delta"), text: z.string() }),
   z.object({ type: z.literal("completed"), detail: TaskDetail }),
   z.object({ type: z.literal("failed"), error: TaskError }),
 ]);
 export type ResearchProEvent = z.infer<typeof ResearchProEvent>;
+
+// ---------------------------------------------------------------------------
+// Pro 编排模型输出：拆题与单轮覆盖判断，由应用校验后转换为产品类型。
+// ---------------------------------------------------------------------------
+
+/** Pro 初步拆题输出：questionIndex 由应用映射为正式 ID；不产生 assumptions。 */
+export const ProPlanOutput = z.object({
+  objective: z.string().min(1).max(2100),
+  questions: z
+    .array(
+      z.object({
+        text: z.string().min(1).max(1000),
+        priority: z.enum(QUESTION_PRIORITY),
+      }),
+    )
+    .min(3)
+    .max(5),
+});
+export type ProPlanOutput = z.infer<typeof ProPlanOutput>;
+
+/** Pro 单轮覆盖判断：更新每个开放子问题的取证状态，并给出下一轮查询或收尾建议。
+ *  不引用 finding：Pro 不维护 findings，取证判断只依据本轮提供的资料编号。 */
+export const ProCoverageOutput = z.object({
+  answers: z
+    .array(
+      z.object({
+        questionId: z.string().min(1).max(32),
+        coverage: z.enum(COVERAGE),
+        text: z.string().min(1).max(4000),
+        gaps: z.array(z.string().min(1).max(500)).max(50).default([]),
+      }),
+    )
+    .min(1)
+    .max(12),
+  nextQueries: z
+    .array(
+      z.object({
+        questionId: z.string().min(1).max(32),
+        query: z.string().min(1).max(500),
+      }),
+    )
+    .max(6)
+    .default([]),
+  stop: z.boolean().default(false),
+});
+export type ProCoverageOutput = z.infer<typeof ProCoverageOutput>;
 
 // ---------------------------------------------------------------------------
 // 模型输出 schema（主管/调查单元），由应用校验后转换。

@@ -145,11 +145,12 @@ export function EntryViews({ view, researchTaskId, voicesIssue }: {
   if (view === 'ask' && research.scene !== 'idle') {
     return (
       <div className="dr-live">
-        {researchTask.error ? (
+        {researchTask.error && research.tier !== 'pro' ? (
           <p className="dr-live__error" role="alert">研究服务未响应：{researchTask.error}</p>
         ) : null}
         <ResearchWorkspace
           research={research}
+          error={researchTask.error}
           submitting={researchTask.submitting}
           onStop={() => void researchTask.cancel()}
           onNew={(keepQuestion) => {

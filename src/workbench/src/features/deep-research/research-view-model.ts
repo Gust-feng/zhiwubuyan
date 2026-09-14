@@ -1,3 +1,5 @@
+import type { AnswerMaterial, ResearchAnalysis, ResearchPlan } from "@contracts/research";
+
 /** 研究界面视图：由真实任务、来源与报告投影填充。 */
 export type ResearchScene = 'idle' | 'researching' | 'writing' | 'completed' | 'cancelled' | 'failed';
 
@@ -6,7 +8,17 @@ export type ResearchProProgress = {
   createdAt: string;
   content: string;
   status: 'running' | 'failed' | 'cancelled';
+  material?: AnswerMaterial;
+  /** 编排拆出的子问题；拆题尚未返回时缺省。 */
+  plan?: ResearchPlan;
+  /** 每轮取证判断，按轮次累积；用于子问题状态与研究活动时间线。 */
+  coverageRounds?: readonly ProCoverageRound[];
+  /** 当前所处轮次：0 为拆题后、首轮取证前；缺省表示尚未拆题。 */
+  round?: number;
 };
+
+/** 一轮取证的覆盖判断快照。 */
+export type ProCoverageRound = { round: number; analysis: ResearchAnalysis };
 
 export type ResearchSourceView = {
   id: string;
@@ -54,7 +66,7 @@ export type ResearchUsageView = {
   sources: ResearchUsagePairView;
 };
 
-export type ResearchAnswerView = { content: string; model: string };
+export type ResearchAnswerView = { content: string; model: string; material?: AnswerMaterial };
 
 export type ResearchReportMetaView = {
   completeness: 'sufficient' | 'partial';

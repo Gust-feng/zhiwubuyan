@@ -36,7 +36,6 @@ export function ResearchReport({ research, markdownUrl, onSelectSource }: {
     <article className="dr-report" aria-label="研究报告">
       <div className="dr-report__eyebrow"><span className="dr-kicker">RESEARCH REPORT</span><span><Check size={13} />研究已完成</span></div>
       <h1>{research.title}</h1>
-      <p className="dr-report__subtitle">从公开讨论出发，保留结论成立的条件。</p>
       {research.reportMeta && (
         <div className="dr-report__flags">
           <span className="dr-report__flag" data-completeness={research.reportMeta.completeness}>

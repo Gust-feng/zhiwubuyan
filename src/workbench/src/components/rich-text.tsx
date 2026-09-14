@@ -14,13 +14,13 @@ export const RichText = React.memo(function RichText({ text }: { readonly text: 
   );
 });
 
-export function StreamingRichText({ text, live = true }: { readonly text: string; readonly live?: boolean }): React.ReactElement {
+export function StreamingRichText({ text, live = true, linkRenderer }: { readonly text: string; readonly live?: boolean; readonly linkRenderer?: Components['a'] }): React.ReactElement {
   // hook 必须无条件调用：run 结束瞬间 live 从 true 变 false 且实例被复用（segmentKey 不变）。
   const displayed = useStreamingText(text, live);
   if (!live) {
     return (
       <div className="rich-text">
-        <RichTextContent text={text} />
+        <RichTextContent text={text} linkRenderer={linkRenderer} />
       </div>
     );
   }
@@ -28,19 +28,19 @@ export function StreamingRichText({ text, live = true }: { readonly text: string
   return (
     <div className="rich-text rich-text-streaming">
       {segments.completedBlocks.map((block) => (
-        <RichTextContent key={`block:${block.start}`} text={block.text} />
+        <RichTextContent key={`block:${block.start}`} text={block.text} linkRenderer={linkRenderer} />
       ))}
       {segments.activeBlock.length > 0 && (
-        <RichTextContent key={`active:${segments.activeStart}`} text={stabilizeStreamingMarkdown(segments.activeBlock)} />
+        <RichTextContent key={`active:${segments.activeStart}`} text={stabilizeStreamingMarkdown(segments.activeBlock)} linkRenderer={linkRenderer} />
       )}
     </div>
   );
 }
 
-const RichTextContent = React.memo(function RichTextContent({ text }: { readonly text: string }): React.ReactElement {
+const RichTextContent = React.memo(function RichTextContent({ text, linkRenderer }: { readonly text: string; readonly linkRenderer?: Components['a'] }): React.ReactElement {
   return (
     <ReactMarkdown
-      components={markdownComponents}
+      components={linkRenderer ? { ...markdownComponents, a: linkRenderer } : markdownComponents}
       remarkPlugins={[remarkGfm]}
       skipHtml
       urlTransform={safeUrlTransform}

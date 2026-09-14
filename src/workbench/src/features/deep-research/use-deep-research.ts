@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { ResearchReport, ResearchSource, TaskDetail } from "@contracts/research";
 import { ApiError } from "../../api";
-import type { ResearchProProgress } from "./research-view-model";
+import type { ResearchProProgress, ProCoverageRound } from "./research-view-model";
 import {
   cancelResearchTask,
   createResearchTask,
@@ -163,6 +163,13 @@ export function useDeepResearch(initialTaskId?: string | null, enabled = true) {
           onEvent(event) {
             if (activeRequest.current !== controller || controller.signal.aborted) return;
             if (event.type === "started") setProProgress({ question: event.question, createdAt: event.createdAt, content: "", status: "running" });
+            if (event.type === "plan") setProProgress((current) => current ? { ...current, plan: event.plan, round: event.round } : current);
+            if (event.type === "coverage") setProProgress((current) => current ? {
+              ...current,
+              round: event.round,
+              coverageRounds: [...(current.coverageRounds ?? []), { round: event.round, analysis: event.analysis } satisfies ProCoverageRound],
+            } : current);
+            if (event.type === "material") setProProgress((current) => current ? { ...current, material: event.material } : current);
             if (event.type === "answer_delta") setProProgress((current) => current ? { ...current, content: current.content + event.text } : current);
           },
         });

@@ -1,15 +1,18 @@
 import { useEffect, useRef, useState } from 'react';
 import { ArrowLeft, ArrowUpRight, BookOpen, Check, FileText, Globe, ListChecks, Search, Waypoints, X } from 'lucide-react';
-import type { ResearchActivityView, ResearchSourceView } from './research-view-model';
+import { ResearchPlanItems } from '@ui/components/research-plan-items';
+import type { ResearchActivityView, ResearchPlanItemView, ResearchSourceView } from './research-view-model';
 
-export type ResearchInspectorTab = 'activity' | 'sources';
+export type ResearchInspectorTab = 'activity' | 'sources' | 'plan';
 
 const ACTIVITY_ICONS = { planning: ListChecks, searching: Search, reading: BookOpen, analyzing: Waypoints, writing: FileText };
 const SOURCE_KINDS = { answer: '知乎回答', article: '知乎文章', web: '全网来源' };
 
-export function ResearchInspector({ activities, sources, tab, selectedSourceId, running, onTabChange, onSelectSource, onClose }: {
+export function ResearchInspector({ activities, sources, plan, tab, selectedSourceId, running, onTabChange, onSelectSource, onClose }: {
   activities: readonly ResearchActivityView[];
   sources: readonly ResearchSourceView[];
+  /** 有子问题时提供：面板多一个「研究要点」页，展示编排拆出的子问题与取证状态。 */
+  plan?: readonly ResearchPlanItemView[];
   tab: ResearchInspectorTab;
   selectedSourceId: string | null;
   running: boolean;
@@ -21,6 +24,7 @@ export function ResearchInspector({ activities, sources, tab, selectedSourceId, 
   const headingRef = useRef<HTMLHeadingElement>(null);
   const sourceListRef = useRef<HTMLDivElement>(null);
   const lastSourceId = useRef<string | null>(null);
+  const showPlan = plan !== undefined && plan.length > 0;
 
   useEffect(() => {
     if (selectedSourceId) headingRef.current?.focus();
@@ -41,20 +45,19 @@ export function ResearchInspector({ activities, sources, tab, selectedSourceId, 
         <button className="dr-icon-button" type="button" onClick={onClose} aria-label="关闭研究详情，返回研究" title="关闭研究详情"><X size={17} /></button>
       </div>
       <div className="dr-inspector__tabs" role="group" aria-label="研究详情分类">
+        {showPlan && <button type="button" aria-pressed={tab === 'plan'} onClick={() => onTabChange('plan')}>研究要点 <span>{plan.length}</span></button>}
         <button type="button" aria-pressed={tab === 'activity'} onClick={() => onTabChange('activity')}>研究活动</button>
         <button type="button" aria-pressed={tab === 'sources'} onClick={() => onTabChange('sources')}>来源 <span>{sources.length}</span></button>
       </div>
       <div className="dr-inspector__scroll" ref={sourceListRef}>
-        {tab === 'activity' ? (
-          <>
-            <div className="dr-timeline__intro"><span>研究过程</span><span>计划、检索与整理</span></div>
-            <ol className="dr-timeline">
-              {activities.map((activity) => (
-                <ActivityRow key={activity.id} activity={activity} sources={sources} current={activity.id === currentActivityId} onSelectSource={onSelectSource} />
-              ))}
-            </ol>
-            <p className="dr-inspector__footnote">活动记录展示检索、阅读与整理的进展。</p>
-          </>
+        {tab === 'plan' && showPlan ? (
+          <ResearchPlanItems items={plan} className="dr-inspector__plan" />
+        ) : tab === 'activity' ? (
+          <ol className="dr-timeline">
+            {activities.map((activity) => (
+              <ActivityRow key={activity.id} activity={activity} sources={sources} current={activity.id === currentActivityId} onSelectSource={onSelectSource} />
+            ))}
+          </ol>
         ) : selectedSource ? (
           <section className="dr-source-detail">
             <button type="button" className="dr-text-button" onClick={() => onSelectSource(null)}><ArrowLeft size={14} />全部来源</button>
@@ -63,29 +66,25 @@ export function ResearchInspector({ activities, sources, tab, selectedSourceId, 
             <div className="dr-source-detail__byline">{selectedSource.author}<br />{selectedSource.dateLabel}</div>
             <p className="dr-source-detail__context">{selectedSource.context}</p>
             <div className="dr-source-detail__excerpt"><span className="dr-kicker">资料摘要</span><p>{selectedSource.excerpt}</p></div>
-            <p className="dr-source-detail__note">这里展示摘要，不能替代完整原文。结论仍需结合上下文核对。</p>
             {selectedSource.url ? (
               <a className="dr-button" href={selectedSource.url} target="_blank" rel="noreferrer">查看原文<ArrowUpRight size={14} /></a>
             ) : <div className="dr-source-detail__unavailable">上游未返回可打开的原文链接</div>}
           </section>
         ) : (
-          <>
-            <p className="dr-source-list__intro">研究中收集的材料，保留不同经验与相反观点。</p>
-            <ol className="dr-source-list">
-              {sources.map((source, index) => (
-                <li key={source.id}>
-                  <button type="button" data-source-id={source.id} onClick={() => onSelectSource(source.id)}>
-                    <span className="dr-source-list__number">{index + 1}</span>
-                    <span className="dr-source-list__content"><span className="dr-source-list__title">{source.title}</span><span className="dr-source-list__meta">{SOURCE_KINDS[source.kind]} · {source.author}</span><span className="dr-source-list__context">{source.context}</span></span>
-                    <ArrowUpRight size={14} className="dr-source-list__arrow" />
-                  </button>
-                </li>
-              ))}
-            </ol>
-          </>
+          <ol className="dr-source-list">
+            {sources.map((source, index) => (
+              <li key={source.id}>
+                <button type="button" data-source-id={source.id} onClick={() => onSelectSource(source.id)}>
+                  <span className="dr-source-list__number">{index + 1}</span>
+                  <span className="dr-source-list__content"><span className="dr-source-list__title">{source.title}</span><span className="dr-source-list__meta">{SOURCE_KINDS[source.kind]} · {source.author}</span><span className="dr-source-list__context">{source.context}</span></span>
+                  <ArrowUpRight size={14} className="dr-source-list__arrow" />
+                </button>
+              </li>
+            ))}
+          </ol>
         )}
       </div>
-      <div className="dr-inspector__footer"><BookOpen size={13} /> {sources.length} 个来源<span>可点开核对摘要与出处</span></div>
+      <div className="dr-inspector__footer"><BookOpen size={13} /> {sources.length} 个来源</div>
     </aside>
   );
 }
