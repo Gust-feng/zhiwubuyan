@@ -30,8 +30,6 @@ export function EntrySeedsList(props: {
       <div className="entry-seeds__head">
         {props.icon}
         <h2>{own ? props.heading : props.headingFallback}</h2>
-        {/* 拿到种子才谈得上「更新于」；内置内容要如实标明它不是当前生成的那一份。 */}
-        <span className="entry-seeds__meta">{own ? seeds.updatedLabel : '内置示例'}</span>
       </div>
       <ol className="entry-seeds__list">
         {seeds.items.slice(0, SEED_LIMIT).map((item) => (

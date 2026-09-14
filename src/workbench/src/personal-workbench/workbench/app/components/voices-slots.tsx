@@ -1,6 +1,7 @@
 import type { RefObject } from 'react'
 import { ArrowUp, Globe, Sparkles } from 'lucide-react'
 import { EntrySeedsList } from '@ui/components/entry-surface/entry-seeds'
+import { handleComposerEnter } from '@ui/components/entry-surface/entry-composer-keys'
 import type { VoicesRecency, VoicesScope } from '../../../../contracts/voices'
 
 /** 众声的内置示例议题：还没生成出当前热榜议题时的兜底，任何状态下都有内容可点。
@@ -77,10 +78,8 @@ export function VoicesEntryComposer({
         onChange={(event) => onIssueChange(event.target.value)}
         onFocus={onInputFocus}
         onKeyDown={(event) => {
-          if (event.key === 'Enter' && (event.ctrlKey || event.metaKey) && !event.nativeEvent.isComposing) {
-            event.preventDefault()
-            onSubmit()
-          }
+          // 回车即整理说法（与主按钮同一条路）；Ctrl/⌘+回车才是换行，输入法组词中不触发。
+          handleComposerEnter(event, { value: issue, onValueChange: onIssueChange, onSubmit })
         }}
       />
       <div className="voices-composer__bar">
@@ -117,7 +116,7 @@ export function VoicesEntryComposer({
           )}
         </div>
 
-        <button type="submit" className="voices-primary-button" disabled={issue.trim().length === 0}>
+        <button type="submit" className="entry-primary-button" disabled={issue.trim().length === 0}>
           <span>整理说法</span>
           <ArrowUp size={16} aria-hidden />
         </button>

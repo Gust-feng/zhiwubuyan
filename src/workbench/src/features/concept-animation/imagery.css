@@ -57,11 +57,24 @@
   color: var(--ui-text-1);
 }
 
+/* 文案固定三段，合起来是一句话：「读懂…，」「再合成…，」「这值得…。」。
+   每段是一个整体，换行只可能发生在段与段之间，段内文字不断开；
+   因此这里用 flex 排布（行内块之间是否有断点由浏览器决定，不够确定），
+   每段不参与伸缩也不允许自身内部换行。不设窄的 max-width：
+   正常长度下三段始终同行，只有版面真的不够宽时才在段间折行。 */
 .imagery-generating__hint {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
   margin: 0;
-  max-width: 30em;
+  max-width: 100%;
   color: var(--ui-text-2);
   line-height: 1.7;
+}
+
+.imagery-generating__hint-part {
+  flex: 0 0 auto;
+  white-space: nowrap;
 }
 
 .imagery-generating__track {

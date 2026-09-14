@@ -7,8 +7,6 @@ export type EntrySeedContent = {
   /** 是否拿到了种子；为假时 items 是调用方给的内置内容。 */
   readonly own: boolean
   readonly items: readonly string[]
-  /** 「更新于 HH:MM」；用内置内容时为空。 */
-  readonly updatedLabel: string
 }
 
 /**
@@ -25,16 +23,9 @@ export function useEntrySeeds(kind: EntrySeedKind, fallback: readonly string[]):
     primeEntrySeeds(kind)
   }, [kind])
   // 空列表代表素材里确实没有可提炼的内容，与没拿到结果一样，都退回内置内容。
-  const own = seeds !== undefined && seeds.items.length > 0 ? seeds : undefined
+  const own = seeds !== undefined && seeds.items.length > 0
   return {
-    own: own !== undefined,
-    items: own?.items ?? fallback,
-    updatedLabel: own === undefined ? '' : updatedAt(own.generatedAt),
+    own,
+    items: own && seeds ? seeds.items : fallback,
   }
-}
-
-function updatedAt(generatedAt: string): string {
-  const time = new Date(generatedAt)
-  if (Number.isNaN(time.getTime())) return ''
-  return `更新于 ${String(time.getHours()).padStart(2, '0')}:${String(time.getMinutes()).padStart(2, '0')}`
 }

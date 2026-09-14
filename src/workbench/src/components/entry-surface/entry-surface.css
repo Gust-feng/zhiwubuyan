@@ -84,7 +84,6 @@
 .entry-seeds__head { display: flex; align-items: center; gap: 7px; padding-bottom: 6px; }
 .entry-seeds__head > svg { flex-shrink: 0; color: var(--ui-accent); }
 .entry-seeds__head h2 { margin: 0; color: var(--ui-text-1); font-size: 12px; font-weight: 600; }
-.entry-seeds__meta { margin-left: auto; color: var(--ui-text-3); font-size: 11px; font-variant-numeric: tabular-nums; }
 .entry-seeds__list { padding: 0; margin: 0; list-style: none; }
 .entry-live .entry-seeds__item {
   display: flex;

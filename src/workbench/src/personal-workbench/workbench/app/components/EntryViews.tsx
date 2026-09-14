@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { Clapperboard, Scale, Telescope } from 'lucide-react'
 import { kanshanDirector } from '@ui/components/kanshan-mascot/kanshan-director'
 import { EntrySurface, type EntryView } from '@ui/components/entry-surface/entry-surface'
-import { EMPTY_RESEARCH, projectResearch } from '@ui/features/deep-research/research-projection'
+import { EMPTY_RESEARCH, projectProProgress, projectResearch } from '@ui/features/deep-research/research-projection'
 import { ResearchEntryComposer, ResearchWorkspace } from '@ui/features/deep-research/research-workspace'
 import { researchReportMarkdownUrl } from '@ui/features/deep-research/research-client'
 import { getDefaultResearchTier, getDefaultResearchWebSupplement } from '@ui/features/deep-research/research-preference'
@@ -20,6 +20,7 @@ import type { VoicesRecency, VoicesScope, VoicesView } from '../../../../contrac
 import { requestVoices } from './voices-client'
 import { VoicesEntryComposer, VoicesSeeds } from './voices-slots'
 import { VoicesResult, type VoicesStage } from './voices-result'
+import { EntryStageTransition } from './entry-stage-transition'
 
 /** 深度研究、众声与成象的入口编排。
  *  三页入口是同一套版式，所以由这一个常驻组件持有：三侧状态同时挂着，
@@ -50,7 +51,9 @@ export function EntryViews({ view, researchTaskId, voicesIssue }: {
   const [tier, setTier] = useState<'pro' | 'ultra'>(() => getDefaultResearchTier(researchUltraAvailable))
   const [researchFocusSignal, setResearchFocusSignal] = useState(0)
   const researchTask = useDeepResearch(researchTaskId, researchEnabled)
-  const research = researchTask.detail
+  const research = researchTask.proProgress
+    ? projectProProgress(researchTask.proProgress)
+    : researchTask.detail
     ? projectResearch({ detail: researchTask.detail, sources: researchTask.sources, report: researchTask.report, now: researchTask.now })
     : researchTask.submitting
       ? pendingResearch(draft)
@@ -159,18 +162,6 @@ export function EntryViews({ view, researchTaskId, voicesIssue }: {
     )
   }
   const voicesEntry = stage === 'idle' && voices === null
-  if (view === 'voices' && !voicesEntry) {
-    return (
-      <VoicesResult
-        stage={stage === 'idle' ? 'done' : stage}
-        issue={issue}
-        voices={voices}
-        error={voiceError}
-        onRetry={(anchorQuestionId) => void runVoices(issue, anchorQuestionId)}
-        onReset={resetVoices}
-      />
-    )
-  }
   // 成象出结果后独占版面：播放器 + 历史，与入口不同构。
   if (view === 'imagery' && imagery.result !== null) {
     return <ImageryResult imagery={imagery} onReset={() => { imagery.reset(); setImageryDraft('') }} />
@@ -182,7 +173,7 @@ export function EntryViews({ view, researchTaskId, voicesIssue }: {
 
   // 入口态：三页共用同一个外壳，切换只发生在每一格内部。
   // 成象没有建议格，也不挂底部题款——它的题款就是标题本身。
-  return (
+  const entry = (
     <EntrySurface
       view={view}
       emblem={view === 'ask' ? <Telescope size={54} /> : view === 'voices' ? <Scale size={54} /> : <Clapperboard size={54} />}
@@ -240,6 +231,22 @@ export function EntryViews({ view, researchTaskId, voicesIssue }: {
             />
           )}
     />
+  )
+
+  const voicesStage = view === 'voices' && !voicesEntry ? (stage === 'idle' ? 'done' : stage) : 'entry'
+  return (
+    <EntryStageTransition stage={voicesStage}>
+      {voicesStage === 'entry' ? entry : (
+        <VoicesResult
+          stage={voicesStage}
+          issue={issue}
+          voices={voices}
+          error={voiceError}
+          onRetry={(anchorQuestionId) => void runVoices(issue, anchorQuestionId)}
+          onReset={resetVoices}
+        />
+      )}
+    </EntryStageTransition>
   )
 }
 

@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { Sparkles } from 'lucide-react'
+import { handleComposerEnter } from '@ui/components/entry-surface/entry-composer-keys'
 
 /** 成象输入卡：概念输入 + 提交。
  *  卡片外框由共享入口外壳持有，这里只渲染卡内对象，外壳不重建、只有卡内被替换。
@@ -40,10 +41,8 @@ export function ImageryComposer({ draft, disabled, unavailableMessage, error, fo
         value={draft}
         onChange={(event) => onDraftChange(event.target.value)}
         onKeyDown={(event) => {
-          if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) {
-            event.preventDefault()
-            onStart()
-          }
+          // 回车即开始成象（与主按钮同一条路）；Ctrl/⌘+回车才是换行，输入法组词中不触发。
+          handleComposerEnter(event, { value: draft, onValueChange: onDraftChange, onSubmit: onStart })
         }}
       />
       <div className="imagery-composer__bar">

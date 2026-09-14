@@ -18,8 +18,6 @@ const REFRESH_AFTER_MS = 30 * 60 * 1000
 
 type EntrySeeds = {
   readonly items: readonly string[]
-  /** 服务端的生成时间，入口按它显示「更新于」。 */
-  readonly generatedAt: string
   /** 本地写入时刻：判断新不新鲜用本地时钟，不受服务端时间偏差影响。 */
   readonly at: number
 }
@@ -68,7 +66,7 @@ function generate(kind: EntrySeedKind): Promise<void> {
   const task = requestJson<EntrySeedsView>(seedPath(kind))
     .then((view) => {
       if (round !== roundOf(kind)) return
-      seeds.set(kind, { items: view.items, generatedAt: view.generatedAt, at: Date.now() })
+      seeds.set(kind, { items: view.items, at: Date.now() })
     })
     .catch(() => {
       // 失败不写：入口这次用内置内容，下次重新生成。
