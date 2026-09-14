@@ -625,8 +625,8 @@ a.ui-home__row:hover .ui-home__row-open {
 
 .ui-home__personal-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  align-items: start;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  align-items: stretch;
   border-top: 1px solid var(--ui-border);
   border-bottom: 1px solid var(--ui-border);
 }
@@ -637,6 +637,11 @@ a.ui-home__row:hover .ui-home__row-open {
 
 .ui-home__personal-grid .ui-home__core + .ui-home__core {
   border-left: 1px solid var(--ui-border);
+}
+
+/* 知识脉络卡内嵌档案页的同题关系图，给出与列表行一致的左右内边距。 */
+.ui-home__knowledge {
+  padding: 8px 22px 16px;
 }
 
 .ui-home__personal-grid .ui-home__row {
@@ -981,9 +986,12 @@ a.ui-home__row:hover .ui-home__row-open {
   }
 
   .ui-home__personal-grid .ui-home__core:nth-child(3) {
-    grid-column: 1 / -1;
     border-top: 1px solid var(--ui-border);
     border-left: 0;
+  }
+
+  .ui-home__personal-grid .ui-home__core:nth-child(4) {
+    border-top: 1px solid var(--ui-border);
   }
 }
 
@@ -1016,8 +1024,7 @@ a.ui-home__row:hover .ui-home__row-open {
     border-left: 0;
   }
 
-  .ui-home__personal-grid .ui-home__core,
-  .ui-home__personal-grid .ui-home__core:nth-child(3) {
+  .ui-home__personal-grid .ui-home__core {
     min-height: auto;
     grid-column: auto;
     border-top: 1px solid var(--ui-border);

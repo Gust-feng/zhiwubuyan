@@ -123,24 +123,9 @@
 .voices-preset__item svg { flex: 0 0 auto; }
 .voices-preset__item.is-static { color: var(--ui-text-3); cursor: default; }
 .voices-preset--time .voices-preset__item { padding: 5px 9px; font-variant-numeric: tabular-nums; }
-.voices-primary-button {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  min-height: 42px;
-  margin-left: auto;
-  padding: 9px 22px;
-  border: 0;
-  border-radius: 10px;
-  background: var(--ui-accent);
-  color: var(--ui-accent-fg);
-  font: inherit;
-  font-size: 16px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: opacity var(--motion-duration-quick);
-}
-.voices-primary-button:disabled { opacity: 0.55; cursor: default; }
+/* 主按钮的尺寸与配色在入口外壳里（entry-surface.css 的 .entry-primary-button），
+   这里只放它在参数条里的位置：预置项在左，主按钮靠右。 */
+.voices-composer__bar .entry-primary-button { margin-left: auto; }
 
 /* ── 结果：报告式分节 ───────────────────────────────────── */
 
@@ -273,52 +258,78 @@
 /* 分歧 / 共同：两条并排的结论条 */
 .voices-verdicts {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr));
   gap: 12px;
   margin: 26px 0 0;
 }
 .voices-verdict {
-  padding: 14px 16px;
-  border: 1px solid var(--ui-border);
+  min-width: 0;
+  padding: 16px 18px;
+  border: 1px solid color-mix(in srgb, var(--verdict-tone) 22%, var(--ui-surface));
+  border-inline-start: 3px solid var(--verdict-tone);
   border-radius: 10px;
-  background: var(--ui-surface);
+  background: color-mix(in srgb, var(--verdict-wash) 72%, var(--ui-surface));
 }
-.voices-verdict strong {
-  display: block;
-  margin-bottom: 6px;
-  color: var(--ui-text-3);
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.4px;
+.voices-verdict--tension {
+  --verdict-tone: var(--ui-warn-text-strong);
+  --verdict-wash: var(--ui-amber);
 }
-.voices-verdict p { margin: 0; color: var(--ui-text-1); font-size: 14px; line-height: 1.85; }
+.voices-verdict--consensus {
+  --verdict-tone: color-mix(in srgb, var(--ui-teal-text) 90%, var(--ui-text-1));
+  --verdict-wash: var(--ui-sage);
+}
+.voices-verdict__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  color: var(--verdict-tone);
+}
+.voices-verdict__head svg { flex: 0 0 auto; }
+.voices-verdict__head strong {
+  font-size: var(--ui-font-meta);
+  font-weight: 650;
+  line-height: 1.5;
+}
+.voices-verdict p { margin: 0; color: var(--ui-text-1); font-size: 14px; line-height: 1.85; overflow-wrap: anywhere; }
 
-/* 说法分节：编号 + 标题，陈述在下方，来源用发丝线列表 */
+/* 观点名作为加粗引导语，与解释连续阅读；来源在下方单独展开。 */
 .voices-cluster { margin: 34px 0 0; }
-.voices-cluster__head {
+.voices-cluster__lead {
   display: flex;
   align-items: baseline;
-  gap: 10px;
-  margin: 0 0 10px;
-  padding-bottom: 10px;
-  border-bottom: 1px solid var(--ui-border);
+  gap: 12px;
 }
 .voices-cluster__index {
+  flex: 0 0 20px;
   color: var(--ui-text-3);
-  font-size: 11px;
+  font-size: var(--ui-font-meta);
   font-weight: 400;
   font-variant-numeric: tabular-nums;
 }
-.voices-cluster__label { margin: 0; color: var(--ui-text-1); font-size: 16px; font-weight: 550; }
-.voices-cluster__tag {
-  margin-left: auto;
-  padding: 2px 8px;
-  border: 1px solid var(--ui-border);
-  border-radius: 999px;
-  color: var(--ui-text-3);
-  font-size: 10px;
+.voices-cluster__text {
+  min-width: 0;
+  color: var(--ui-text-1);
+  font-size: 15px;
+  line-height: 1.9;
+  overflow-wrap: anywhere;
 }
-.voices-cluster__statement { margin: 0; color: var(--ui-text-1); font-size: 14px; line-height: 1.9; }
+.voices-cluster__label {
+  display: inline;
+  margin: 0;
+  color: inherit;
+  font-size: inherit;
+  font-weight: 700;
+  line-height: inherit;
+}
+.voices-cluster__statement {
+  display: inline;
+  margin: 0;
+  font-size: inherit;
+  line-height: inherit;
+}
+.voices-cluster > .voices-sources,
+.voices-cluster > .voices-elsewhere { margin-left: 32px; }
 
 /* 来源列表：编号 + 摘要 + 来路，行间发丝线 */
 .voices-sources { margin: 14px 0 0; padding: 0; list-style: none; }
@@ -399,7 +410,6 @@ a.voices-source:hover .voices-source__summary { color: var(--ui-accent); }
   .voices-start h1 { font-size: 25px; }
   .voices-start__emblem svg { width: 40px; height: 40px; }
   .voices-composer { padding: 16px 16px 14px; }
-  .voices-primary-button { flex: 1 1 100%; justify-content: center; }
   .voices-result { padding: 24px 20px 56px; }
   .voices-report__title { font-size: 22px; }
 }

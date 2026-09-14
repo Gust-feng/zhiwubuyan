@@ -178,34 +178,40 @@ function FollowPanel({ count, tiers, keywords }: {
 }
 
 function KnowledgePanel({ clusters }: { readonly clusters: readonly ArchiveQuestionCluster[] }) {
-  const visible = clusters.slice(0, 5)
   return (
     <ArchivePanel icon={Network} title="知识脉络" subtitle="从同题内容，看见自己的知识连接" count={`${clusters.length} 组`}>
-      {visible.length === 0 ? <PanelEmpty>还没有可串联的同题内容。</PanelEmpty> : (
-        <div className="ui-archive__network" aria-label="同题聚合">
-          <svg className="ui-archive__network-lines" viewBox="0 0 260 182" preserveAspectRatio="none" aria-hidden="true">
-            <line x1="130" y1="91" x2="45" y2="24" />
-            <line x1="130" y1="91" x2="214" y2="26" />
-            <line x1="130" y1="91" x2="28" y2="153" />
-            <line x1="130" y1="91" x2="220" y2="151" />
-            <line x1="130" y1="91" x2="12" y2="91" />
-          </svg>
-          <span className="ui-archive__network-center">我</span>
-          {visible.map((cluster, index) => (
-            <a
-              key={cluster.questionId}
-              className={`ui-archive__network-node is-${index + 1}`}
-              href={cluster.questionUrl}
-              target="_blank"
-              rel="noreferrer"
-              title={cluster.items[0]?.title ?? `同题内容 ${index + 1}`}
-            >
-              {clusterLabel(cluster, index)}
-            </a>
-          ))}
-        </div>
-      )}
+      <KnowledgeNetwork clusters={clusters} />
     </ArchivePanel>
+  )
+}
+
+/** 同题关系图：首页摘要与个人档案共用，只重排 clusters，不含档案页的面板外框。 */
+export function KnowledgeNetwork({ clusters }: { readonly clusters: readonly ArchiveQuestionCluster[] }) {
+  const visible = clusters.slice(0, 5)
+  if (visible.length === 0) return <PanelEmpty>还没有可串联的同题内容。</PanelEmpty>
+  return (
+    <div className="ui-archive__network" aria-label="同题聚合">
+      <svg className="ui-archive__network-lines" viewBox="0 0 260 182" preserveAspectRatio="none" aria-hidden="true">
+        <line x1="130" y1="91" x2="45" y2="24" />
+        <line x1="130" y1="91" x2="214" y2="26" />
+        <line x1="130" y1="91" x2="28" y2="153" />
+        <line x1="130" y1="91" x2="220" y2="151" />
+        <line x1="130" y1="91" x2="12" y2="91" />
+      </svg>
+      <span className="ui-archive__network-center">我</span>
+      {visible.map((cluster, index) => (
+        <a
+          key={cluster.questionId}
+          className={`ui-archive__network-node is-${index + 1}`}
+          href={cluster.questionUrl}
+          target="_blank"
+          rel="noreferrer"
+          title={cluster.items[0]?.title ?? `同题内容 ${index + 1}`}
+        >
+          {clusterLabel(cluster, index)}
+        </a>
+      ))}
+    </div>
   )
 }
 

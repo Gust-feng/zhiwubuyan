@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ArrowUpRight, ChevronDown, CircleAlert, Compass } from 'lucide-react'
+import { ArrowUpRight, ChevronDown, CircleAlert, Compass, GitCompareArrows, Handshake } from 'lucide-react'
 import type { VoicesView, VoiceSource } from '../../../../contracts/voices'
 import { VoicesLoading } from './voices-loading'
 import './voices-page.css'
@@ -72,14 +72,20 @@ export function VoicesResult({ stage, issue, voices, error, onRetry, onReset }: 
             {(voices.tension !== undefined || voices.consensus !== undefined) && (
               <div className="voices-verdicts">
                 {voices.tension !== undefined && (
-                  <div className="voices-verdict">
-                    <strong>最主要的分歧</strong>
+                  <div className="voices-verdict voices-verdict--tension">
+                    <div className="voices-verdict__head">
+                      <GitCompareArrows size={16} aria-hidden />
+                      <strong>主要分歧</strong>
+                    </div>
                     <p>{voices.tension}</p>
                   </div>
                 )}
                 {voices.consensus !== undefined && (
-                  <div className="voices-verdict">
-                    <strong>共同认可</strong>
+                  <div className="voices-verdict voices-verdict--consensus">
+                    <div className="voices-verdict__head">
+                      <Handshake size={16} aria-hidden />
+                      <strong>共同认可</strong>
+                    </div>
                     <p>{voices.consensus}</p>
                   </div>
                 )}
@@ -92,12 +98,13 @@ export function VoicesResult({ stage, issue, voices, error, onRetry, onReset }: 
               let rowNumber = 0
               return (
                 <section className="voices-cluster" key={cluster.id}>
-                  <header className="voices-cluster__head">
-                    <span className="voices-cluster__index">{String(index + 1).padStart(2, '0')}</span>
-                    <h2 className="voices-cluster__label">{cluster.label}</h2>
-                    <span className="voices-cluster__tag">看山的归纳</span>
-                  </header>
-                  <p className="voices-cluster__statement">{cluster.statement}</p>
+                  <div className="voices-cluster__lead">
+                    <span className="voices-cluster__index" aria-hidden>{String(index + 1).padStart(2, '0')}</span>
+                    <div className="voices-cluster__text">
+                      <h2 className="voices-cluster__label">{cluster.label}：</h2>
+                      <p className="voices-cluster__statement">{cluster.statement}</p>
+                    </div>
+                  </div>
                   {main.length > 0 && (
                     <ul className="voices-sources">
                       {main.map((source) => {

@@ -26,6 +26,7 @@ import { useWorkbenchEnvironment } from "../../workbench/use-workbench-environme
 import { useWorkbenchLayout, type WorkbenchLayoutMode } from "../../workbench/use-workbench-layout";
 import { useWorkbenchSurface, WorkbenchSurfaceProvider } from "../../workbench/surface";
 import { ZhihuSessionProvider } from "../../workbench/zhihu-account";
+import { EntrySeedsPrimer } from "../../workbench/entry-seeds-primer";
 import { ZhihuLoginProvider } from "../../features/auth/login-request";
 import { PreviewLayoutContext } from "../../workbench/preview-layout";
 
@@ -64,6 +65,7 @@ export function PersonalWorkbench(props: PersonalWorkbenchProps) {
     state: navigationState,
     navigate: reduceNavigation,
     openVoices,
+    openSearch,
     focusHomeInput,
   } = navigation;
   const {
@@ -71,6 +73,7 @@ export function PersonalWorkbench(props: PersonalWorkbenchProps) {
     researchTaskId,
     homeFocusRequest,
     voicesIssue,
+    search: searchRequest,
   } = navigationState;
   const navigationIntentRef = useRef(0);
   const viewRef = useRef(view);
@@ -91,7 +94,7 @@ export function PersonalWorkbench(props: PersonalWorkbenchProps) {
   const layout = useWorkbenchLayout();
   const { surface } = useWorkbenchSurface();
   // 一级内容页与个人档案都是单一阅读表面，不带右侧对话分栏。
-  const singleSurfaceView = view === "home" || view === "explore" || view === "mine" || view === "ask";
+  const singleSurfaceView = view === "home" || view === "search" || view === "explore" || view === "mine" || view === "ask";
   // 网页端没有本地会话，右侧对话分栏无从加载，整站按单一阅读面呈现。
   const layoutMode = surface === "web" || singleSurfaceView ? "reading" : layout.mode;
   const conversationItems = props.conversations;
@@ -256,6 +259,8 @@ export function PersonalWorkbench(props: PersonalWorkbenchProps) {
       }}
     >
       <ZhihuSessionProvider>
+      {/* 尽早开始生成两个入口的种子，不等用户打开入口。 */}
+      <EntrySeedsPrimer />
       <ZhihuLoginProvider>
       <style>{`
         @keyframes viewFadeIn {
@@ -297,7 +302,9 @@ export function PersonalWorkbench(props: PersonalWorkbenchProps) {
                     homeFocusRequest={homeFocusRequest}
                     researchTaskId={researchTaskId}
                     voicesIssue={voicesIssue}
+                    searchRequest={searchRequest}
                     onOpenVoices={openVoices}
+                    onOpenSearch={openSearch}
                     navigate={navigate}
                   />
               </SurfaceErrorBoundary>
@@ -345,9 +352,11 @@ export function PersonalWorkbench(props: PersonalWorkbenchProps) {
 function viewLabel(view: WorkbenchView): string {
   switch (view) {
     case "home": return "首页";
+    case "search": return "检索";
     case "explore": return "探索";
     case "ask": return "深度研究";
     case "voices": return "众声";
+    case "imagery": return "成象";
     case "mine": return "我的知乎";
   }
 }
