@@ -117,6 +117,29 @@
 
 /* 输入卡外框由外壳持有，卡内内容由每一格替换；卡片外观由 .dr-composer / .voices-composer 提供。 */
 
+/* 输入卡的主按钮只有这一份：深度研究、众声、成象三个入口共用同一套尺寸与配色。
+   以前三处各写一套，高度、字号与禁用透明度都不一样，切入口时按钮会变样。
+   文字色必须比 `.entry-live button { color: inherit }` 更具体才压得住（(0,2,0) > (0,1,1)），
+   所以选择器带 .entry-live 前缀，而不是靠 !important。
+   禁用态不在这里写：`.entry-live button:disabled` 已经统一了透明度与光标。
+   靠右的位置由各入口自己的参数条决定（众声那条两个 auto 外边距会平分空白，不能写在这里）。 */
+.entry-live .entry-primary-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  gap: 7px;
+  min-height: 42px;
+  padding: 9px 22px;
+  border: 0;
+  border-radius: 10px;
+  background: var(--ui-accent);
+  color: var(--ui-accent-fg);
+  font-size: 16px;
+  font-weight: 600;
+  transition: opacity var(--motion-duration-quick);
+}
+
 /* 窄容器：收窄版心与留白，观察对象是研究容器而不是视口。 */
 @container research (max-width: 520px) {
   .entry-start { padding: 32px 0 40px; }
@@ -128,4 +151,6 @@
   .entry-live .entry-seeds__item { font-size: 12px; }
   /* 窄容器只留前三条，避免把提问卡片顶到很下面；两个入口取同一条数，高度仍一致。 */
   .entry-seeds__list li:nth-child(n + 4) { display: none; }
+  /* 参数条在窄容器里会折行，主按钮独占下一行并铺满；三个入口同一条规则。 */
+  .entry-live .entry-primary-button { flex: 1 1 100%; justify-content: center; }
 }

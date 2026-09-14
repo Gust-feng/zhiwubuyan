@@ -155,24 +155,7 @@
   justify-content: flex-end;
   margin-top: 12px;
 }
-.imagery-primary-button {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  border: none;
-  border-radius: 10px;
-  padding: 9px 16px;
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--ui-accent-fg);
-  background: var(--ui-accent);
-  cursor: pointer;
-}
-
-.imagery-primary-button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
+/* 主按钮的尺寸与配色在入口外壳里（entry-surface.css 的 .entry-primary-button）。 */
 
 .imagery-text-button {
   display: inline-flex;

@@ -47,9 +47,9 @@ export function ImageryComposer({ draft, disabled, unavailableMessage, error, fo
         }}
       />
       <div className="imagery-composer__bar">
-        <button type="submit" className="imagery-primary-button" disabled={unavailable || disabled}>
-          <Sparkles size={15} aria-hidden />
+        <button type="submit" className="entry-primary-button" disabled={unavailable || disabled}>
           <span>开始成象</span>
+          <Sparkles size={16} aria-hidden />
         </button>
       </div>
       {unavailable ? (
