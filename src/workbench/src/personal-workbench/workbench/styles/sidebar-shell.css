@@ -1,6 +1,5 @@
 .ui-sidebar {
-  background:
-    linear-gradient(180deg, color-mix(in srgb, var(--ui-accent) 2.5%, var(--ui-surface)), var(--ui-surface) 58%);
+  background: color-mix(in srgb, var(--ui-text-1) 1.5%, var(--ui-surface));
   color: var(--ui-text-1);
 }
 
@@ -11,24 +10,41 @@
 .ui-sidebar__brand {
   display: grid;
   flex: 0 0 auto;
-  gap: 5px;
-  padding: 36px 22px 30px;
+  grid-template-columns: 32px minmax(0, 1fr);
+  align-items: center;
+  column-gap: 8px;
+  padding: 24px 20px 22px;
+}
+
+.ui-sidebar__brand-mark {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  place-items: center;
+  border-radius: 9px;
+  background: var(--ui-accent-bg);
+  color: var(--ui-accent);
 }
 
 .ui-sidebar__brand-name {
-  color: color-mix(in srgb, var(--ui-accent) 22%, var(--ui-text-1));
+  min-width: 0;
+  color: var(--ui-text-1);
   font-family: "Noto Serif SC Variable", var(--reading-serif);
-  font-size: 25px;
+  font-size: 18px;
   font-weight: 700;
-  letter-spacing: .09em;
+  letter-spacing: .12em;
   line-height: 1.2;
+  white-space: nowrap;
 }
 
 .ui-sidebar__brand-line {
+  grid-column: 2;
+  margin-top: 4px;
   color: var(--ui-text-3);
   font-family: "Noto Serif SC Variable", var(--reading-serif);
   font-size: 10px;
-  letter-spacing: .15em;
+  letter-spacing: .06em;
+  line-height: 1.45;
   white-space: nowrap;
 }
 
@@ -49,7 +65,7 @@
   align-items: center;
   gap: 8px;
   border: 1px solid transparent;
-  border-radius: 8px;
+  border-radius: 7px;
   background: transparent;
   padding: 0 12px;
   color: color-mix(in srgb, var(--ui-text-2) 86%, var(--ui-accent));
@@ -82,9 +98,7 @@
 }
 
 .ui-sidebar__nav-row[data-active='true'] .ui-sidebar__nav-icon {
-  border-radius: 50%;
-  background: var(--ui-accent);
-  color: var(--ui-accent-fg);
+  color: var(--ui-accent);
 }
 
 .ui-sidebar__nav-copy {
@@ -109,11 +123,41 @@
   flex: 0 0 auto;
   gap: 10px;
   margin: 0;
-  padding: 0 24px 18px;
+  padding: 4px 24px 20px;
   color: var(--ui-text-3);
   font-family: "Noto Serif SC Variable", var(--reading-serif);
-  font-size: 10.5px;
-  letter-spacing: .08em;
+  font-size: 12px;
+  letter-spacing: .12em;
+  line-height: 1.7;
+}
+
+/* 两行竖排：横线单独占一行，两句话各占一行，读起来是题款而不是一行注解。 */
+.ui-sidebar__credo em {
+  display: block;
+  font-style: normal;
+}
+
+.ui-sidebar__bottom {
+  flex: 0 0 auto;
+  border-top: 1px solid var(--ui-border);
+  padding-top: 16px;
+}
+
+.ui-sidebar__bottom-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 10px 12px;
+}
+
+.ui-sidebar__bottom-actions .ui-sidebar-account {
+  flex: 0 0 42px;
+}
+
+.ui-sidebar__bottom-actions .ui-sidebar-footer {
+  flex: 1 1 auto;
+  border-top: 0;
+  padding: 0;
 }
 
 .ui-sidebar__credo span {

@@ -10,6 +10,7 @@ import {
   SidebarNavRow,
 } from './SidebarRows'
 import type { WorkbenchView } from '../../../../workbench/navigation-state'
+import { BrandMark } from '@ui/components/brand-mark'
 
 /** 全局导航选择功能板块；对话历史由右侧面板管理。 */
 export type View = WorkbenchView
@@ -20,7 +21,8 @@ interface SidebarProps {
   collapsed: boolean
 }
 
-const SIDEBAR_W           = 208
+// 侧栏保持窄幅，让阅读面始终是视觉重心，同时为桌面端四个导航标签留出完整宽度。
+const SIDEBAR_W           = 176
 const SIDEBAR_COLLAPSED_W = 0
 
 // ── Sidebar ──────────────────────────────────────────────────────────────────
@@ -53,9 +55,10 @@ export function Sidebar({
         className="ui-sidebar__inner relative flex flex-col h-full"
         style={{ width: SIDEBAR_W, minWidth: SIDEBAR_W }}
       >
-      <header className="ui-sidebar__brand">
+      <header className="ui-sidebar__brand" aria-label="知无不言">
+        <span className="ui-sidebar__brand-mark" aria-hidden="true"><BrandMark size={28} /></span>
         <span className="ui-sidebar__brand-name">知无不言</span>
-        <span className="ui-sidebar__brand-line">更大的问题 · 更清晰的世界</span>
+        <span className="ui-sidebar__brand-line">好奇心，带我们去更大的世界</span>
       </header>
 
       <nav
@@ -75,7 +78,7 @@ export function Sidebar({
             onClick={() => onNavigate('home')}
             labelsVisible={labelsVisible}
             collapsed={collapsed}
-            icon={<Home size={14}/>}
+            icon={<Home size={17}/>}
             label="首页"
           />
           <SidebarNavRow
@@ -83,7 +86,7 @@ export function Sidebar({
             onClick={() => onNavigate('explore')}
             labelsVisible={labelsVisible}
             collapsed={collapsed}
-            icon={<Compass size={14}/>}
+            icon={<Compass size={17}/>}
             label="探索"
           />
           <SidebarNavRow
@@ -91,7 +94,7 @@ export function Sidebar({
             onClick={() => onNavigate('ask')}
             labelsVisible={labelsVisible}
             collapsed={collapsed}
-            icon={<Sparkles size={14}/>}
+            icon={<Sparkles size={17}/>}
             label="深度研究"
           />
           <SidebarNavRow
@@ -99,15 +102,23 @@ export function Sidebar({
             onClick={() => onNavigate('voices')}
             labelsVisible={labelsVisible}
             collapsed={collapsed}
-            icon={<Scale size={14}/>}
+            icon={<Scale size={17}/>}
             label="众声"
           />
         </div>
       </nav>
 
-      <p className="ui-sidebar__credo"><span />让问题成为一种习惯</p>
-      <SidebarAccount active={view === 'mine'} onOpenMine={() => onNavigate('mine')} />
-      <SidebarFooter />
+      <div className="ui-sidebar__bottom">
+        <p className="ui-sidebar__credo">
+          <span />
+          <em>问题之上</em>
+          <em>自有天地</em>
+        </p>
+        <div className="ui-sidebar__bottom-actions">
+          <SidebarAccount active={view === 'mine'} onOpenMine={() => onNavigate('mine')} />
+          <SidebarFooter />
+        </div>
+      </div>
       </div>
 
     </aside>
