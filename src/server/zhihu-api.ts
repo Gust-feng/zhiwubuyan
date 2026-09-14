@@ -50,6 +50,12 @@ export type ZhihuApiDeps = {
    * 是次秒级单次调用。自研 Ultra 引擎仍只在本地/桌面运行面承接。
    */
   researchProEnabled?: boolean;
+  /**
+   * 会话与缓存实际落在哪里（"redis" / "memory"）。只用于 /api/status 的运维可见性：
+   * 线上若显示 memory，说明共享存储没接上，登录会在多实例间随机失效——
+   * 只看「登录后又要求登录」这个现象无法区分是配置没生效还是代码问题，所以如实暴露。
+   */
+  sessionStorage?: "redis" | "memory";
 };
 
 /**
@@ -254,6 +260,8 @@ export function createZhihuApiHandler(deps: ZhihuApiDeps) {
           capabilities: deps.capabilities,
           // 登录形态按运行面区分：网页端走应用内弹窗，本地/桌面预览走独立登录窗口。
           surface,
+          // 会话落在哪：线上显示 memory 就说明共享存储没接上（登录会随机失效）。
+          ...(deps.sessionStorage === undefined ? {} : { sessionStorage: deps.sessionStorage }),
           auth: {
             oauthEnabled: oauthConfig !== undefined,
             loginRequired: surface === "desktop",
@@ -266,6 +274,10 @@ export function createZhihuApiHandler(deps: ZhihuApiDeps) {
       }
       if (url.pathname === "/api/auth/session" && request.method === "GET") {
         const session = await activeSession(request);
+        // 会话状态是**按 cookie** 变化的个人响应：绝不能被 CDN 或浏览器当公共资源缓存，
+        // 否则「刚登录却仍被要求登录」这类现象会随缓存出现且难以复现。
+        response.setHeader("Cache-Control", "private, no-store");
+        response.setHeader("Vary", "Cookie");
         return writeJson(response, 200, {
           oauthEnabled: oauthConfig !== undefined,
           authenticated: session !== undefined || (developerUserDataEnabled && runtime !== undefined),

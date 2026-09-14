@@ -68,6 +68,8 @@ const handleZhihuApi = createZhihuApiHandler({
   capabilities: ["zhihu_search", "global_search", "hot_list", "user_data", "voices", "research"],
   surface: "web",
   researchProEnabled: true,
+  // 线上显示 memory 即说明共享存储没接上（登录会在多实例间随机失效）。
+  sessionStorage: redis === undefined ? "memory" : "redis",
   hotCacheControl: "public, s-maxage=3600, stale-while-revalidate=300",
   rateLimiter: createRateLimiter(),
 });
