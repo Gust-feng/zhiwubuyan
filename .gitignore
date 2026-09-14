@@ -33,6 +33,10 @@ release/
 /.workbuddy/
 /.zcode/
 /.codex/
+# 集成安装的第三方 skill 文档与锁文件：属工具本地状态，不进仓库
+/.agents/
+/.claude/
+/skills-lock.json
 
 # Ad-hoc design scratch and duplicate root screenshots
 /Untitled.make
