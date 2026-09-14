@@ -8,24 +8,26 @@ import {
 } from 'react'
 import { useMotionEnabled } from '@ui/shell/motion-system'
 import {
+  KANSHAN_CROSSFADE_MS,
+  KANSHAN_DURATION,
+  KANSHAN_GESTURES,
   KANSHAN_ONESHOT_IDS,
   KANSHAN_REST_FRAME,
   KANSHAN_SOURCES,
-  KANSHAN_TIMING,
   type KanshanClipId,
   type KanshanGesture,
 } from './kanshan-clips'
 import './kanshan-mascot.css'
 
-/** 命令式控制句柄：调用方按交互时机驱动，组件内部保证片段在 anchor 处无缝交接。 */
+/** 命令式控制句柄：调用方按真实交互时机驱动，组件内部保证片段在 anchor 处无缝交接。 */
 export interface KanshanMascotHandle {
-  /** 从「只露耳朵」试探着探出到 anchor，随后进入待机；已在场时无操作。 */
+  /** 从「只露耳尖」试探着探出到 anchor，随后进入待机；已在场时无操作。 */
   enter: () => void
   /** 以 anchor 姿态直接落地进入待机（跨位置迁移到达时用，避免倒退成耳朵态）。 */
   appear: () => void
   /** 从 anchor 缩回隐藏，返回在缩回完成时 resolve 的 Promise。 */
   leave: () => Promise<void>
-  /** 播放一次手势（attention/success/error），结束无缝回到待机。 */
+  /** 播放一次手势（attention/success/error/startle），结束无缝回到待机。 */
   gesture: (gesture: KanshanGesture) => void
   /** 点击时的趣味反应：随机挑一个不重复的手势。 */
   curious: () => void
@@ -49,8 +51,7 @@ type Layer =
   | { readonly kind: 'idle' }
 
 const MEDIA_BASE_CLASS = 'kanshan-mascot__media'
-const CURIOUS_POOL: readonly KanshanGesture[] = ['attention', 'success', 'error']
-const randomBetween = (min: number, max: number) => min + Math.random() * (max - min)
+const CURIOUS_POOL: readonly KanshanGesture[] = KANSHAN_GESTURES
 
 /**
  * 页面不可见（切标签、最小化）或系统省电时，浏览器会瞬时中断纯视频媒体的
@@ -63,9 +64,10 @@ const isRecoverablePlayFailure = (error: unknown): boolean =>
   typeof error === 'object' && error !== null && (error as { name?: unknown }).name === 'AbortError'
 
 /**
- * 刘看山趴伏动画播放器。idle 作为常驻底层但不机械循环：一轮呼吸/眨眼后在
- * anchor 安静一段随机时长，偶尔探头张望；entry / 手势作为一次性上层，所有
- * 交接点都落在同一 anchor 帧，并用极短交叉淡化消除亚像素跳变。
+ * 刘看山趴伏动画播放器。idle 是常驻底层，只做安静的呼吸/眨眼无缝循环，不会自行
+ * 打断自己；appear / retract / 各手势都是一次性上层，只在真实交互（入场、离开、
+ * 聚焦反馈、提交结果、点击）时由外部驱动一次。所有交接点都落在同一 anchor 帧，
+ * 并用极短交叉淡化消除亚像素跳变。
  */
 export const KanshanMascot = forwardRef<KanshanMascotHandle, KanshanMascotProps>(
   function KanshanMascot({ className, autoEnter = true, interactive = true }, ref) {
@@ -75,7 +77,6 @@ export const KanshanMascot = forwardRef<KanshanMascotHandle, KanshanMascotProps>
     const phaseRef = useRef<Phase>('hidden')
     const runIdRef = useRef(0)
     const activeOneShotRef = useRef<OneShotId | null>(null)
-    const idleTimerRef = useRef<number | undefined>(undefined)
     const lastCuriousRef = useRef<KanshanGesture | null>(null)
     const idleVideoRef = useRef<HTMLVideoElement | null>(null)
     const oneShotVideoRefs = useRef<Partial<Record<OneShotId, HTMLVideoElement>>>({})
@@ -83,10 +84,6 @@ export const KanshanMascot = forwardRef<KanshanMascotHandle, KanshanMascotProps>
     const isStale = useCallback((token: number) => token !== runIdRef.current, [])
     const nextToken = useCallback(() => {
       runIdRef.current += 1
-      if (idleTimerRef.current !== undefined) {
-        window.clearTimeout(idleTimerRef.current)
-        idleTimerRef.current = undefined
-      }
       return runIdRef.current
     }, [])
 
@@ -111,14 +108,15 @@ export const KanshanMascot = forwardRef<KanshanMascotHandle, KanshanMascotProps>
       })
     }, [])
 
-    /** 一次性片段从 from 播到 until（落点为 anchor），到达后执行 onSettle。 */
+    /** 一次性片段从头播到其整段时长（首尾都是 anchor），到达后执行 onSettle。 */
     const playOneShot = useCallback(
-      (token: number, clip: OneShotId, from: number, until: number, onSettle: () => void) => {
+      (token: number, clip: OneShotId, onSettle: () => void) => {
         const video = oneShotVideoRefs.current[clip]
         if (!video) return
         activeOneShotRef.current = clip
         setLayer({ kind: 'oneshot', clip })
 
+        const until = KANSHAN_DURATION[clip]
         const settle = () => {
           video.removeEventListener('timeupdate', onTimeUpdate)
           video.removeEventListener('ended', onEnded)
@@ -136,7 +134,7 @@ export const KanshanMascot = forwardRef<KanshanMascotHandle, KanshanMascotProps>
           video.addEventListener('timeupdate', onTimeUpdate)
           video.addEventListener('ended', onEnded)
           video.playbackRate = 1
-          video.currentTime = from
+          video.currentTime = 0
           for (let attempt = 1; ; attempt += 1) {
             try {
               await video.play()
@@ -145,7 +143,6 @@ export const KanshanMascot = forwardRef<KanshanMascotHandle, KanshanMascotProps>
               if (isStale(token)) return
               if (attempt < PLAY_MAX_ATTEMPTS && isRecoverablePlayFailure(error)) {
                 await new Promise((resolve) => window.setTimeout(resolve, PLAY_RETRY_DELAY_MS))
-                if (isStale(token)) return
                 continue
               }
               // 放不出来也要收束：leave() 的 Promise 依赖这里 resolve，否则导演会永久
@@ -159,27 +156,7 @@ export const KanshanMascot = forwardRef<KanshanMascotHandle, KanshanMascotProps>
       [isStale, waitForVideoReady],
     )
 
-    /** 待机手势排程：待机一直循环在播，这里只按间隔偶尔叠一次轻量关注手势打破规律。 */
-    const scheduleIdleGesture = useCallback(
-      (token: number) => {
-        idleTimerRef.current = window.setTimeout(() => {
-          if (isStale(token)) return
-          if (Math.random() >= KANSHAN_TIMING.idleGestureChance) {
-            // 这一轮不打断，继续待机，稍后再掷一次。
-            scheduleIdleGesture(token)
-            return
-          }
-          phaseRef.current = 'gesturing'
-          playOneShot(token, 'attention', 0, KANSHAN_TIMING.gestureEnd.attention, () => {
-            settleIntoIdle(token)
-          })
-        }, randomBetween(KANSHAN_TIMING.idleGestureMinMs, KANSHAN_TIMING.idleGestureMaxMs))
-      },
-      // settleIntoIdle 在下方声明，通过闭包引用，调用发生在定时器回调里。
-      [isStale, playOneShot],
-    )
-
-    /** 进入待机：一次性片段收束后交还给 idle，并安排下一次关注手势。 */
+    /** 进入待机：一次性片段收束后交还给常驻 idle 底层。 */
     const settleIntoIdle = useCallback(
       (token: number) => {
         const idle = idleVideoRef.current
@@ -201,9 +178,9 @@ export const KanshanMascot = forwardRef<KanshanMascotHandle, KanshanMascotProps>
           activeOneShotRef.current = null
           setLayer({ kind: 'idle' })
           phaseRef.current = 'idle'
-        }, KANSHAN_TIMING.crossfadeMs)
+        }, KANSHAN_CROSSFADE_MS)
       },
-      [isStale, pauseVideo, scheduleIdleGesture, waitForVideoReady],
+      [isStale, pauseVideo, waitForVideoReady],
     )
 
     const enter = useCallback(() => {
@@ -212,7 +189,7 @@ export const KanshanMascot = forwardRef<KanshanMascotHandle, KanshanMascotProps>
       const token = nextToken()
       phaseRef.current = 'entering'
       pauseVideo(idleVideoRef.current, true)
-      playOneShot(token, 'entry-in', KANSHAN_TIMING.enterFrom, KANSHAN_TIMING.enterSettle, () => settleIntoIdle(token))
+      playOneShot(token, 'appear', () => settleIntoIdle(token))
     }, [motionEnabled, nextToken, pauseVideo, playOneShot, settleIntoIdle])
 
     const appear = useCallback(() => {
@@ -233,10 +210,10 @@ export const KanshanMascot = forwardRef<KanshanMascotHandle, KanshanMascotProps>
         const token = nextToken()
         phaseRef.current = 'gesturing'
         pauseVideo(idleVideoRef.current, true)
-        ;(['attention', 'success', 'error'] as const).forEach((clip) => {
+        KANSHAN_ONESHOT_IDS.forEach((clip) => {
           if (clip !== target) pauseVideo(oneShotVideoRefs.current[clip], true)
         })
-        playOneShot(token, target, 0, KANSHAN_TIMING.gestureEnd[target], () => settleIntoIdle(token))
+        playOneShot(token, target, () => settleIntoIdle(token))
       },
       [motionEnabled, nextToken, pauseVideo, playOneShot, settleIntoIdle],
     )
@@ -254,11 +231,11 @@ export const KanshanMascot = forwardRef<KanshanMascotHandle, KanshanMascotProps>
       phaseRef.current = 'leaving'
       pauseVideo(idleVideoRef.current, true)
       KANSHAN_ONESHOT_IDS.forEach((clip) => {
-        if (clip !== 'entry-out') pauseVideo(oneShotVideoRefs.current[clip], true)
+        if (clip !== 'retract') pauseVideo(oneShotVideoRefs.current[clip], true)
       })
       return new Promise<void>((resolve) => {
-        playOneShot(token, 'entry-out', KANSHAN_TIMING.leaveFrom, KANSHAN_TIMING.leaveHidden, () => {
-          pauseVideo(oneShotVideoRefs.current['entry-out'], true)
+        playOneShot(token, 'retract', () => {
+          pauseVideo(oneShotVideoRefs.current['retract'], true)
           activeOneShotRef.current = null
           if (isStale(token)) {
             resolve()
@@ -321,11 +298,10 @@ export const KanshanMascot = forwardRef<KanshanMascotHandle, KanshanMascotProps>
       return () => document.removeEventListener('visibilitychange', onVisible)
     }, [motionEnabled])
 
-    // 卸载时作废播放序列并清理定时器与监听。
+    // 卸载时作废播放序列。
     useEffect(
       () => () => {
         runIdRef.current += 1
-        if (idleTimerRef.current !== undefined) window.clearTimeout(idleTimerRef.current)
       },
       [],
     )

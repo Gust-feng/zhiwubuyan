@@ -8,6 +8,8 @@ export interface KanshanPerchProps {
   readonly perchId: KanshanPerchId
   /** 定位与尺寸类名（栖位根容器），由所在界面决定角色所在位置。 */
   readonly className?: string
+  /** 挂载时是否优先认领角色（输入框栖位用），卸载时归还给默认栖位。 */
+  readonly claimActive?: boolean
 }
 
 /**
@@ -15,7 +17,7 @@ export interface KanshanPerchProps {
  * visibility:hidden 保留布局占位，激活时才显示并播放入场 / 缩回动画。
  */
 export const KanshanPerch = forwardRef<KanshanMascotHandle, KanshanPerchProps>(
-  function KanshanPerch({ perchId, className }, forwardedRef) {
+  function KanshanPerch({ perchId, className, claimActive = false }, forwardedRef) {
     const mascotRef = useRef<KanshanMascotHandle>(null)
     const snapshot = useKanshanDirector()
 
@@ -30,8 +32,12 @@ export const KanshanPerch = forwardRef<KanshanMascotHandle, KanshanPerchProps>(
         },
       }
       kanshanDirector.register(perchId, api)
-      return () => kanshanDirector.unregister(perchId)
-    }, [perchId])
+      if (claimActive) kanshanDirector.prefer(perchId)
+      return () => {
+        if (claimActive) kanshanDirector.unprefer(perchId)
+        kanshanDirector.unregister(perchId)
+      }
+    }, [perchId, claimActive])
 
     useImperativeHandle(
       forwardedRef,

@@ -185,7 +185,7 @@ function KnowledgePanel({ clusters }: { readonly clusters: readonly ArchiveQuest
   )
 }
 
-/** 同题关系图：首页摘要与个人档案共用，只重排 clusters，不含档案页的面板外框。 */
+/** 同题关系图：只在个人档案页重排 clusters，不含面板外框。 */
 export function KnowledgeNetwork({ clusters }: { readonly clusters: readonly ArchiveQuestionCluster[] }) {
   const visible = clusters.slice(0, 5)
   if (visible.length === 0) return <PanelEmpty>还没有可串联的同题内容。</PanelEmpty>

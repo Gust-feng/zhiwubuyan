@@ -200,7 +200,7 @@ function contentLabel(contentType: string | undefined): string {
 interface CoreCardProps<T> {
   icon: LucideIcon
   name: string
-  role: string
+  description: string
   accent?: boolean
   feed: CoreFeed<T>
   limit: number
@@ -209,13 +209,13 @@ interface CoreCardProps<T> {
   renderItem: (item: T, index: number) => ReactNode
 }
 
-export function CoreCard<T>({ icon: Icon, name, role, accent = false, feed, limit, moreLabel, onMore, renderItem }: CoreCardProps<T>) {
+export function CoreCard<T>({ icon: Icon, name, description, accent = false, feed, limit, moreLabel, onMore, renderItem }: CoreCardProps<T>) {
   return (
     <section className="ui-home__core" aria-label={name}>
       <div className="ui-home__core-head">
         <Icon size={15} className={accent ? 'ui-home__core-glyph is-accent' : 'ui-home__core-glyph'} aria-hidden />
         <h2 className="ui-home__core-name">{name}</h2>
-        <span className="ui-home__core-role">{role}</span>
+        <p className="ui-home__core-description">{description}</p>
         {moreLabel !== undefined && onMore !== undefined && (
           <button type="button" className="ui-home__core-more" onClick={onMore}>{moreLabel}</button>
         )}

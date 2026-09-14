@@ -13,8 +13,6 @@ import {
 } from './home-feeds'
 import { useHomeAnswer, type HomeFeedScope } from './use-home-feed'
 import { useCoreFeed } from './use-core-feed'
-import { usePersonalArchive } from './use-personal-archive'
-import { KnowledgeNetwork } from './personal-archive'
 import { useWorkbenchSurface } from '@ui/workbench/surface'
 import { isZhihuUserSession, useZhihuSession } from '@ui/workbench/zhihu-account'
 import { useZhihuLogin } from '@ui/features/auth/login-request'
@@ -160,7 +158,7 @@ function HomePersonalSummary() {
         <div>
           <span className="ui-home__section-rule" aria-hidden />
           <h2 id="home-personal-title">我的知乎摘要</h2>
-          <p>从最近的创作、收藏、关注与同题脉络继续阅读。</p>
+          <p>从最近的创作、收藏与关注继续阅读。</p>
         </div>
       </header>
 
@@ -171,6 +169,37 @@ function HomePersonalSummary() {
 
 /** 未登录预览只画形状，不放任何真实或编造的数据；形状本身说明登录后能得到什么。 */
 type PreviewKind = 'creation' | 'collection' | 'followee' | 'knowledge'
+
+const PERSONAL_SUMMARY_SECTIONS = [
+  {
+    kind: 'creation',
+    icon: PenLine,
+    title: '创作',
+    subtitle: '记录思考，分享见解',
+    detail: '在这里，遇见更好的表达自己。',
+  },
+  {
+    kind: 'collection',
+    icon: Bookmark,
+    title: '收藏',
+    subtitle: '好的想法，值得反复阅读',
+    detail: '收藏你感兴趣的内容。',
+  },
+  {
+    kind: 'followee',
+    icon: Users,
+    title: '关注',
+    subtitle: '与有趣的人，一起看更大的世界',
+    detail: '发现值得关注的创作者。',
+  },
+  {
+    kind: 'knowledge',
+    icon: Network,
+    title: '知识脉络',
+    subtitle: '从问题出发，构建自己的知识地图',
+    detail: '让知识成为你的思考路径。',
+  },
+] as const
 
 function PreviewGhost({ kind }: { readonly kind: PreviewKind }) {
   if (kind === 'creation') {
@@ -232,13 +261,6 @@ function PreviewGhost({ kind }: { readonly kind: PreviewKind }) {
 }
 
 function GuestPersonalPreview({ onLogin }: { readonly onLogin: () => void }) {
-  const items = [
-    { kind: 'creation', icon: PenLine, title: '创作', subtitle: '记录思考，分享见解', detail: '在这里，遇见更好的表达自己。' },
-    { kind: 'collection', icon: Bookmark, title: '收藏', subtitle: '好的想法，值得反复阅读', detail: '收藏你感兴趣的内容。' },
-    { kind: 'followee', icon: Users, title: '关注', subtitle: '与有趣的人，一起看更大的世界', detail: '发现值得关注的创作者。' },
-    { kind: 'knowledge', icon: Network, title: '知识脉络', subtitle: '从问题出发，构建自己的知识地图', detail: '让知识成为你的思考路径。' },
-  ] as const
-
   return (
     <section className="ui-home__personal ui-home__personal--guest" aria-label="个人功能预览">
       <header className="ui-home__personal-head">
@@ -249,7 +271,7 @@ function GuestPersonalPreview({ onLogin }: { readonly onLogin: () => void }) {
         </div>
       </header>
       <div className="ui-home__preview-grid">
-        {items.map(({ kind, icon: Icon, title, subtitle, detail }) => (
+        {PERSONAL_SUMMARY_SECTIONS.map(({ kind, icon: Icon, title, subtitle, detail }) => (
           <article className="ui-home__preview-card" key={title}>
             <div className="ui-home__preview-title"><Icon size={17} aria-hidden /><h3>{title}</h3><ArrowRight className="ui-home__preview-title-arrow" size={16} aria-hidden /></div>
             <p className="ui-home__preview-subtitle">{subtitle}</p>
@@ -286,9 +308,9 @@ function AuthenticatedHomeSummary() {
   return (
     <div className="ui-home__personal-grid">
       <CoreCard
-        icon={PenLine}
-        name="创作"
-        role="最近发布"
+        icon={PERSONAL_SUMMARY_SECTIONS[0].icon}
+        name={PERSONAL_SUMMARY_SECTIONS[0].title}
+        description={PERSONAL_SUMMARY_SECTIONS[0].subtitle}
         feed={creations}
         limit={expanded.creations ? creations.items.length : 3}
         moreLabel={creations.items.length > 3 ? (expanded.creations ? '收起' : '查看更多') : undefined}
@@ -296,9 +318,9 @@ function AuthenticatedHomeSummary() {
         renderItem={(item) => <CreationRow item={item} />}
       />
       <CoreCard
-        icon={Bookmark}
-        name="收藏"
-        role="最近保存"
+        icon={PERSONAL_SUMMARY_SECTIONS[1].icon}
+        name={PERSONAL_SUMMARY_SECTIONS[1].title}
+        description={PERSONAL_SUMMARY_SECTIONS[1].subtitle}
         feed={collections}
         limit={expanded.collections ? collections.items.length : 3}
         moreLabel={collections.items.length > 3 ? (expanded.collections ? '收起' : '查看更多') : undefined}
@@ -306,9 +328,9 @@ function AuthenticatedHomeSummary() {
         renderItem={(item) => <CollectionRow item={item} />}
       />
       <CoreCard
-        icon={Users}
-        name="关注"
-        role="正在关注"
+        icon={PERSONAL_SUMMARY_SECTIONS[2].icon}
+        name={PERSONAL_SUMMARY_SECTIONS[2].title}
+        description={PERSONAL_SUMMARY_SECTIONS[2].subtitle}
         feed={followees}
         limit={expanded.followees ? followees.items.length : 3}
         moreLabel={followees.items.length > 3 ? (expanded.followees ? '收起' : '查看更多') : undefined}
@@ -320,41 +342,22 @@ function AuthenticatedHomeSummary() {
   )
 }
 
-/** 知识脉络复用档案的同题聚合：服务端按 TTL 与并发合并，首页只在快照过期时才触发一次同步。 */
+/**
+ * 首页不触发个人档案同步：同题聚合需要全量扫描创作和收藏，
+ * 只在用户主动进入「我的知乎」时按需生成，避免空账号和首页访问消耗额度。
+ */
 function KnowledgeSummaryCard() {
-  const archive = usePersonalArchive(true)
-  const clusters = archive.archive?.views.questionClusters ?? []
   return (
     <section className="ui-home__core" aria-label="知识脉络">
       <div className="ui-home__core-head">
         <Network size={15} className="ui-home__core-glyph" aria-hidden />
         <h2 className="ui-home__core-name">知识脉络</h2>
-        <span className="ui-home__core-role">同题聚合</span>
-        {archive.status === 'ready' && (
-          <span className="ui-home__core-meta">{clusters.length} 组</span>
-        )}
+        <p className="ui-home__core-description">{PERSONAL_SUMMARY_SECTIONS[3].subtitle}</p>
       </div>
-
-      {archive.status === 'loading' && (
-        <div className="ui-home__skeleton" aria-label="正在同步">
-          {Array.from({ length: 3 }, (_, index) => (
-            <div key={index} className="ui-home__skeleton-row" />
-          ))}
-        </div>
-      )}
-
-      {archive.status === 'error' && (
-        <div className="ui-home__core-notice">
-          <p>{archive.error}</p>
-          <button type="button" onClick={archive.retry}>重试</button>
-        </div>
-      )}
-
-      {archive.status === 'ready' && (
-        <div className="ui-home__knowledge">
-          <KnowledgeNetwork clusters={clusters} />
-        </div>
-      )}
+      <div className="ui-home__knowledge-intro">
+        <p>同一问题下的创作和收藏，会在个人档案中串成一条线。</p>
+        <span>还没有可展示的脉络。</span>
+      </div>
     </section>
   )
 }

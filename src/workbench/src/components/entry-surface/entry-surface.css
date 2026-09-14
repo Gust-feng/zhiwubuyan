@@ -116,6 +116,24 @@
 
 /* 输入卡外框由外壳持有，卡内内容由每一格替换；卡片外观由 .dr-composer / .voices-composer 提供。 */
 
+/* 刘看山趴在输入卡【右上角】的上沿：栖位盒整体抬到卡片上方，底部压进卡片
+   32px——让卡沿正好切在胸口与双爪交界处，双爪搭住边沿、身体藏到卡后，
+   胸口贴住卡沿而不是悬在半空；再深脸会沉进卡里（显得靠下），再浅会像探头。
+   用 > 提高优先级，确保根盒被定位、定尺寸，否则内部 inset:0 会错误铺满整张卡。 */
+.entry-composer > .entry-composer__mascot {
+  position: absolute;
+  top: auto;
+  left: auto;
+  right: 18px;
+  bottom: calc(100% - 32px);
+  z-index: 3;
+  display: grid;
+  width: 132px;
+  height: 120px;
+  place-items: end center;
+  overflow: visible;
+}
+
 /* 输入卡的主按钮只有这一份：深度研究、众声、成象三个入口共用同一套尺寸与配色。
    以前三处各写一套，高度、字号与禁用透明度都不一样，切入口时按钮会变样。
    文字色必须比 `.entry-live button { color: inherit }` 更具体才压得住（(0,2,0) > (0,1,1)），
@@ -146,6 +164,7 @@
   .entry-start__head { gap: 16px; margin-bottom: 22px; }
   .entry-emblem svg { width: 40px; height: 40px; }
   .entry-title { font-size: 25px; }
+  .entry-composer > .entry-composer__mascot { right: 12px; width: 106px; height: 96px; }
   .entry-seeds { margin-bottom: 20px; padding: 12px 12px 8px; }
   .entry-live .entry-seeds__item { font-size: 12px; }
   /* 窄容器只留前三条，避免把提问卡片顶到很下面；两个入口取同一条数，高度仍一致。 */

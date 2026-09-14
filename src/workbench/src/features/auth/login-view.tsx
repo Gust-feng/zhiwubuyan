@@ -49,12 +49,12 @@ type AutoSweepPoint = {
 
 const TITLE_CENTER_X = 143;
 const TITLE_CENTER_Y = 36;
-const TITLE_BASE_RADIUS = 54;
+const TITLE_BASE_RADIUS = 62;
 
 /** 加载完成到开始示范动画之间的等待时间。 */
 const AUTO_SWEEP_DELAY = 600;
 /** 一次示范扫过的总时长。 */
-const AUTO_SWEEP_DURATION = 2100;
+const AUTO_SWEEP_DURATION = 2600;
 /**
  * 示范路径：从左外侧进入，横向掠过四个字并带轻微起伏，最后从右侧淡出。
  * 坐标与 SVG 视图框一致，intensity 为 0 的端点负责淡入淡出。
@@ -103,6 +103,7 @@ function LoginTitleMotion() {
   const refractedRef = useRef<SVGTextElement>(null);
   const echoARef = useRef<SVGTextElement>(null);
   const echoBRef = useRef<SVGTextElement>(null);
+  const glintRef = useRef<SVGCircleElement>(null);
   const stateRef = useRef<TitleMotionState>({
     active: false,
     autoDemo: false,
@@ -130,6 +131,7 @@ function LoginTitleMotion() {
   const refractionFilterId = `loginTitleRefraction-${id}`;
   const noiseId = `loginTitleNoise-${id}`;
   const displacementId = `loginTitleDisplacement-${id}`;
+  const glintGradientId = `loginTitleGlint-${id}`;
 
   useEffect(() => {
     const mediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -173,7 +175,8 @@ function LoginTitleMotion() {
     const refracted = refractedRef.current;
     const echoA = echoARef.current;
     const echoB = echoBRef.current;
-    if (!svg || !lens || !displacement || !noise || !flowGradient || !refracted || !echoA || !echoB) {
+    const glint = glintRef.current;
+    if (!svg || !lens || !displacement || !noise || !flowGradient || !refracted || !echoA || !echoB || !glint) {
       state.frame = null;
       return;
     }
@@ -213,29 +216,33 @@ function LoginTitleMotion() {
     const radius = TITLE_BASE_RADIUS + Math.min(18, speed * 2.4);
     const echoOpacity = reducedMotion
       ? 0
-      : Math.min(0.2, 0.035 + speed * 0.014) * visibility;
+      : Math.min(0.42, 0.06 + speed * 0.03) * visibility;
 
     lens.setAttribute("cx", state.x.toFixed(2));
     lens.setAttribute("cy", state.y.toFixed(2));
     lens.setAttribute("r", radius.toFixed(2));
-    displacement.setAttribute("scale", reducedMotion ? "0" : (3.2 + speed * 0.86).toFixed(2));
+    displacement.setAttribute("scale", reducedMotion ? "0" : (4.6 + speed * 1.25).toFixed(2));
     noise.setAttribute("baseFrequency", `${(0.017 + Math.sin(state.phase) * 0.002).toFixed(4)} 0.11`);
     flowGradient.setAttribute(
       "gradientTransform",
       `rotate(${(Math.sin(state.phase * 0.75) * 5 + state.velocityX * 0.8).toFixed(2)} 143 36)`,
     );
 
-    refracted.style.opacity = (0.9 * visibility).toFixed(3);
+    refracted.style.opacity = (0.95 * visibility).toFixed(3);
     echoA.style.opacity = echoOpacity.toFixed(3);
     echoB.style.opacity = (echoOpacity * 0.6).toFixed(3);
     echoA.setAttribute(
       "transform",
-      `translate(${(-state.velocityX * 0.7).toFixed(2)} ${(-state.velocityY * 0.24 - 0.5).toFixed(2)})`,
+      `translate(${(-state.velocityX * 1.15).toFixed(2)} ${(-state.velocityY * 0.4 - 0.8).toFixed(2)})`,
     );
     echoB.setAttribute(
       "transform",
-      `translate(${(state.velocityX * 0.48).toFixed(2)} ${(state.velocityY * 0.18 + 0.5).toFixed(2)})`,
+      `translate(${(state.velocityX * 0.8).toFixed(2)} ${(state.velocityY * 0.3 + 0.8).toFixed(2)})`,
     );
+    glint.setAttribute("cx", state.x.toFixed(2));
+    glint.setAttribute("cy", (state.y - radius * 0.22).toFixed(2));
+    glint.setAttribute("r", (radius * 0.62).toFixed(2));
+    glint.style.opacity = (Math.min(0.5, 0.16 + speed * 0.05) * visibility).toFixed(3);
 
     const stillSettling = state.intensity > 0.008 || state.targetIntensity > 0.008;
     if (state.active || state.autoDemo || stillSettling) {
@@ -333,11 +340,16 @@ function LoginTitleMotion() {
       >
         <defs>
           <linearGradient ref={flowGradientRef} id={flowGradientId} gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="286" y2="72">
-            <stop offset="0" stopColor="#0f70ff" />
-            <stop offset="0.45" stopColor="#57c9ff" />
-            <stop offset="0.72" stopColor="#8aa7ff" />
-            <stop offset="1" stopColor="#ffd092" />
+            <stop offset="0" stopColor="#00a6ff" />
+            <stop offset="0.45" stopColor="#6fe6ff" />
+            <stop offset="0.72" stopColor="#b9f2ff" />
+            <stop offset="1" stopColor="#ffd9a0" />
           </linearGradient>
+          <radialGradient id={glintGradientId}>
+            <stop offset="0" stopColor="#ffffff" stopOpacity="0.85" />
+            <stop offset="0.55" stopColor="#dff6ff" stopOpacity="0.32" />
+            <stop offset="1" stopColor="#dff6ff" stopOpacity="0" />
+          </radialGradient>
           <radialGradient ref={lensRef} id={lensGradientId} gradientUnits="userSpaceOnUse" cx={TITLE_CENTER_X} cy={TITLE_CENTER_Y} r="0">
             <stop offset="0" stopColor="white" stopOpacity="1" />
             <stop offset="0.55" stopColor="white" stopOpacity="0.96" />
@@ -345,15 +357,17 @@ function LoginTitleMotion() {
           </radialGradient>
           {/* 蒙版矩形必须盖过视图框：字形墨迹顶部越出 y=0 约 3 个单位，位移滤镜与回声平移还会外溢十余个单位，只覆盖 286×72 会把标题边缘削平。 */}
           <mask id={lensMaskId}><rect x="-32" y="-32" width="350" height="140" fill={`url(#${lensGradientId})`} /></mask>
-          <filter id={refractionFilterId} x="-16%" y="-28%" width="132%" height="156%">
+          <filter id={refractionFilterId} x="-20%" y="-36%" width="140%" height="172%">
             <feTurbulence ref={noiseRef} id={noiseId} type="fractalNoise" baseFrequency="0.017 0.11" numOctaves="2" seed="8" result="noise" />
-            <feDisplacementMap ref={displacementRef} id={displacementId} in="SourceGraphic" in2="noise" scale="0" xChannelSelector="R" yChannelSelector="B" />
+            <feDisplacementMap ref={displacementRef} id={displacementId} in="SourceGraphic" in2="noise" scale="0" xChannelSelector="R" yChannelSelector="B" result="displaced" />
+            <feDropShadow in="displaced" dx="0" dy="0" stdDeviation="3.2" floodColor="#46d4ff" floodOpacity="0.5" />
           </filter>
         </defs>
         <text className="login-title-motion__text login-title-motion__base" x="143" y="51" textAnchor="middle">知无不言</text>
         <text ref={echoARef} className="login-title-motion__text login-title-motion__echo-a" x="143" y="51" textAnchor="middle" mask={`url(#${lensMaskId})`}>知无不言</text>
         <text ref={echoBRef} className="login-title-motion__text login-title-motion__echo-b" x="143" y="51" textAnchor="middle" mask={`url(#${lensMaskId})`}>知无不言</text>
         <text ref={refractedRef} className="login-title-motion__text login-title-motion__refracted" x="143" y="51" textAnchor="middle" mask={`url(#${lensMaskId})`} fill={`url(#${flowGradientId})`} filter={`url(#${refractionFilterId})`}>知无不言</text>
+        <circle ref={glintRef} className="login-title-motion__glint" cx={TITLE_CENTER_X} cy={TITLE_CENTER_Y} r="0" fill={`url(#${glintGradientId})`} />
       </svg>
     </div>
   );

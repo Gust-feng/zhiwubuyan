@@ -223,6 +223,11 @@
   opacity: 0;
 }
 
+.login-title-motion__glint {
+  pointer-events: none;
+  mix-blend-mode: screen;
+}
+
 /* ── 主按钮 ── */
 .login-continue {
   position: relative;
@@ -375,7 +380,8 @@
 
   .login-title-motion__echo-a,
   .login-title-motion__echo-b,
-  .login-title-motion__refracted {
+  .login-title-motion__refracted,
+  .login-title-motion__glint {
     display: none;
   }
 }

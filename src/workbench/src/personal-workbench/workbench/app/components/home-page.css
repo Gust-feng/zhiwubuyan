@@ -330,9 +330,10 @@
   line-height: 1.4;
 }
 
-.ui-home__core-role {
+.ui-home__core-description {
   grid-column: 2 / -1;
   grid-row: 2;
+  margin: 0;
   color: var(--ui-text-3);
   font-family: "Noto Serif SC Variable", var(--reading-serif);
   font-size: 10.5px;
@@ -660,9 +661,22 @@ a.ui-home__row:hover .ui-home__row-open {
   border-left: 1px solid var(--ui-border);
 }
 
-/* 知识脉络卡内嵌档案页的同题关系图，给出与列表行一致的左右内边距。 */
-.ui-home__knowledge {
-  padding: 8px 22px 16px;
+/* 首页只说明同题聚合的来源；完整关系图由个人档案页在用户主动进入时生成。 */
+.ui-home__knowledge-intro {
+  display: grid;
+  gap: 8px;
+  padding: 18px 22px;
+  color: var(--ui-text-3);
+  font-size: 12px;
+  line-height: 1.65;
+}
+
+.ui-home__knowledge-intro p {
+  margin: 0;
+}
+
+.ui-home__knowledge-intro span {
+  color: color-mix(in srgb, var(--ui-text-3) 80%, transparent);
 }
 
 .ui-home__personal-grid .ui-home__row {

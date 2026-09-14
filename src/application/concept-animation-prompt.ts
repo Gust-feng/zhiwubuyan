@@ -5,10 +5,12 @@
  * 面向"模型能力一般"的现实做了一次针对性升级：
  * - 不再要求模型从零发明步进控制器，而是给一份**完整可用的骨架**，
  *   模型只填"图示内容"和"每一步动画"，从根本上消除控制台写坏/丢失的问题；
- * - 补内容规划（怎么把一个概念拆成 5–7 步）、动画配方库（可照抄的具体写法）、
+ * - 补内容规划（怎么把一个概念拆成 6–9 步）、动画配方库（可照抄的具体写法）、
  *   交付前自查清单，让弱模型有可执行的抓手，而不是抽象要求；
  * - 加"画面优先"硬约束：先定贯穿全片的视觉主体、台上文字限短标签、
- *   用捂旁白自查兜底，防止产物退化成复述旁白的文字墙。
+ *   用捂旁白自查兜底，防止产物退化成复述旁白的文字墙；
+ * - 抬高节奏下限：每步是一条 2–4 段动作链加停留拍，步数与全片时长给锚点，
+ *   治"一步一闪、几秒翻完"的观感。
  *
  * 产出物必须离线自包含，因此自包含与安全写成硬约束，而不是只靠事后清洗兜底。
  * 旁白语气沿用《语言体系设计》里看山的口吻：诚实、扎实、克制。
@@ -207,7 +209,7 @@ enterStep(0);
 
 const CONTENT_PLAN = `## 三、先规划内容，再动画（很重要）
 
-写代码前，先在脑子里把主题拆成 5–7 步。一个好的讲解动画通常走这条线：
+写代码前，先在脑子里把主题拆成 6–9 步。一个好的讲解动画通常走这条线：
 
 1. 点题：一句话说清它是什么，为什么值得知道。
 2. 直观：给一个日常类比或一组对比图，先建立画面感。
@@ -241,22 +243,26 @@ const STEP_RULES = `## 五、每一步怎么写
 - 需要从无到有的元素，把它的初始状态写在 HTML 里（例如 style="opacity:0"），再在某一步 tween 到可见。
 - tween 的 fill 是 forwards，动画结束后元素会停在你给的最后一帧。
 - el.animate 的 frames 是数组，和 CSS keyframes 一样，例如 [{opacity:0,transform:'translateY(12px)'},{opacity:1,transform:'translateY(0)'}]。
-- 一个"步骤"应包含：动画（不少于 1.2 秒）→ 停止 → 旁白更新。
+- 一个"步骤"应包含：动作链（2–4 段 tween，合计不少于 2.8 秒）→ 停留拍（不少于 0.6 秒）→ 停止 → 旁白更新。
+- 动作链的顺序通常是：元素出现 → 移动到位 → 强调落点。不要用一个淡入代替整步。
 
 示例（照这个模式写）：
 
     {
       narration: '先看两个状态：左边是整齐排列的低熵，右边是自然演化后的高熵。',
       async enter() {
-        await tween(document.getElementById('left'), [{opacity:0},{opacity:1}], 700);
-        await tween(document.getElementById('right'), [{opacity:0},{opacity:1}], 700);
+        await tween(document.getElementById('left'), [{opacity:0},{opacity:1}], 800);
+        await tween(document.getElementById('right'), [{opacity:0},{opacity:1}], 800);
+        await wait(700); // 停留拍：画面停住，让眼睛落下来
       },
     },
     {
       narration: '让右边的粒子散开，混乱度就上升了。',
       async enter() {
-        await tween(document.getElementById('p1'), [{transform:'translate(0,0)'},{transform:'translate(40px,-24px)'}], 900, 'ease-in-out');
-        await tween(document.getElementById('p2'), [{transform:'translate(0,0)'},{transform:'translate(-32px,20px)'}], 900, 'ease-in-out');
+        await tween(document.getElementById('p1'), [{transform:'translate(0,0)'},{transform:'translate(40px,-24px)'}], 1100, 'ease-in-out');
+        await tween(document.getElementById('p2'), [{transform:'translate(0,0)'},{transform:'translate(-32px,20px)'}], 1100, 'ease-in-out');
+        await tween(document.getElementById('right'), [{boxShadow:'0 0 0 0 rgba(245,158,11,0)'},{boxShadow:'0 0 0 6px rgba(245,158,11,.25)'}], 600);
+        await wait(700);
       },
     },`;
 
@@ -290,7 +296,7 @@ const RECIPES = `## 六、常用动画配方（可直接照抄改写）
     动画里：await tween(document.getElementById('arrow'), [{strokeDashoffset:330},{strokeDashoffset:0}], 900);
 
 **高亮强调**：改描边、阴影或颜色，并保持住。
-    await tween(el, [{boxShadow:'0 0 0 0 rgba(79,70,229,0)'},{boxShadow:'0 0 0 6px rgba(79,70,229,.25)'}], 500);
+    await tween(el, [{boxShadow:'0 0 0 0 rgba(79,70,229,0)'},{boxShadow:'0 0 0 6px rgba(79,70,229,.25)'}], 600);
 
 **数字/公式**：用大号等宽字体单独一行，出现时做淡入上移。
     .formula{font-family:ui-monospace,Consolas,monospace;font-size:26px;text-align:center}
@@ -300,12 +306,15 @@ const RECIPES = `## 六、常用动画配方（可直接照抄改写）
 
 配色遵循：主色靛蓝 #4f46e5、强调琥珀 #f59e0b、成功绿 #22c55e、正文 #1f2937、次要文字 #64748b、边框 #e5e7eb。`;
 
-const PACING = `## 七、节奏（宁慢勿快）
+const PACING = `## 七、节奏与篇幅（宁慢勿快，宁够勿赶）
 
-- 单个 tween 不少于 450 毫秒。
-- 一个步骤从开始动画到旁白更新，总时长不少于 1200 毫秒。
+- 单个 tween 不少于 600 毫秒；主体出场、关键移动给 900–1400 毫秒，让眼睛跟得上。
+- 每步的 enter 是一条 2–4 段 tween 的动作链：出现 → 移动到位 → 强调，用 await 串起来。只有一个孤零零淡入的步骤不成立。
+- 最后一段动作之后加 await wait(600) 以上的停留拍：画面停住、眼睛落定，再让控制器更新旁白。
+- 一个步骤从开始动画到旁白更新，总时长不少于 2800 毫秒。
+- 全片点完一遍，纯动画时间通常在 25–45 秒；算下来不足 20 秒就是步骤太薄，回去补动作链或加步。
 - 用缓动：ease-out、ease-in-out、back.out(1.8) 之类。禁止 linear 匀速。
-- 出场、强调、收尾都要让人看得清，不要一闪而过。弱模型最常见的毛病是把动画写得飞快，请刻意放慢。`;
+- 出场、强调、收尾都要让人看得清，不要一闪而过。弱模型最常见的毛病是把动画写得又快又短，请刻意放慢、刻意给够。`;
 
 const NARRATION = `## 八、旁白怎么写
 
@@ -332,7 +341,9 @@ const SELF_CHECK = `## 九、交付前自查（逐条确认）
 - 全文有没有 <script src>、<link>、外链图片？一个都不能有。
 - 有没有 eval、new Function、动态 import？不能有。
 - 窄屏（360px）会不会横向溢出？
-- 有没有哪一步短于 1.2 秒？
+- 有没有哪一步短于 2.8 秒？每步是 2–4 段动作链，还是一个孤零零的淡入？
+- 每步最后一段动作后有不少于 0.6 秒的停留拍吗？旁白是不是抢在画面落定前就换了？
+- 全片点完一遍，纯动画时间到 20 秒以上了吗？不够就补动作链或加步。
 - 动画改的是 transform / opacity，不是 left / width / top / height 吧？
 - 骨架里的 {{...}} 都替换成真实内容了吗？
 - 动画结束后的元素状态是你想要的最终画面吗？`;
@@ -343,7 +354,8 @@ const FORBIDDEN = `## 十、绝对禁止
 - 禁止每一步换一批互不相干的文字卡片；视觉主体必须贯穿全片。
 - 禁止补全骨架里的"工具"和"控制器"部分，只填图示与 steps。
 - 禁止省略底部控制台，禁止让按钮点了没反应。
-- 禁止单个 tween 短于 450 毫秒，禁止一个步骤短于 1200 毫秒。
+- 禁止单个 tween 短于 600 毫秒，禁止一个步骤短于 2800 毫秒。
+- 禁止用一个淡入代替整步动作链，禁止省略步末停留拍。
 - 禁止步骤之间不停顿地连播。
 - 禁止边播动画边跳旁白。
 - 禁止引用任何外部资源或发起网络请求。

@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import { AnimatePresence, motion, type Variants } from 'motion/react'
 import type { WorkbenchView } from '../../workbench/navigation-state'
 import { MOTION_EASING, useMotionEnabled } from '../../shell/motion-system'
+import { KanshanPerch } from '../kanshan-mascot/KanshanPerch'
 import './entry-surface.css'
 
 /** 使用入口外壳的视图：深度研究、众声、成象。
@@ -36,7 +37,7 @@ const SWAP_VARIANTS: Variants = {
  *  外壳（版心、图标位、标题位、卡片外框）由这一个组件持有，跨视图不重建。
  *  图标、标题与建议卡这三格都是「同一处内容被换掉」：图标在自己中心交替，标题与建议卡原地淡换。
  *  seeds 可选：没有建议内容的格子（成象）直接不渲染这一格。
- *  看山不在这里：它常驻侧栏，属于全局结构，见 KanshanPerch。 */
+ *  刘看山趴在输入卡上沿，栖位由这里的输入卡槽持有，见 KanshanPerch。 */
 export function EntrySurface(props: {
   readonly view: EntryView
   readonly emblem: ReactNode
@@ -61,6 +62,8 @@ export function EntrySurface(props: {
             </div>
           )}
           <div className={`entry-slot entry-composer ${composerClass(props.view)}`}>
+            {/* 刘看山趴在输入卡上沿：输入框在场时优先于侧栏栖位，卸载后归还侧栏。 */}
+            <KanshanPerch perchId="composer" claimActive className="entry-composer__mascot" />
             {props.composer}
           </div>
         </div>
