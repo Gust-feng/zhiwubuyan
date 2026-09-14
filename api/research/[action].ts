@@ -1,4 +1,4 @@
 import handler from "../../src/server/web-api.ts";
 
-/** 个人档案快照与派生视图 */
+/** 研究：voices（众声）、seed-questions（主题提炼）。 */
 export default handler;
