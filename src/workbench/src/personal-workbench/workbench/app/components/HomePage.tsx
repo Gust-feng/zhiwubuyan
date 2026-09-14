@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { ArrowRight, Bookmark, LockKeyhole, Network, PenLine, Users } from 'lucide-react'
-import { HomeAnswerPanel, HomeAskBar, HomeFeedView, useHomeSearchState } from './home-feed-view'
+import { HomeAnswerPanel, HomeAskBar } from './home-feed-view'
 import {
   CollectionRow,
   CoreCard,
@@ -11,8 +11,10 @@ import {
   readCreationItems,
   readFolloweeItems,
 } from './home-feeds'
-import { useHomeAnswer, useHomeFeed } from './use-home-feed'
+import { useHomeAnswer, type HomeFeedScope } from './use-home-feed'
 import { useCoreFeed } from './use-core-feed'
+import { usePersonalArchive } from './use-personal-archive'
+import { KnowledgeNetwork } from './personal-archive'
 import { useWorkbenchSurface } from '@ui/workbench/surface'
 import { isZhihuUserSession, useZhihuSession } from '@ui/workbench/zhihu-account'
 import { useZhihuLogin } from '@ui/features/auth/login-request'
@@ -22,21 +24,18 @@ import './workbench-views.css'
 interface HomePageProps {
   /** 带着问题进入众声：直答面板的「众声」入口用它承接需要可核对引用的情况。 */
   onOpenVoices: (issue: string) => void
+  /** 带着检索条件进入检索视图：结果独立成页，不插回首页内容流。 */
+  onOpenSearch: (query: string, scope: HomeFeedScope) => void
 }
 
 /**
- * 首页：搜索、直答与个人数据摘要；热榜浏览由探索页独占。
+ * 首页：搜索入口、直答与个人数据摘要；检索结果由独立视图承载，热榜浏览由探索页独占。
  * 直答快答是同一输入框的第二条通路，返回生成内容、不进证据体系，界面固定标注可能出错。
  * 研究入口与进展留在侧栏的深度研究板块，首页不再重复承载研究卡片。
  */
-export function HomePage({ onOpenVoices }: HomePageProps) {
-  const search = useHomeSearchState()
-  const feed = useHomeFeed({
-    topic: search.topic,
-    scope: search.scope,
-    type: search.type,
-    enabled: search.topic !== '',
-  })
+export function HomePage({ onOpenVoices, onOpenSearch }: HomePageProps) {
+  const [draft, setDraft] = useState('')
+  const [scope, setScope] = useState<HomeFeedScope>('zhihu')
   const answer = useHomeAnswer()
   const surfaceState = useWorkbenchSurface()
   const { state: sessionState, reload: reloadSession } = useZhihuSession()
@@ -44,10 +43,14 @@ export function HomePage({ onOpenVoices }: HomePageProps) {
   const [tier, setTier] = useState<'fast' | 'thinking'>('fast')
   const [asked, setAsked] = useState('')
 
-  // 网页端直答要消耗调用方额度，未登录不发请求，改为拉起登录。
+  // 网页端直答与检索要消耗调用方额度，匿名访客不发请求，改为拉起登录。
   // 桌面端用用户自带凭证，不拦；公开热榜由探索页单独读取。
-  const authenticated = sessionState.status === 'ready' && isZhihuUserSession(sessionState.session)
-  const loginRequired = surfaceState.surface === 'web' && surfaceState.ready && !authenticated
+  // 本地开发预览（developerMode）额度挂在本机 ACS 上，与服务端 requireWebLogin 的豁免一致，不拦；
+  // 账号相关界面仍只认真实 OAuth 会话（isZhihuUserSession）。
+  const session = sessionState.status === 'ready' ? sessionState.session : undefined
+  const authenticated = session !== undefined && isZhihuUserSession(session)
+  const developerPreview = session?.developerMode === true
+  const loginRequired = surfaceState.surface === 'web' && surfaceState.ready && !authenticated && !developerPreview
 
   const askZhida = (question: string, nextTier: 'fast' | 'thinking') => {
     if (question.trim() === '') return
@@ -59,13 +62,15 @@ export function HomePage({ onOpenVoices }: HomePageProps) {
     answer.ask(question, nextTier)
   }
 
-  // 主题检索同样要求登录；热榜（无检索词）保持匿名可读。
+  // 主题检索同样要求登录；热榜（探索页）保持匿名可读。
   const submitSearch = (query: string): void => {
-    if (query.trim() !== '' && loginRequired) {
+    const next = query.trim()
+    if (next === '') return
+    if (loginRequired) {
       openLogin('home')
       return
     }
-    search.submit(query)
+    onOpenSearch(next, scope)
   }
 
   return (
@@ -79,7 +84,7 @@ export function HomePage({ onOpenVoices }: HomePageProps) {
                 ? 'error'
               : authenticated ? 'authenticated' : 'guest'}
             profile={authenticated
-              ? sessionState.session.profile
+              ? session.profile
               : undefined}
             onLogin={() => openLogin('home')}
             onRetry={sessionState.status === 'error' ? reloadSession : undefined}
@@ -87,12 +92,12 @@ export function HomePage({ onOpenVoices }: HomePageProps) {
         </div>
 
         <HomeAskBar
-          draft={search.draft}
-          onDraftChange={search.setDraft}
-          scope={search.scope}
-          onScopeChange={search.setScope}
-          onSubmit={() => submitSearch(search.draft)}
-          onAsk={() => askZhida(search.draft, tier)}
+          draft={draft}
+          onDraftChange={setDraft}
+          scope={scope}
+          onScopeChange={setScope}
+          onSubmit={() => submitSearch(draft)}
+          onAsk={() => askZhida(draft, tier)}
         />
 
         <div className="ui-home__content">
@@ -107,17 +112,6 @@ export function HomePage({ onOpenVoices }: HomePageProps) {
               onClose={() => answer.reset()}
               onRetry={() => askZhida(asked, tier)}
               onExplore={() => onOpenVoices(asked)}
-            />
-          )}
-
-          {search.topic !== '' && (
-            <HomeFeedView
-              feed={feed}
-              topic={search.topic}
-              type={search.type}
-              onTypeChange={search.setType}
-              onRetry={() => search.submit(search.topic || search.draft)}
-              onClearTopic={search.clear}
             />
           )}
         </div>
@@ -164,7 +158,7 @@ function HomePersonalSummary() {
         <div>
           <span className="ui-home__section-rule" aria-hidden />
           <h2 id="home-personal-title">我的知乎摘要</h2>
-          <p>从最近的创作、收藏与关注继续阅读。</p>
+          <p>从最近的创作、收藏、关注与同题脉络继续阅读。</p>
         </div>
       </header>
 
@@ -319,6 +313,46 @@ function AuthenticatedHomeSummary() {
         onMore={() => toggle('followees')}
         renderItem={(item) => <FolloweeRow item={item} />}
       />
+      <KnowledgeSummaryCard />
     </div>
+  )
+}
+
+/** 知识脉络复用档案的同题聚合：服务端按 TTL 与并发合并，首页只在快照过期时才触发一次同步。 */
+function KnowledgeSummaryCard() {
+  const archive = usePersonalArchive(true)
+  const clusters = archive.archive?.views.questionClusters ?? []
+  return (
+    <section className="ui-home__core" aria-label="知识脉络">
+      <div className="ui-home__core-head">
+        <Network size={15} className="ui-home__core-glyph" aria-hidden />
+        <h2 className="ui-home__core-name">知识脉络</h2>
+        <span className="ui-home__core-role">同题聚合</span>
+        {archive.status === 'ready' && (
+          <span className="ui-home__core-meta">{clusters.length} 组</span>
+        )}
+      </div>
+
+      {archive.status === 'loading' && (
+        <div className="ui-home__skeleton" aria-label="正在同步">
+          {Array.from({ length: 3 }, (_, index) => (
+            <div key={index} className="ui-home__skeleton-row" />
+          ))}
+        </div>
+      )}
+
+      {archive.status === 'error' && (
+        <div className="ui-home__core-notice">
+          <p>{archive.error}</p>
+          <button type="button" onClick={archive.retry}>重试</button>
+        </div>
+      )}
+
+      {archive.status === 'ready' && (
+        <div className="ui-home__knowledge">
+          <KnowledgeNetwork clusters={clusters} />
+        </div>
+      )}
+    </section>
   )
 }

@@ -9,7 +9,9 @@ import { EntryViews } from "./EntryViews";
 import { ExplorePage } from "./ExplorePage";
 import { HomePage } from "./HomePage";
 import { MinePage } from "./MinePage";
-import type { WorkbenchView } from "../../../../workbench/navigation-state";
+import { SearchPage } from "./SearchPage";
+import type { WorkbenchSearchRequest, WorkbenchView } from "../../../../workbench/navigation-state";
+import type { HomeFeedScope } from "./use-home-feed";
 
 export type WorkbenchViewRendererProps = {
   readonly view: WorkbenchView;
@@ -22,7 +24,9 @@ export type WorkbenchViewRendererProps = {
   readonly homeFocusRequest: number;
   readonly researchTaskId: string | null;
   readonly voicesIssue: string | null;
+  readonly searchRequest: WorkbenchSearchRequest | null;
   readonly onOpenVoices: (issue: string) => void;
+  readonly onOpenSearch: (query: string, scope: HomeFeedScope) => void;
   readonly navigate: (view: WorkbenchView, researchTaskId?: string | null) => void;
 };
 
@@ -41,7 +45,12 @@ export function WorkbenchViewRenderer(input: WorkbenchViewRendererProps): React.
     openLogin(input.view);
   }, [loginRequired, unauthenticated, openLogin, input.view]);
   if (input.view === "home") {
-    return <HomePage onOpenVoices={input.onOpenVoices} />;
+    return <HomePage onOpenVoices={input.onOpenVoices} onOpenSearch={input.onOpenSearch} />;
+  }
+  if (input.view === "search") {
+    return input.searchRequest === null
+      ? null
+      : <SearchPage request={input.searchRequest} onBack={() => input.navigate("home")} />;
   }
   if (input.view === "explore") {
     return <ExplorePage />;

@@ -1,20 +1,13 @@
-import { useState, type FormEvent, type ReactNode } from 'react'
-import { ArrowRight, ExternalLink, Flame, Layers, Search, Sparkles } from 'lucide-react'
+import { type FormEvent, type ReactNode } from 'react'
+import { ArrowRight, ExternalLink, Search, Sparkles } from 'lucide-react'
 import { RichText } from '@ui/components/rich-text'
 import type {
   HomeAnswerState,
   HomeFeedItem,
   HomeFeedScope,
   HomeFeedState,
-  HomeFeedType,
 } from './use-home-feed'
 import './home-feed-view.css'
-
-const TYPE_FILTERS: ReadonlyArray<{ key: HomeFeedType; label: string }> = [
-  { key: 'all', label: '全部' },
-  { key: 'answer', label: '回答' },
-  { key: 'article', label: '文章' },
-]
 
 const CONTENT_TYPE_LABELS: Readonly<Record<string, string>> = {
   answer: '回答',
@@ -24,58 +17,23 @@ const CONTENT_TYPE_LABELS: Readonly<Record<string, string>> = {
   zvideo: '视频',
 }
 
-export type HomeFeedViewProps = {
+/** 检索范围取值与展示文案的单一来源：检索条分段控件与检索页上下文共用。 */
+export const SCOPE_OPTIONS: ReadonlyArray<{ readonly key: HomeFeedScope; readonly label: string }> = [
+  { key: 'zhihu', label: '仅知乎' },
+  { key: 'web', label: '补充全网' },
+]
+
+export type SearchFeedListProps = {
   readonly feed: HomeFeedState
-  /** 当前生效的检索词；空字符串表示热榜频道。 */
-  readonly topic: string
-  readonly type: HomeFeedType
-  readonly onTypeChange: (type: HomeFeedType) => void
   readonly onRetry: () => void
-  readonly onClearTopic: () => void
-  /** 记入「今日想问」；缺省时不显示该动作。 */
-  readonly onRemember?: (question: string) => void
 }
 
 /**
- * 首页内容流：热榜是默认种子，主题检索是用户主动发起。
- * 只呈现上游真实返回的标题、摘要、类型、作者与互动数；缺失字段留空，不用占位内容补齐。
+ * 检索结果列表：只呈现上游真实返回的标题、摘要、类型、作者与互动数；缺失字段留空，不用占位内容补齐。
  */
-export function HomeFeedView(props: HomeFeedViewProps) {
-  const { feed } = props
-  const topicActive = props.topic !== ''
+export function SearchFeedList({ feed, onRetry }: SearchFeedListProps) {
   return (
-    <section className="uhf" aria-label={topicActive ? '主题检索' : '知乎热榜'}>
-      <div className="uhf__head">
-        <span className={topicActive ? 'uhf__glyph' : 'uhf__glyph is-hot'} aria-hidden>
-          {topicActive ? <Layers size={15} /> : <Flame size={15} />}
-        </span>
-        <h2 className="uhf__name">{topicActive ? '主题检索' : '知乎热榜'}</h2>
-        <span className="uhf__role">{topicActive ? '按你的检索词' : '正在讨论'}</span>
-        {topicActive && (
-          <div className="uhf__filters" role="group" aria-label="内容类型">
-            {TYPE_FILTERS.map((filter) => (
-              <button
-                key={filter.key}
-                type="button"
-                className={props.type === filter.key ? 'uhf__filter is-active' : 'uhf__filter'}
-                aria-pressed={props.type === filter.key}
-                onClick={() => props.onTypeChange(filter.key)}
-              >
-                {filter.label}
-              </button>
-            ))}
-          </div>
-        )}
-        <FeedTime feed={feed} />
-      </div>
-
-      {topicActive && (
-        <div className="uhf__topic">
-          <span className="uhf__topic-text">正在检索「{props.topic}」</span>
-          <button type="button" className="uhf__topic-clear" onClick={props.onClearTopic}>返回热榜</button>
-        </div>
-      )}
-
+    <div className="uhf">
       {feed.status === 'loading' && (
         <div className="uhf__skeleton" aria-label="正在获取内容">
           {Array.from({ length: 4 }, (_, index) => <div key={index} className="uhf__skeleton-row" />)}
@@ -84,41 +42,28 @@ export function HomeFeedView(props: HomeFeedViewProps) {
 
       {feed.status === 'error' && (
         <div className="uhf__notice" role="alert">
-          {topicActive ? (
-            <>
-              <p>{feed.error}</p>
-              <button type="button" onClick={props.onRetry}>重试</button>
-            </>
-          ) : (
-            // 热榜额度是全站最紧的一项（100 次/天）。这里如实说明并给出可走的路，
-            // 不用空白或示例内容掩盖上游不可用。
-            <>
-              <p>热榜暂不可用：{feed.error}</p>
-              <p className="uhf__notice-hint">可以用上方搜索框直接找知乎内容，或点「问直答」快速问一句。</p>
-              <button type="button" onClick={props.onRetry}>重试</button>
-            </>
-          )}
+          <p>{feed.error}</p>
+          <button type="button" onClick={onRetry}>重试</button>
         </div>
       )}
 
       {feed.status === 'ready' && feed.empty && (
         <div className="uhf__notice">
-          <p>{topicActive ? '没有找到匹配的内容，换个说法或放宽筛选试试。' : '热榜暂时没有内容。'}</p>
-          {topicActive && <button type="button" onClick={props.onClearTopic}>返回热榜</button>}
+          <p>没有找到匹配的内容，换个说法或放宽筛选试试。</p>
         </div>
       )}
 
       {feed.status === 'ready' && feed.items.length > 0 && (
         <ol className="uhf__list">
-          {feed.items.map((item) => <li key={item.id}><FeedCard item={item} onRemember={props.onRemember} /></li>)}
+          {feed.items.map((item) => <li key={item.id}><FeedCard item={item} /></li>)}
         </ol>
       )}
-    </section>
+    </div>
   )
 }
 
-/** 热榜没有新增条数或热度值，界面只用真实时间说话，不用「暴涨/爆了」这类编造。 */
-function FeedTime({ feed }: { readonly feed: HomeFeedState }) {
+/** 检索没有新增条数或热度值，界面只用真实时间说话；上游不可用时如实标注显示的是旧内容。 */
+export function FeedTime({ feed }: { readonly feed: HomeFeedState }) {
   if (feed.status !== 'ready' || feed.fetchedAt === undefined) return null
   const time = new Date(feed.fetchedAt)
   if (Number.isNaN(time.getTime())) return null
@@ -126,10 +71,10 @@ function FeedTime({ feed }: { readonly feed: HomeFeedState }) {
   if (feed.stale) {
     return <span className="uhf__time uhf__time--stale">上游暂不可用，显示 {label} 获取的内容</span>
   }
-  return <span className="uhf__time">{feed.channel === 'hot' ? `${label} 获取` : `检索于 ${label}`}</span>
+  return <span className="uhf__time">检索于 {label}</span>
 }
 
-export function FeedCard({ item, onRemember }: { readonly item: HomeFeedItem; readonly onRemember?: (question: string) => void }) {
+export function FeedCard({ item }: { readonly item: HomeFeedItem }) {
   const typeLabel = CONTENT_TYPE_LABELS[(item.contentType ?? '').toLowerCase()] ?? item.contentType
   const meta = formatMeta(item)
   return (
@@ -145,9 +90,6 @@ export function FeedCard({ item, onRemember }: { readonly item: HomeFeedItem; re
             {meta !== '' && <span className="uhf__stat">{meta}</span>}
           </span>
           <span className="uhf__card-actions">
-            {onRemember !== undefined && (
-              <button type="button" className="uhf__ghost" onClick={() => onRemember(item.title)}>记下</button>
-            )}
             {item.url !== '' && (
               <a className="uhf__open" href={item.url} target="_blank" rel="noreferrer">
                 阅读原文
@@ -186,7 +128,8 @@ export type HomeAskBarProps = {
   readonly scope: HomeFeedScope
   readonly onScopeChange: (scope: HomeFeedScope) => void
   readonly onSubmit: () => void
-  readonly onAsk: () => void
+  /** 问直答通路；检索视图只检索内容，不传则不渲染该按钮。 */
+  readonly onAsk?: () => void
 }
 
 /** 同一个输入框承载两条通路：检索知乎内容，或直接问知乎直答。 */
@@ -206,22 +149,26 @@ export function HomeAskBar(props: HomeAskBarProps) {
         value={props.draft}
         onChange={(event) => props.onDraftChange(event.target.value)}
       />
-      <label className="uha__scope">
-        <span className="uha-visually-hidden">检索范围</span>
-        <select
-          aria-label="检索范围"
-          value={props.scope}
-          onChange={(event) => props.onScopeChange(event.target.value === 'web' ? 'web' : 'zhihu')}
-        >
-          <option value="zhihu">仅知乎</option>
-          <option value="web">补充全网</option>
-        </select>
-      </label>
+      <div className="uha__scope" role="group" aria-label="检索范围">
+        {SCOPE_OPTIONS.map((option) => (
+          <button
+            key={option.key}
+            type="button"
+            className={props.scope === option.key ? 'uha__scope-option is-active' : 'uha__scope-option'}
+            aria-pressed={props.scope === option.key}
+            onClick={() => props.onScopeChange(option.key)}
+          >
+            {option.label}
+          </button>
+        ))}
+      </div>
       <button type="submit" className="uha__submit">搜内容</button>
-      <button type="button" className="uha__ask" onClick={props.onAsk}>
-        <Sparkles size={13} aria-hidden />
-        问直答
-      </button>
+      {props.onAsk !== undefined && (
+        <button type="button" className="uha__ask" onClick={props.onAsk}>
+          <Sparkles size={13} aria-hidden />
+          问直答
+        </button>
+      )}
     </form>
   )
 }
@@ -296,40 +243,4 @@ export function HomeAnswerPanel(props: HomeAnswerPanelProps) {
       )}
     </section>
   )
-}
-
-/** 供页面复用的检索状态容器：把草稿与已提交的检索词分开，避免每次输入都重新取数。 */
-export function useHomeSearchState(initialTopic = ''): {
-  topic: string
-  draft: string
-  scope: HomeFeedScope
-  type: HomeFeedType
-  setDraft: (value: string) => void
-  setScope: (scope: HomeFeedScope) => void
-  setType: (type: HomeFeedType) => void
-  submit: (draft: string) => void
-  clear: () => void
-} {
-  const [topic, setTopic] = useState(initialTopic)
-  const [draft, setDraft] = useState(initialTopic)
-  const [scope, setScope] = useState<HomeFeedScope>('zhihu')
-  const [type, setType] = useState<HomeFeedType>('all')
-  return {
-    topic,
-    draft,
-    scope,
-    type,
-    setDraft,
-    setScope,
-    setType,
-    submit: (value) => {
-      const next = value.trim()
-      setDraft(next)
-      setTopic(next)
-    },
-    clear: () => {
-      setDraft('')
-      setTopic('')
-    },
-  }
 }

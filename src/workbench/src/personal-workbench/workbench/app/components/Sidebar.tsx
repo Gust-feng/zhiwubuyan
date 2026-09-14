@@ -71,7 +71,7 @@ export function Sidebar({
       >
         <div className="ui-sidebar__nav-list">
           <SidebarNavRow
-            active={view === 'home'}
+            active={view === 'home' || view === 'search'}
             onClick={() => onNavigate('home')}
             labelsVisible={labelsVisible}
             collapsed={collapsed}

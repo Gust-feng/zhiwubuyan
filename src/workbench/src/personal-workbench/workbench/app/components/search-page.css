@@ -1,0 +1,63 @@
+/* 检索视图：检索词作页面主体，检索条、筛选与结果列表自上而下成页。 */
+
+.ui-search__header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 2px 2px 16px;
+}
+
+.ui-search__back {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ui-text-3);
+  cursor: pointer;
+  transition: background-color 120ms ease, color 120ms ease;
+}
+
+.ui-search__back:hover {
+  background: var(--ui-surface-hover);
+  color: var(--ui-text-1);
+}
+
+.ui-search__heading {
+  min-width: 0;
+}
+
+.ui-search__title {
+  margin: 0;
+  color: var(--ui-text-1);
+  font-size: 21px;
+  font-weight: 600;
+  line-height: 1.4;
+  letter-spacing: -0.01em;
+  text-wrap: pretty;
+}
+
+.ui-search__context {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 6px;
+  color: var(--ui-text-3);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.ui-search__context .uhf__time {
+  margin-left: 0;
+}
+
+.ui-search__toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 14px 0 12px;
+}

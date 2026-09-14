@@ -5,7 +5,7 @@ import { MOTION_EASING, MOTION_TIMING, useMotionEnabled } from '../../../../shel
 import { isEntryView } from '../../../../components/entry-surface/entry-surface'
 
 /** 侧栏自上而下的阅读顺序，决定切换的位移方向。 */
-const VIEW_ORDER: readonly WorkbenchView[] = ['home', 'explore', 'ask', 'voices', 'imagery', 'mine']
+const VIEW_ORDER: readonly WorkbenchView[] = ['home', 'search', 'explore', 'ask', 'voices', 'imagery', 'mine']
 /** 切换时两层一起平移的距离。两层同速同向，读起来才是「同一列内容被推过一格」。 */
 const VIEW_SHIFT = 28
 
