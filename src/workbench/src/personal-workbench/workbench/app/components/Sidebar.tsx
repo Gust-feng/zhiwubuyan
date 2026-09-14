@@ -4,7 +4,6 @@ import {
   Scale,
   Sparkles,
 } from 'lucide-react'
-import { SidebarAccount } from './SidebarAccount'
 import {
   SidebarNavRow,
 } from './SidebarRows'
@@ -111,9 +110,6 @@ export function Sidebar({
           <em>问题之上</em>
           <em>自有天地</em>
         </p>
-        <div className="ui-sidebar__bottom-actions">
-          <SidebarAccount active={view === 'mine'} onOpenMine={() => onNavigate('mine')} />
-        </div>
       </div>
       </div>
 

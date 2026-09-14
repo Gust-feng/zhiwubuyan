@@ -130,18 +130,6 @@
   padding-top: 16px;
 }
 
-.ui-sidebar__bottom-actions {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 0 10px 12px;
-}
-
-.ui-sidebar__bottom-actions .ui-sidebar-account {
-  flex: 1 1 auto;
-}
-
-
 .ui-sidebar__credo span {
   width: 22px;
   height: 1px;

@@ -2,7 +2,6 @@
 @import './theme.css';
 @import '../../../styles/ui-shared.css';
 @import './sidebar-shell.css';
-@import './sidebar-account.css';
 @import './sidebar-research-prompt.css';
 @import './recovery.css';
 @import './workbench-shell.css';
