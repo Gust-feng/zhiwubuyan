@@ -108,14 +108,16 @@
 .ui-sidebar__credo {
   display: grid;
   flex: 0 0 auto;
-  gap: 10px;
+  /* 不设统一行间距：网格的 gap 会同时撑开两行题款，让它们显得离散。
+     横线到题款的距离单独给（见下面的 span），两行题款之间只用正常行距。 */
+  gap: 0;
   margin: 0;
   padding: 4px 24px 20px;
   color: var(--ui-text-3);
   font-family: "Noto Serif SC Variable", var(--reading-serif);
-  font-size: 12px;
-  letter-spacing: .12em;
-  line-height: 1.7;
+  font-size: 11.5px;
+  letter-spacing: .06em;
+  line-height: 1.6;
 }
 
 /* 两行竖排：横线单独占一行，两句话各占一行，读起来是题款而不是一行注解。 */
@@ -131,6 +133,8 @@
 }
 
 .ui-sidebar__credo span {
+  /* 横线与题款之间留一段呼吸；两行题款之间不再加额外间距。 */
+  margin-bottom: 12px;
   width: 22px;
   height: 1px;
   background: color-mix(in srgb, var(--ui-accent) 38%, var(--ui-border));
