@@ -37,7 +37,24 @@ export type HomeFeedInput = {
   limit?: number;
 };
 
-export function createHomeFeedCommand(input: { content: ContentGateway; clock?: () => Date }) {
+/**
+ * 热榜缓存的持久化适配器：额度只有 100 次/天，进程重启不该把上一批内容丢掉。
+ * 只存已经成功获取过的内容，读取失败一律当没有缓存，不编造。
+ * 端口按异步声明：本地/桌面写文件，网页端写跨实例的远端缓存。
+ */
+export type HomeFeedCacheStore = {
+  read(): Promise<{ fetchedAt: string; items: ContentSource[] } | undefined>;
+  write(value: { fetchedAt: string; items: ContentSource[] }): Promise<void>;
+};
+
+/** 主题检索缓存条数上限：键含用户检索词，必须设上限才不会随使用时长增长。 */
+const TOPIC_CACHE_MAX_ENTRIES = 200;
+
+export function createHomeFeedCommand(input: {
+  content: ContentGateway;
+  clock?: () => Date;
+  cacheStore?: HomeFeedCacheStore;
+}) {
   const clock = input.clock ?? (() => new Date());
 
   let hotCache: { at: number; fetchedAt: string; items: ContentSource[] } | undefined;
@@ -45,19 +62,44 @@ export function createHomeFeedCommand(input: { content: ContentGateway; clock?: 
   const topicCache = new Map<string, { at: number; feed: HomeFeed }>();
   const topicInFlight = new Map<string, Promise<HomeFeed>>();
 
-  function loadHot(): Promise<{ fetchedAt: string; items: ContentSource[]; stale: boolean }> {
+  function rememberTopic(key: string, feed: HomeFeed): void {
+    // 命中即提到队尾；淘汰从队首取最久未用的。
+    topicCache.delete(key);
+    topicCache.set(key, { at: clock().getTime(), feed });
+    while (topicCache.size > TOPIC_CACHE_MAX_ENTRIES) {
+      const oldest = topicCache.keys().next();
+      if (oldest.done === true) break;
+      topicCache.delete(oldest.value);
+    }
+  }
+
+  // 进程内没有就把上次成功的一批读回来；它有真实获取时间，界面会据此标注时效。
+  async function persistedHot(): Promise<{ at: number; fetchedAt: string; items: ContentSource[] } | undefined> {
+    if (hotCache) return hotCache;
+    const stored = await input.cacheStore?.read().catch(() => undefined);
+    if (!stored) return undefined;
+    const at = Date.parse(stored.fetchedAt);
+    if (Number.isNaN(at)) return undefined;
+    hotCache = { at, fetchedAt: stored.fetchedAt, items: stored.items };
+    return hotCache;
+  }
+
+  async function loadHot(): Promise<{ fetchedAt: string; items: ContentSource[]; stale: boolean }> {
     const now = clock().getTime();
-    if (hotCache && now - hotCache.at < HOT_CACHE_TTL_MS) {
-      return Promise.resolve({ fetchedAt: hotCache.fetchedAt, items: hotCache.items, stale: false });
+    const cached = await persistedHot();
+    if (cached && now - cached.at < HOT_CACHE_TTL_MS) {
+      return { fetchedAt: cached.fetchedAt, items: cached.items, stale: false };
     }
     if (!hotInFlight) {
       hotInFlight = (async () => {
         try {
           const result = await input.content.listHotContent({ limit: HOT_LIMIT });
           hotCache = { at: clock().getTime(), fetchedAt: result.fetchedAt, items: result.items };
+          await input.cacheStore?.write({ fetchedAt: result.fetchedAt, items: result.items }).catch(() => undefined);
           return { fetchedAt: result.fetchedAt, items: result.items, stale: false };
         } catch (error) {
-          if (hotCache) return { fetchedAt: hotCache.fetchedAt, items: hotCache.items, stale: true };
+          // 上游不可用时继续用上一批，并如实标注它不是刚获取的。
+          if (cached) return { fetchedAt: cached.fetchedAt, items: cached.items, stale: true };
           throw error;
         }
       })().finally(() => {
@@ -107,14 +149,18 @@ export function createHomeFeedCommand(input: { content: ContentGateway; clock?: 
       const key = `${topic}\u0000${scope}\u0000${type}\u0000${limit}`;
 
       const cached = topicCache.get(key);
-      if (cached && clock().getTime() - cached.at < TOPIC_CACHE_TTL_MS) return cached.feed;
+      if (cached && clock().getTime() - cached.at < TOPIC_CACHE_TTL_MS) {
+        // 命中即刷新使用顺序，配合上限做 LRU 淘汰。
+        rememberTopic(key, cached.feed);
+        return cached.feed;
+      }
 
       const running = topicInFlight.get(key);
       if (running) return running;
 
       const task = compose({ topic, scope, type, limit })
         .then((feed) => {
-          topicCache.set(key, { at: clock().getTime(), feed });
+          rememberTopic(key, feed);
           return feed;
         })
         .finally(() => {

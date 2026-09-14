@@ -98,8 +98,12 @@ export function useHomeFeed(input: {
   topic?: string
   scope?: HomeFeedScope
   type?: HomeFeedType
+  /** false 时不请求；首页没有检索词时由探索页独占热榜读取。 */
+  enabled?: boolean
+  /** 仅用于用户显式重试；服务端仍负责热榜缓存与单飞。 */
+  refreshKey?: number
 }): HomeFeedState {
-  const { topic = '', scope = 'zhihu', type = 'all' } = input
+  const { topic = '', scope = 'zhihu', type = 'all', enabled = true, refreshKey = 0 } = input
   const [state, setState] = useState<HomeFeedState>({
     status: 'loading',
     channel: 'hot',
@@ -110,6 +114,18 @@ export function useHomeFeed(input: {
   const seqRef = useRef(0)
 
   useEffect(() => {
+    if (!enabled) {
+      seqRef.current += 1
+      setState({
+        status: 'ready',
+        channel: topic === '' ? 'hot' : 'topic',
+        items: [],
+        fetchedAt: undefined,
+        stale: false,
+        empty: true,
+      })
+      return
+    }
     const seq = seqRef.current + 1
     seqRef.current = seq
     const controller = new AbortController()
@@ -166,13 +182,17 @@ export function useHomeFeed(input: {
         })
       })
     return () => controller.abort()
-  }, [topic, scope, type])
+  }, [enabled, refreshKey, topic, scope, type])
 
   return state
 }
 
 /** 首页问答：一次一个问题，重复提交同一问题时丢弃过期响应。 */
-export function useHomeAnswer(): HomeAnswerState & { ask: (question: string, tier: 'fast' | 'thinking') => void; reset: () => void } {
+export function useHomeAnswer(): {
+  state: HomeAnswerState
+  ask: (question: string, tier: 'fast' | 'thinking') => void
+  reset: () => void
+} {
   const [state, setState] = useState<HomeAnswerState>({ status: 'idle' })
   const seqRef = useRef(0)
 
@@ -209,5 +229,5 @@ export function useHomeAnswer(): HomeAnswerState & { ask: (question: string, tie
     setState({ status: 'idle' })
   }, [])
 
-  return { ...state, ask, reset }
+  return { state, ask, reset }
 }

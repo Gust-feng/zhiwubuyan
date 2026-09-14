@@ -22,12 +22,13 @@ function readRecommendationItems(body: Record<string, unknown>): readonly Recomm
 
 /** 提问入口上方的种子内容：知乎官方按账号画像推荐的问题，点一条填进提问框。
  *  数据来自开放平台「问题路由」（creator 额度组，每日有限），读取状态由 useCoreFeed 统一处理。
- *  视觉保持克制：默认只露出少数几条，无额外动作——主角是下面的提问卡片。 */
-export function ResearchSeeds({ onPick, limit = 4 }: { onPick: (title: string) => void; limit?: number }) {
+ *  视觉保持克制：默认只露出少数几条，无额外动作——主角是下面的提问卡片。
+ *  bare 为真时不画卡片外框（外框由共享入口外壳持有，切换时它不重画）。 */
+export function ResearchSeeds({ onPick, limit = 4, bare = false }: { onPick: (title: string) => void; limit?: number; bare?: boolean }) {
   const feed = useCoreFeed('/api/user/recommendations', readRecommendationItems);
   const items = feed.items.slice(0, limit);
-  return (
-    <section className="dr-seeds" aria-label="为你推荐">
+  const body = (
+    <>
       <div className="dr-seeds__head">
         <Bookmark size={14} aria-hidden />
         <h2>为你推荐</h2>
@@ -55,8 +56,10 @@ export function ResearchSeeds({ onPick, limit = 4 }: { onPick: (title: string) =
           ))}
         </ol>
       )}
-    </section>
+    </>
   );
+  if (bare) return body;
+  return <section className="dr-seeds" aria-label="为你推荐">{body}</section>;
 }
 
 function updatedLabel(fetchedAt: string | undefined): string {

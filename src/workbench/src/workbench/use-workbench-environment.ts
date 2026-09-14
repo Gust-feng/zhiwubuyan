@@ -1,4 +1,4 @@
-import { useEffect, useRef, useSyncExternalStore, type RefObject } from "react";
+import { useEffect, useSyncExternalStore, type RefObject } from "react";
 import type { PersonalKnowledgeLoadState } from "../personal-workbench/workbench/app/components/personalKnowledgeClient";
 import {
   clearPersonalKnowledgeError,
@@ -10,12 +10,10 @@ import {
   subscribePersonalKnowledge,
 } from "../personal-workbench/workbench/app/components/personalKnowledgeClient";
 import { handleReadingSizeWheel, applyPrefs, loadPrefs } from "../shell/reading-preferences";
-import type { WorkbenchView } from "./navigation-state";
 
 export type WorkbenchEnvironmentInput = {
   readonly rootRef: RefObject<HTMLDivElement | null>;
   readonly personalKnowledgePersistenceEnabled: boolean;
-  readonly view: WorkbenchView;
 };
 
 export type WorkbenchEnvironmentState = {
@@ -64,19 +62,6 @@ export function useWorkbenchEnvironment(input: WorkbenchEnvironmentInput): Workb
     applyPrefs(loadPrefs());
   }, []);
 
-  const previousViewRef = useRef(input.view);
-  useEffect(() => {
-    const viewChanged = previousViewRef.current !== input.view;
-    previousViewRef.current = input.view;
-    if (
-      !viewChanged
-      || !input.personalKnowledgePersistenceEnabled
-      || !isKnowledgeView(input.view)
-      || knowledgeLoadState.status !== "ready"
-    ) return;
-    void refreshPersonalKnowledge().catch(() => undefined);
-  }, [input.personalKnowledgePersistenceEnabled, input.view, knowledgeLoadState.status]);
-
   return {
     knowledgeLoadState,
     knowledgeError,
@@ -84,9 +69,4 @@ export function useWorkbenchEnvironment(input: WorkbenchEnvironmentInput): Workb
     refreshKnowledge: refreshPersonalKnowledge,
     dismissKnowledgeError: clearPersonalKnowledgeError,
   };
-}
-
-
-function isKnowledgeView(view: WorkbenchView): boolean {
-  return view === "brain" || view === "search";
 }

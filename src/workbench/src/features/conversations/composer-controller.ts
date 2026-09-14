@@ -11,7 +11,6 @@ import type { AppState } from "../../workbench/state";
 import type { ContextAttachment } from "../../contracts/context";
 
 export type AppComposerController = {
-  readonly selectInputModel: (modelOptionId: string) => void;
   readonly selectAttachment: () => Promise<void>;
   readonly uploadAttachments: (files: readonly File[]) => Promise<void>;
   readonly removeAttachment: (attachmentId: string) => Promise<void>;
@@ -25,23 +24,11 @@ export type AppComposerControllerOptions = {
   readonly attachmentUploadAttemptRef: React.MutableRefObject<{ readonly key: string; readonly id: string } | undefined>;
   readonly setAttachments: React.Dispatch<React.SetStateAction<readonly ContextAttachment[]>>;
   readonly attachments?: readonly ContextAttachment[];
-  readonly selectedModelId: string;
-  readonly setComposerSelectedModelId: React.Dispatch<React.SetStateAction<string | undefined>>;
-  readonly selectComposerModel: (modelOptionId: string) => Promise<void>;
 };
 
 export function createAppComposerController(
   options: AppComposerControllerOptions,
 ): AppComposerController {
-  function selectInputModel(modelOptionId: string): void {
-    const fallbackModelId = options.selectedModelId;
-    options.setComposerSelectedModelId(modelOptionId);
-    void options.selectComposerModel(modelOptionId).catch(() => {
-      if (!options.mountedRef.current) return;
-      options.setComposerSelectedModelId((current) => current === modelOptionId ? fallbackModelId || undefined : current);
-    });
-  }
-
   async function selectAttachment(): Promise<void> {
     if (options.contextBusy) return;
     options.setContextBusy(true);
@@ -113,7 +100,6 @@ export function createAppComposerController(
   }
 
   return {
-    selectInputModel,
     selectAttachment,
     uploadAttachments,
     removeAttachment,

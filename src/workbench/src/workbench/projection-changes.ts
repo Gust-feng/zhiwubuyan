@@ -5,8 +5,15 @@ type ProjectionChangeListener = (change: WorkbenchProjectionChange) => void;
 const listeners = new Set<ProjectionChangeListener>();
 let stream: EventSource | undefined;
 
+/**
+ * 失效通知是本机运行面能力：网页产物没有对应端点（Serverless 也不支持长连接），
+ * 打开只会得到持续重连的空流。网页构建下直接不建立连接，各投影仍以 HTTP 读取为准。
+ */
+const streamSupported = __WORKBENCH_SURFACE__ !== "web";
+
 /** One shared connection fans Host-owned invalidation facts out to Panel projections. */
 export function subscribeWorkbenchProjectionChanges(listener: ProjectionChangeListener): () => void {
+  if (!streamSupported) return () => {};
   listeners.add(listener);
   ensureStream();
   return () => {
@@ -19,7 +26,7 @@ export function subscribeWorkbenchProjectionChanges(listener: ProjectionChangeLi
 }
 
 function ensureStream(): void {
-  if (stream !== undefined || typeof EventSource === "undefined") return;
+  if (!streamSupported || stream !== undefined || typeof EventSource === "undefined") return;
   const opened = new EventSource("/api/projection-changes");
   opened.addEventListener("workbench.projection.changed", ((message: MessageEvent<string>) => {
     try {

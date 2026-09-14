@@ -1,15 +1,15 @@
 import { useSyncExternalStore } from 'react'
 import type { KanshanMascotHandle } from './KanshanMascot'
-import type { WorkbenchView } from '@ui/workbench/navigation-state'
+import type { KanshanGesture } from './kanshan-clips'
 
-/** 刘看山的两个栖位：侧栏引导卡片、深度研究输入框。 */
-export type KanshanPerchId = 'sidebar' | 'composer'
+/** 刘看山只有一个栖位：侧栏引导卡片。深度研究与众声不再把它挂到输入框上，
+ *  因此它在这些页面的提问、运行、结果三个阶段都在同一处常驻，不会中途消失。 */
+export type KanshanPerchId = 'sidebar'
 
 interface DirectorSnapshot {
   /**
-   * 当前允许可见的栖位。来源缩回完成到目标探出之前为 null（空档），
-   * 因此任意时刻屏幕上至多一只刘看山，切换表现为「这里缩起、别处探出」，
-   * 而不是同一个对象在屏幕上平移。
+   * 当前允许可见的栖位。栖位尚未注册、或正在缩回时是 null，
+   * 组件据此把角色藏起来；它只在侧栏存在，不会在屏幕上跨位置移动。
    */
   readonly activePerch: KanshanPerchId | null
 }
@@ -18,7 +18,7 @@ export interface KanshanPerchApi {
   readonly handle: KanshanMascotHandle
 }
 
-// 来源完全缩起后、目标探出头之前的空档，强化「在另一个地方冒出来」的节奏。
+// 角色缩回完成后、重新出现之前的空档，让「收起再冒出来」有节奏。
 const SWITCH_GAP_MS = 170
 const delay = (ms: number) => new Promise<void>((resolve) => window.setTimeout(resolve, ms))
 
@@ -28,10 +28,8 @@ function isMotionReduced(): boolean {
 }
 
 /**
- * 刘看山全局编排：两个栖位各有一个角色实例，但同一时刻只允许一个在场。
- * 视图决定目标栖位；切换时来源先播放缩起动画并隐藏，经过一个短暂空档，
- * 再让目标从栖位里探出头来。状态机与 React 解耦，组件订阅 activePerch
- * 控制自身显隐，不做任何跨位置位移。
+ * 刘看山全局编排：只有一个栖位，组件订阅 activePerch 控制自身显隐。
+ * 状态机与 React 解耦；栖位挂载 / 卸载时自行演出入场与缩回。
  */
 class KanshanDirector {
   private readonly perches = new Map<KanshanPerchId, KanshanPerchApi>()
@@ -61,10 +59,12 @@ class KanshanDirector {
     this.publish()
   }
 
-  /** 由顶层视图状态驱动：深度研究与众声落在输入框栖位，其余视图落在侧栏栖位。 */
-  setView(view: WorkbenchView): void {
-    this.desired = view === 'ask' || view === 'voices' ? 'composer' : 'sidebar'
-    void this.reconcile()
+  /**
+   * 把一次手势交给当前在场的角色。业务侧（研究 / 众声的聚焦与失败反馈）不持有
+   * 角色手柄，统一从这里转发，避免多处各自攥着一个 ref 却指向看不见的实例。
+   */
+  gesture(gesture: KanshanGesture): void {
+    this.perches.get(this.current ?? this.desired)?.handle.gesture(gesture)
   }
 
   register(id: KanshanPerchId, api: KanshanPerchApi): void {
@@ -74,12 +74,12 @@ class KanshanDirector {
 
   unregister(id: KanshanPerchId): void {
     this.perches.delete(id)
-    // 栖位随视图卸载即视为不在场；状态机会让目标栖位自行探出，不做位移补间。
+    // 栖位卸载（例如侧栏收起）即视为不在场；重新挂载后会再次入场。
     if (this.current === id) this.current = null
     void this.reconcile()
   }
 
-  /** 让指定栖位播放缩起动画；栖位已经卸载则直接结束。 */
+  /** 让栖位播放缩回动画；栖位已经卸载则直接结束。 */
   private async retract(id: KanshanPerchId): Promise<void> {
     await this.perches.get(id)?.handle.leave()
   }
@@ -97,17 +97,18 @@ class KanshanDirector {
 
         if (target === this.current) break
 
-        // 1) 当前在场者先缩起消失（保持可见以播完缩起动画）。
+        // 1) 当前在场者先缩回（保持可见以播完缩回动画）。
         if (this.current !== null) {
           const from = this.current
           this.current = null
           await this.retract(from)
-          // 2) 进入空档：来源隐藏，目标尚未出现，屏幕上一只都没有。
+          // 2) 缩回后进入空档：屏幕上短暂一只都没有。
           this.setActive(null)
           if (!isMotionReduced()) await delay(SWITCH_GAP_MS)
         }
 
-        // 3) 目标栖位挂载后在新位置探出头；未挂载则等其 register 再收敛。
+        // 3) 栖位已挂载则让它入场；未挂载（侧栏收起等）则停在这里，
+        //    等它 register 时再收敛。
         const targetApi = this.perches.get(target)
         if (!targetApi) break
         this.current = target

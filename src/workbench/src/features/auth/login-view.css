@@ -1,0 +1,381 @@
+@import '@fontsource-variable/noto-sans-sc';
+@import '@fontsource-variable/noto-serif-sc';
+
+/*
+ * 授权登录视图：左侧场景、右侧标题与「使用知乎继续」。
+ * 网页端弹窗与桌面独立登录窗口共用这一份版式，尺寸只有这一处 owner。
+ */
+
+/* 整页宿主：居中一块 3:2 画布，背景与设计稿同色。 */
+.login-view-stage {
+  display: grid;
+  width: 100%;
+  height: 100dvh;
+  place-items: center;
+  padding: 28px;
+  background:
+    radial-gradient(circle at 72% 10%, rgba(220, 239, 255, 0.72), transparent 32%),
+    #edf2f8;
+}
+
+.login-view-stage .login-view {
+  width: min(1180px, 100%, calc((100dvh - 56px) * 1.5));
+}
+
+/*
+ * 统一版式：3:2 画布，左 41.5% 场景 + 右侧面板。窄屏（见文末媒体查询）改为单列竖排。
+ *
+ * container-type 把画布建立为容器：内部所有尺寸用 cqw（容器宽度的 1%）表达，
+ * 于是弹窗整体调大调小时内部等比缩放，不会出现「窗口变小、文字却没跟着缩」的错位。
+ * 系数按 1180px 画布下的设计尺寸标定（见各条注释）。
+ */
+.login-view {
+  --login-blue: #0866ed;
+  --login-blue-bright: #1c82ff;
+  --login-title: #3159e8;
+  --login-muted: #8391a6;
+
+  container-type: inline-size;
+  position: relative;
+  display: grid;
+  width: 100%;
+  aspect-ratio: 3 / 2;
+  grid-template-columns: 41.5% minmax(0, 1fr);
+  overflow: hidden;
+  border: 1px solid rgba(67, 94, 130, 0.08);
+  border-radius: 22px;
+  background: #ffffff;
+  box-shadow: 0 26px 70px rgba(35, 67, 108, 0.17), 0 5px 18px rgba(35, 67, 108, 0.08);
+  color: #26344a;
+  font-family: "Noto Sans SC Variable", "Segoe UI Variable", "Microsoft YaHei", sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.login-view__scene {
+  position: relative;
+  min-width: 0;
+  overflow: hidden;
+  background: #dfe8f2;
+}
+
+.login-view__scene img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 61.2% center;
+  pointer-events: none;
+  -webkit-user-drag: none;
+}
+
+.login-view__scene-edge {
+  position: absolute;
+  inset: 0 0 0 auto;
+  /* 58px @1180 画布 */
+  width: clamp(20px, 4.92cqw, 58px);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.68));
+}
+
+.login-view__panel {
+  position: relative;
+  min-width: 0;
+  overflow: hidden;
+  background: #ffffff;
+}
+
+.login-view__glow {
+  position: absolute;
+  top: -31%;
+  right: 4%;
+  width: 62%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(243, 251, 255, 0.98) 0%, rgba(220, 241, 255, 0.54) 58%, rgba(255, 255, 255, 0) 76%);
+  pointer-events: none;
+}
+
+.login-view__version {
+  position: absolute;
+  z-index: 1;
+  /* 46 / 38 / 12px @1180 画布 */
+  right: clamp(16px, 3.9cqw, 46px);
+  bottom: clamp(14px, 3.22cqw, 38px);
+  color: var(--login-muted);
+  font-size: clamp(9px, 1.02cqw, 12px);
+  letter-spacing: 0.08em;
+}
+
+.login-view__content {
+  position: absolute;
+  z-index: 2;
+  top: 44%;
+  left: 50%;
+  display: flex;
+  /* 390px 内容列宽 @1180 画布；两侧留白同样按容器比例收窄 */
+  width: min(33.05cqw, calc(100% - 8.14cqw));
+  flex-direction: column;
+  transform: translate(-50%, -50%);
+}
+
+.login-view__heading {
+  /* 54px @1180 画布 */
+  margin-bottom: clamp(24px, 4.58cqw, 54px);
+}
+
+.login-view__tagline {
+  /* 20px 上间距、23px 字号 @1180 画布 */
+  margin: clamp(10px, 1.69cqw, 20px) 0 0;
+  color: #67bdf2;
+  font-family: "Noto Serif SC Variable", "Source Han Serif CN", "Songti SC", serif;
+  font-size: clamp(13px, 1.95cqw, 23px);
+  font-weight: 420;
+  letter-spacing: 0.08em;
+  line-height: 1.35;
+  white-space: nowrap;
+}
+
+.login-view__notice {
+  margin: 12px 0 0;
+  color: #b3543f;
+  font-size: clamp(11px, 1.02cqw, 12px);
+  line-height: 1.5;
+}
+
+/* 既有情况说明（如上次授权失败）：与「暂不可用」区分，用中性信息色而不是告警色。 */
+.login-view__error {
+  margin: 12px 0 0;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: rgba(179, 84, 63, 0.08);
+  color: #a2492f;
+  font-size: clamp(11px, 1.02cqw, 12px);
+  line-height: 1.6;
+}
+
+/* ── 标题透镜动效 ── */
+.login-title-motion {
+  /* 64px 标题 @1180 画布；宽高按字号推导，SVG 内部字形随 viewBox 一起缩放 */
+  --login-title-size: clamp(28px, 5.42cqw, 64px);
+  position: relative;
+  width: calc(var(--login-title-size) * 4.45);
+  height: calc(var(--login-title-size) * 1.12);
+  max-width: 100%;
+  isolation: isolate;
+  touch-action: manipulation;
+}
+
+/* 字形的墨迹顶部会越出视图框约 3 个单位，用一块透明命中区补齐，避免鼠标停在字形尖角时动效不触发。 */
+.login-title-motion::before {
+  content: "";
+  position: absolute;
+  inset: -7px -6px;
+}
+
+.login-title-motion__semantic {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.login-title-motion__svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.login-title-motion__text {
+  font-family: "Noto Serif SC Variable", "Source Han Serif CN", "Songti SC", serif;
+  font-size: 64px;
+  font-weight: 530;
+  letter-spacing: 5.76px;
+}
+
+.login-title-motion__base {
+  fill: var(--login-title);
+}
+
+.login-title-motion__echo-a,
+.login-title-motion__echo-b,
+.login-title-motion__refracted {
+  pointer-events: none;
+}
+
+.login-title-motion__echo-a {
+  fill: #45bcff;
+  opacity: 0;
+}
+
+.login-title-motion__echo-b {
+  fill: #ffd08b;
+  opacity: 0;
+}
+
+.login-title-motion__refracted {
+  opacity: 0;
+}
+
+/* ── 主按钮 ── */
+.login-continue {
+  position: relative;
+  display: grid;
+  width: 100%;
+  /* 62px 高、13px 圆角、17px 内边距、13px 间距、图标 30/22px @1180 画布 */
+  height: clamp(38px, 5.25cqw, 62px);
+  grid-template-columns: 2.54cqw 1px minmax(0, 1fr) 1.86cqw;
+  align-items: center;
+  gap: clamp(9px, 1.1cqw, 13px);
+  border: 0;
+  border-radius: clamp(9px, 1.1cqw, 13px);
+  padding: 0 clamp(11px, 1.44cqw, 17px);
+  background: linear-gradient(90deg, var(--login-blue-bright), var(--login-blue));
+  box-shadow: 0 13px 26px rgba(8, 102, 237, 0.2);
+  color: #ffffff;
+  cursor: pointer;
+  font: inherit;
+  transition: filter 180ms ease, transform 180ms ease, box-shadow 240ms ease;
+}
+
+.login-continue:hover:not(:disabled) {
+  filter: brightness(1.055);
+  box-shadow: 0 16px 30px rgba(8, 102, 237, 0.24);
+}
+
+.login-continue:active:not(:disabled) {
+  transform: scale(0.993);
+}
+
+.login-continue:focus-visible {
+  outline: 3px solid rgba(11, 91, 234, 0.28);
+  outline-offset: 4px;
+}
+
+.login-continue:disabled {
+  cursor: default;
+}
+
+.login-continue.state-ready {
+  filter: saturate(0.82) brightness(1.04);
+}
+
+.zhihu-mark {
+  display: grid;
+  /* 30px 方块、17px 字号 @1180 画布 */
+  width: 2.54cqw;
+  height: 2.54cqw;
+  place-items: center;
+  border-radius: clamp(3px, 0.34cqw, 4px);
+  background: rgba(255, 255, 255, 0.96);
+  color: #0b5bea;
+  font-family: "Noto Serif SC Variable", serif;
+  font-size: clamp(12px, 1.44cqw, 17px);
+  font-weight: 580;
+}
+
+.button-divider {
+  width: 1px;
+  /* 21px @1180 画布 */
+  height: 1.78cqw;
+  background: rgba(255, 255, 255, 0.82);
+}
+
+.button-label {
+  overflow: hidden;
+  font-size: clamp(12px, 1.44cqw, 17px);
+  font-weight: 620;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.button-state {
+  display: grid;
+  /* 22px @1180 画布 */
+  width: 1.86cqw;
+  height: 1.86cqw;
+  place-items: center;
+}
+
+.slogan-highlight {
+  color: #5bb8ef;
+  background: linear-gradient(105deg, #3f9fea 0%, #67bdf2 44%, #b5e5fb 100%);
+  background-size: 135% 100%;
+  background-position: 8% 50%;
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.spin {
+  animation: login-spin 900ms linear infinite;
+}
+
+@keyframes login-spin {
+  to { transform: rotate(360deg); }
+}
+
+@media (max-height: 600px) {
+  .login-view-stage {
+    padding: 16px;
+  }
+
+  .login-view-stage .login-view {
+    width: min(1180px, 100%, calc((100dvh - 32px) * 1.5));
+  }
+
+  /* 内容尺寸已全部按容器宽度 (cqw) 缩放，短屏时画布变窄会自动等比收小，
+     不再需要在这里单独压字号或内容列宽。 */
+}
+
+/* 窄屏退化为竖向单列：场景收成顶部横条，面板在下，仍保留完整的 3:2 取景逻辑。 */
+@media (max-width: 720px) {
+  .login-view {
+    aspect-ratio: auto;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .login-view__scene {
+    height: min(38vh, 220px);
+  }
+
+  .login-view__scene-edge {
+    inset: auto 0 0 0;
+    width: auto;
+    height: 46%;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0.92));
+  }
+
+  .login-view__panel {
+    padding: 30px 28px 38px;
+  }
+
+  .login-view__content {
+    position: static;
+    width: 100%;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .login-view *,
+  .login-view *::before,
+  .login-view *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  .login-title-motion__echo-a,
+  .login-title-motion__echo-b,
+  .login-title-motion__refracted {
+    display: none;
+  }
+}

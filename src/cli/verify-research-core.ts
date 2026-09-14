@@ -111,10 +111,9 @@ try {
     store,
     zhihu: gateway,
     zhida,
-    desktopEdition: true,
     clock,
     modelInfo: () => ({ provider: "fixture", modelId: "fixture-model" }),
-    zhihuConfigured: true,
+    zhihuConfigured: () => true,
     trace: createRunTrace(dataDir),
   });
   // 机制验证不运行真实工作流：挂接无操作执行端口，任务保持 outcome=null 供各场景驱动。
@@ -484,10 +483,9 @@ try {
     store,
     zhihu: gateway,
     zhida: failingZhida,
-    desktopEdition: true,
     clock,
     modelInfo: () => ({ provider: "fixture", modelId: "fixture-model" }),
-    zhihuConfigured: true,
+    zhihuConfigured: () => true,
     trace: createRunTrace(dataDir),
   });
   let quickFailed = false;
@@ -508,37 +506,36 @@ try {
   );
   check(failedTaskRow !== undefined && failedTaskRow.error?.code === "UPSTREAM_ERROR", "失败快答应写入 failed 与错误码");
 
-  // 13. 桌面判定：非桌面配置下 Ultra 被拒绝，快答不受影响。
-  const webEngine = createDeepResearchSystem({
+  // 13. 研究就绪判定：模型未配置时 Ultra 被拒绝，快答不受影响。
+  const unreadyEngine = createDeepResearchSystem({
     store,
     zhihu: gateway,
     zhida,
-    desktopEdition: false,
     clock,
-    modelInfo: () => ({ provider: "fixture", modelId: "fixture-model" }),
-    zhihuConfigured: true,
+    modelInfo: () => null,
+    zhihuConfigured: () => true,
     trace: createRunTrace(dataDir),
   });
   let ultraRejected = false;
   try {
-    await webEngine.createResearchTask({
+    await unreadyEngine.createResearchTask({
       requestId: "f5a52ce5-0da4-481d-894b-a4f94a0a6207",
-      question: "非桌面 Ultra 验证？",
+      question: "未配置模型时的 Ultra 验证？",
       allowWebSupplement: false,
       tier: "ultra",
     });
   } catch (error) {
     ultraRejected =
-      error instanceof ResearchApiError && error.code === "ULTRA_DESKTOP_ONLY" && error.status === 403;
+      error instanceof ResearchApiError && error.code === "MODEL_NOT_CONFIGURED" && error.status === 503;
   }
-  check(ultraRejected, "非桌面创建 Ultra 应报 ULTRA_DESKTOP_ONLY 403");
-  const webQuick = await webEngine.createResearchTask({
+  check(ultraRejected, "模型未配置时创建 Ultra 应报 MODEL_NOT_CONFIGURED 503");
+  const unreadyQuick = await unreadyEngine.createResearchTask({
     requestId: "f5a52ce5-0da4-481d-894b-a4f94a0a6208",
-    question: "非桌面快答验证？",
+    question: "未配置模型时的快答验证？",
     allowWebSupplement: false,
     tier: "fast",
   });
-  check(webQuick.detail.status === "completed", "非桌面快答不受影响");
+  check(unreadyQuick.detail.status === "completed", "快答不依赖研究模型配置");
 
   // 14. 成稿容忍：报告段落超过反退化天花板时截断保留，不整任务失败。
   const longDraft = {

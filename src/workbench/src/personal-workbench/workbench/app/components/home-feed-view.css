@@ -267,6 +267,11 @@
   margin: 0;
 }
 
+.uhf__notice-hint {
+  margin-top: 6px !important;
+  color: var(--ui-text-3);
+}
+
 .uhf__notice button {
   margin: 10px 4px 0;
   padding: 0 10px;

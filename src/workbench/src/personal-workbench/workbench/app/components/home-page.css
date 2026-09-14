@@ -17,23 +17,14 @@
   padding: 28px 28px 56px;
 }
 
-/* ── 刊头：时辰问候 + 日期 ─────────────────────────────────── */
+/* ── 刊头：日期 ───────────────────────────────────────────── */
 
 .ui-home__masthead {
   display: flex;
   align-items: baseline;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: 16px;
   padding: 2px 2px 14px;
-}
-
-.ui-home__greeting {
-  margin: 0;
-  color: var(--ui-text-1);
-  font-size: 15px;
-  font-weight: 500;
-  line-height: 1.5;
-  text-wrap: pretty;
 }
 
 .ui-home__date {
@@ -102,6 +93,13 @@
 
 /* ── 多核网格：四个核心等权切入，谁也不是主角 ───────────────── */
 
+/* 首页正文：检索条下方的问答面板与内容流按竖向堆叠。 */
+.ui-home__content {
+  display: grid;
+  gap: 16px;
+  margin-top: 16px;
+}
+
 .ui-home__grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -154,6 +152,22 @@
   font-size: 12px;
 }
 
+.ui-home__core-more {
+  flex: 0 0 auto;
+  padding: 2px 5px;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--ui-accent);
+  font-family: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.ui-home__core-more:hover {
+  background: var(--ui-accent-bg);
+}
+
 .ui-home__core-list {
   margin: 0;
   padding: 0;
@@ -199,7 +213,7 @@ a.ui-home__row:hover .ui-home__row-title {
   height: 13px;
   align-self: center;
   color: var(--ui-text-3);
-  transition: color 140ms ease;
+  transition: color 140ms ease, opacity 140ms ease;
 }
 
 a.ui-home__row:hover .ui-home__row-open {
@@ -286,6 +300,16 @@ a.ui-home__row:hover .ui-home__row-open {
   flex: 0 0 auto;
   color: var(--ui-text-3);
   font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 关注行的外链图标只在悬停时出现，避免和右侧关注者数挤在一起 */
+.ui-home__row--followee .ui-home__row-open {
+  opacity: 0;
+}
+
+.ui-home__row--followee:hover .ui-home__row-open {
+  opacity: 1;
 }
 
 .ui-home__skeleton {
@@ -357,8 +381,97 @@ a.ui-home__row:hover .ui-home__row-open {
   padding-left: 2px;
 }
 
+/* ── 首页底部：登录用户的轻量个人摘要 ─────────────────────── */
+
+.ui-home__personal {
+  margin-top: 30px;
+  padding-top: 22px;
+  border-top: 1px solid var(--ui-border);
+}
+
+.ui-home__personal-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 12px;
+  padding: 0 2px;
+}
+
+.ui-home__personal-head h2 {
+  margin: 0;
+  color: var(--ui-text-1);
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.ui-home__personal-head p {
+  margin: 3px 0 0;
+  color: var(--ui-text-3);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.ui-home__personal-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  align-items: start;
+}
+
+.ui-home__personal-grid .ui-home__core-head {
+  padding: 11px 13px;
+}
+
+.ui-home__personal-grid .ui-home__row {
+  min-height: 54px;
+  padding: 9px 34px 9px 13px;
+}
+
+.ui-home__personal-grid .ui-home__row-open {
+  right: 12px;
+}
+
+.ui-home__personal-grid .ui-home__followers {
+  display: none;
+}
+
+.ui-home__personal-prompt {
+  display: flex;
+  min-height: 62px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 16px;
+  border: 1px solid var(--ui-border);
+  border-radius: 8px;
+  background: var(--ui-surface);
+  color: var(--ui-text-3);
+  font-size: 12.5px;
+}
+
+.ui-home__personal-prompt button {
+  flex: 0 0 auto;
+  padding: 5px 11px;
+  border: 1px solid var(--ui-border);
+  border-radius: 7px;
+  background: var(--ui-surface);
+  color: var(--ui-accent);
+  font-family: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.ui-home__personal-prompt button:hover {
+  background: var(--ui-accent-bg);
+}
+
 @media (max-width: 860px) {
   .ui-home__grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .ui-home__personal-grid {
     grid-template-columns: minmax(0, 1fr);
   }
 }

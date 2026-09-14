@@ -5,8 +5,6 @@ import type {
   ActivityExpandedSection,
   ActivityItem,
 } from "@api-contracts/ui-read-model";
-import type { PanelToolCallResult as ToolCallResult } from "@api-contracts/ordinary-agent";
-import type { PanelToolFactValue as ToolFactValue } from "@api-contracts/tool-display";
 import { CopyActionButton } from "@ui/components/copy-action-button";
 
 const HIDDEN_SECTION_TITLE_IDS = new Set([
@@ -18,19 +16,8 @@ const PRIMARY_LIST_LIMIT = 8;
 
 export function ActivityEvidencePanel(props: {
   readonly item: ActivityItem;
-  readonly toolResult?: ToolCallResult;
-  readonly showCanonicalToolResult: boolean;
 }): React.ReactElement | null {
-  const structuredEvidence = <StructuredActivityEvidencePanel item={props.item} />;
-  if (props.toolResult === undefined || !props.showCanonicalToolResult) {
-    return structuredEvidence;
-  }
-  return (
-    <div className="agent-activity-evidence-stack">
-      {structuredEvidence}
-      <CanonicalToolResultEvidence result={props.toolResult} />
-    </div>
-  );
+  return <StructuredActivityEvidencePanel item={props.item} />;
 }
 
 function StructuredActivityEvidencePanel(props: {
@@ -109,114 +96,6 @@ function StructuredActivityEvidencePanel(props: {
       ))}
     </div>
   );
-}
-
-function CanonicalToolResultEvidence(props: {
-  readonly result: ToolCallResult;
-}): React.ReactElement {
-  const continuation = continuationFacts(props.result.output);
-  return (
-    <section className="agent-canonical-tool-result" data-status={props.result.status}>
-      <header className="agent-canonical-tool-result-header">
-        <span>完整工具结果</span>
-        <span>{toolResultStatusLabel(props.result.status)} · {props.result.durationMs} ms</span>
-      </header>
-      {(continuation.truncated || continuation.available) && (
-        <div className="agent-canonical-tool-result-notice">
-          {continuation.truncated ? "结果已截断" : ""}
-          {continuation.truncated && continuation.available ? " · " : ""}
-          {continuation.available ? "保留了继续读取信息" : ""}
-        </div>
-      )}
-      <CanonicalText title="工具" value={props.result.toolName} />
-      <CanonicalText title="调用 ID" value={props.result.providerCallId} />
-      {props.result.invocationId !== undefined && (
-        <CanonicalText title="事实 ID" value={props.result.invocationId} />
-      )}
-      {props.result.parentInvocationId !== undefined && (
-        <CanonicalText title="父调用" value={props.result.parentInvocationId} />
-      )}
-      <CanonicalText title="状态" value={props.result.status} />
-      <CanonicalFact title="输入" value={props.result.input} />
-      <CanonicalFact title="输出" value={props.result.output} />
-      {props.result.error !== undefined && (
-        <CanonicalText title="错误" value={props.result.error} tone="danger" />
-      )}
-      {props.result.errorDomain !== undefined && (
-        <CanonicalText title="错误域" value={props.result.errorDomain} />
-      )}
-      {props.result.failureAttribution !== undefined && (
-        <CanonicalText title="失败归因" value={props.result.failureAttribution} />
-      )}
-      {props.result.errorFacts !== undefined && (
-        <CanonicalFact title="错误事实" value={props.result.errorFacts} />
-      )}
-      {props.result.confirmationRequest !== undefined && (
-        <CanonicalFact title="确认请求" value={props.result.confirmationRequest} />
-      )}
-      {props.result.delegatedExecution !== undefined && (
-        <CanonicalFact title="委派执行" value={props.result.delegatedExecution} />
-      )}
-    </section>
-  );
-}
-
-function CanonicalFact(props: {
-  readonly title: string;
-  readonly value: unknown;
-}): React.ReactElement {
-  const content = formatToolFact(props.value);
-  return (
-    <section className="agent-canonical-tool-result-section">
-      <header>
-        <span>{props.title}</span>
-        <CopyActionButton value={content} label={`复制${props.title}`} className="agent-evidence-copy" />
-      </header>
-      <pre><code>{content}</code></pre>
-    </section>
-  );
-}
-
-function CanonicalText(props: {
-  readonly title: string;
-  readonly value: string;
-  readonly tone?: "danger";
-}): React.ReactElement {
-  return (
-    <section className="agent-canonical-tool-result-text" data-tone={props.tone ?? "neutral"}>
-      <strong>{props.title}</strong>
-      <span>{props.value}</span>
-    </section>
-  );
-}
-
-function formatToolFact(value: unknown): string {
-  if (value === undefined) return "无";
-  if (typeof value === "string") return value;
-  return JSON.stringify(value, null, 2);
-}
-
-function continuationFacts(output: ToolFactValue | undefined): {
-  readonly truncated: boolean;
-  readonly available: boolean;
-} {
-  if (output === null || typeof output !== "object" || Array.isArray(output)) {
-    return { truncated: false, available: false };
-  }
-  const record = output as Readonly<Record<string, ToolFactValue | undefined>>;
-  return {
-    truncated: record.truncated === true,
-    available: record.continuation !== undefined || record.continuations !== undefined,
-  };
-}
-
-function toolResultStatusLabel(status: ToolCallResult["status"]): string {
-  switch (status) {
-    case "completed": return "已完成";
-    case "failed": return "失败";
-    case "approval_required": return "等待确认";
-    case "cancelled": return "已取消";
-  }
 }
 
 function CommandEvidence(props: {

@@ -1,0 +1,151 @@
+/* 网页端登录弹窗：主流弹窗尺寸，背后压暗当前页面。 */
+.zh-login-dialog {
+  position: fixed;
+  inset: 0;
+  z-index: 400;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+}
+
+.zh-login-dialog__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(18, 30, 48, 0.42);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+  animation: zh-login-dialog-fade 160ms ease both;
+}
+
+/* 弹窗按 3:2 画布取宽，与登录视图本身同比例；高度随画布，窄屏再回退到竖向单列。
+ * 1180 → 880：画布调小后内部按 cqw 等比缩小（见 login-view.css 的容器查询说明）。 */
+.zh-login-dialog__window {
+  position: relative;
+  width: min(880px, calc(100vw - 48px), calc((100dvh - 48px) * 1.5));
+  max-height: calc(100vh - 48px);
+  overflow: hidden auto;
+  border-radius: 22px;
+  background: #ffffff;
+  box-shadow: 0 24px 60px rgba(12, 30, 60, 0.28), 0 6px 18px rgba(12, 30, 60, 0.14);
+  animation: zh-login-dialog-enter 200ms cubic-bezier(0.2, 0.8, 0.3, 1) both;
+}
+
+/* 关闭按钮压在场景窄条右上角，悬停才加深，避免抢登录动作。 */
+.zh-login-dialog__close {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 2;
+  display: grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.78);
+  color: #41506a;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(12, 30, 60, 0.16);
+  transition: background-color 140ms ease, color 140ms ease;
+}
+
+.zh-login-dialog__close:hover {
+  background: #ffffff;
+  color: #1a1ccc;
+}
+
+.zh-login-dialog__close:focus-visible {
+  outline: 3px solid rgba(11, 91, 234, 0.3);
+  outline-offset: 2px;
+}
+
+@keyframes zh-login-dialog-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes zh-login-dialog-enter {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* 未接通说明：登录按钮下方的一块窄面板，只讲清还差什么，不抢主按钮的视觉重量。
+ * 它在 .login-view 容器内，尺寸随画布等比缩放。 */
+.zh-login-dialog__config {
+  width: 100%;
+  margin-top: clamp(10px, 1.2cqw, 14px);
+  padding: clamp(9px, 1.02cqw, 12px) clamp(11px, 1.2cqw, 14px);
+  border: 1px solid rgba(67, 94, 130, 0.14);
+  border-radius: clamp(8px, 0.85cqw, 10px);
+  background: #f5f7fb;
+  text-align: left;
+}
+
+.zh-login-dialog__config-title {
+  margin: 0 0 6px;
+  color: #41506a;
+  font-size: clamp(11px, 1.02cqw, 12px);
+  font-weight: 600;
+}
+
+.zh-login-dialog__config-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px;
+  margin: 4px 0 0;
+  color: #5b6a83;
+  font-size: clamp(11px, 1.02cqw, 12px);
+  line-height: 1.7;
+}
+
+.zh-login-dialog__config code {
+  padding: 1px 5px;
+  border-radius: 5px;
+  background: rgba(67, 94, 130, 0.09);
+  color: #26344a;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: clamp(10.5px, 0.98cqw, 11.5px);
+  word-break: break-all;
+}
+
+.zh-login-dialog__config-callback {
+  flex: 1 1 100%;
+}
+
+.zh-login-dialog__config-copy {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border: 1px solid rgba(67, 94, 130, 0.18);
+  border-radius: 7px;
+  background: #ffffff;
+  color: #3159e8;
+  cursor: pointer;
+  font-size: clamp(10.5px, 0.98cqw, 11.5px);
+  transition: background-color 140ms ease, border-color 140ms ease;
+}
+
+.zh-login-dialog__config-copy:hover {
+  border-color: rgba(49, 89, 232, 0.35);
+  background: #f0f4ff;
+}
+
+.zh-login-dialog__config-copy:focus-visible {
+  outline: 3px solid rgba(11, 91, 234, 0.3);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .zh-login-dialog__backdrop,
+  .zh-login-dialog__window {
+    animation: none;
+  }
+}

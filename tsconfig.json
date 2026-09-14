@@ -14,5 +14,5 @@
     ,"allowImportingTsExtensions": true
   },
   "include": ["src"],
-  "exclude": ["src/workbench", "src/desktop", "src/web", "dist", "node_modules"]
+  "exclude": ["src/workbench", "src/desktop", "src/web", "src/welcome", "dist", "node_modules"]
 }

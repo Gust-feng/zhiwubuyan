@@ -35,7 +35,7 @@
 
 ## 分发物对照
 
-- `src/workbench/public/favicon.svg`、`src/web/public/favicon.svg`：`app-icon-light.svg` 的副本，浏览器图标必须是被直接提供的静态文件，因此各端保留一份。
+- `src/workbench/public/favicon.svg`：`app-icon-light.svg` 的副本。网页端与桌面端共用同一份前端产物（`src/workbench`），浏览器图标只在这里保留一份。
 - `build/icon.ico`：`zhiwubuyan.ico` 的副本，electron-builder 只在 `buildResources` 目录里找图标。
 
 改动标志时先改本目录的源文件，再同步这两类副本。

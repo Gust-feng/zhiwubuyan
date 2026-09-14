@@ -15,8 +15,6 @@ export type ConversationSurfaceProps = {
   readonly state: LiveConversationState;
   readonly input: ChatInputProps;
   readonly currentRun: CurrentRunProjection;
-  readonly showModelUsage: boolean;
-  readonly developerModeEnabled: boolean;
   readonly confirmationBusy: boolean;
   readonly onDecision: (decision: "approve_once" | "deny" | "guidance", guidance?: string) => void;
   readonly focus?: boolean;
@@ -44,8 +42,6 @@ export function ConversationSurface(props: ConversationSurfaceProps): ReactEleme
         live={props.currentRun.live}
         workView={props.currentRun.workView}
         pending={active.pending}
-        showModelUsage={props.showModelUsage}
-        developerModeEnabled={props.developerModeEnabled}
         standaloneRun={active.workline.standaloneRun !== true ? undefined : {
           currentRunId: active.currentRunId,
           runStatus: props.currentRun.run?.status,
@@ -55,8 +51,6 @@ export function ConversationSurface(props: ConversationSurfaceProps): ReactEleme
           runProjection: active.currentRunProjection,
           pending: active.pending,
         }}
-        models={props.input.models}
-        selectedModelId={props.input.selectedModelId}
         onDecision={props.onDecision}
         confirmationBusy={props.confirmationBusy}
       />

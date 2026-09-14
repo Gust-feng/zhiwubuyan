@@ -1,6 +1,5 @@
 import type {
   ChatInputProps,
-  ChatModelOption,
   ConversationFollowUpMode,
 } from "../../contracts/composer";
 import type { ContextAttachment } from "../../contracts/context";
@@ -15,15 +14,8 @@ export type WorkbenchInputPropsOptions = {
   readonly removeAttachment: (attachmentId: string) => void;
   readonly contextBusy: boolean;
   readonly busy: boolean;
-  readonly models: readonly ChatModelOption[];
-  readonly selectedModelId: string;
   readonly contextUsage?: ContextWindowUsage;
-  readonly reasoningEffort: "" | "low" | "medium" | "high";
-  readonly reasoningEffortEnabled: boolean;
-  readonly onReasoningEffortChange: (value: "" | "low" | "medium" | "high") => void;
   readonly closeSignal: number;
-  readonly onModelSelect: (modelId: string) => void | Promise<void>;
-  readonly onOpenSettings: () => void;
   readonly enqueueMessage: (content: string) => void;
   readonly startTask: (explicitGoal?: string) => void | Promise<boolean>;
   readonly clearQueuedMessages: () => void;
@@ -49,15 +41,8 @@ export function workbenchInputPropsFrom(
     contextBusy: options.contextBusy,
     busy: options.busy,
     running: options.modelResponding,
-    models: options.models,
-    selectedModelId: options.selectedModelId,
     contextUsage: options.contextUsage,
-    reasoningEffort: options.reasoningEffort,
-    reasoningEffortEnabled: options.reasoningEffortEnabled,
-    onReasoningEffortChange: options.onReasoningEffortChange,
     closeSignal: options.closeSignal,
-    onModelSelect: options.onModelSelect,
-    onOpenSettings: options.onOpenSettings,
     onSubmit: () => {
       if (options.modelResponding && options.followUpMode === "guide") {
         options.setGoal("");

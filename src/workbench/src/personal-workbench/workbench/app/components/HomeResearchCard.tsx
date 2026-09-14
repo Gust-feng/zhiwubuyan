@@ -72,7 +72,6 @@ export function HomeResearchCard({ onNavigate, onOpenTask }: HomeResearchCardPro
               tasks={completed}
               label="最近完成"
               onOpenTask={onOpenTask}
-              onOpenLibrary={onNavigate ? () => onNavigate('briefs') : undefined}
             />
           )}
         </div>
@@ -96,11 +95,10 @@ interface ResearchDeckProps {
   tasks: readonly TaskSummary[]
   label: string
   onOpenTask?: (taskId: string) => void
-  onOpenLibrary?: () => void
 }
 
 /** 用任务 ID 保留翻阅位置，轮询插入新报告时不切走正在看的卡片。 */
-function ResearchDeck({ tasks, label, onOpenTask, onOpenLibrary }: ResearchDeckProps) {
+function ResearchDeck({ tasks, label, onOpenTask }: ResearchDeckProps) {
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const index = Math.max(0, tasks.findIndex((task) => task.id === selectedId))
   const task = tasks[index]
@@ -112,7 +110,6 @@ function ResearchDeck({ tasks, label, onOpenTask, onOpenLibrary }: ResearchDeckP
     <section className="ui-research-deck" aria-label={label}>
       <div className="ui-research-deck__head">
         <h3><span className={`ui-research-deck__dot${active ? ' is-active' : completed ? ' is-completed' : ''}`} aria-hidden />{label}</h3>
-        {onOpenLibrary && <button className="ui-research-card__link" type="button" onClick={onOpenLibrary}>简报库 <ArrowUpRight size={12} aria-hidden /></button>}
       </div>
       <div className="ui-research-deck__stack" data-depth={Math.min(tasks.length - 1, 2)}>
         <button

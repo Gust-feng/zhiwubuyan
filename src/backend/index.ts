@@ -6,7 +6,7 @@ import { buildResearchWorkflow, createMastraResearchPort } from "../agent/resear
 import { createResearcherRunner, createStageRunner } from "../agent/research-agent.ts";
 import { createDeepResearchSystem, type DeepResearchSystem, type ZhihuSearchGateway } from "../application/deep-research.ts";
 import { openResearchStore } from "../storage/research-store.ts";
-import { openResearchModelStore, type ResearchModelStore } from "../storage/research-model-store.ts";
+import { openResearchModelStore } from "../storage/research-model-store.ts";
 import { createRunTrace } from "../storage/run-trace.ts";
 import { createOpenPlatformClient, OPEN_PLATFORM_BASE_URL } from "../platform/zhihu/client.ts";
 import { createContentGateway } from "../platform/zhihu/content.ts";
@@ -16,22 +16,16 @@ import { callerFromSecret, type RequestIdentity } from "../platform/zhihu/identi
 export type ResearchBackendConfig = {
   /** 产品与框架数据的绝对目录；同一目录同时只允许一个后端写入。 */
   dataDir: string;
-  /** 知乎开放平台 Access Secret；缺失时只能读本地数据。 */
-  zhihuAccessSecret: string | null;
+  /** 每次调用读取当前知乎开放平台凭证，未配置时返回 null：用户在设置里改完立即生效。 */
+  zhihuAccessSecret: () => string | null;
   /** 模型服务配置；缺失时不能创建新任务。 */
   model: { baseUrl: string; modelId: string; apiKey: string } | null;
   /** 模型信息（非秘密），记录进任务。 */
   modelProviderLabel: string;
-  /** 桌面版运行标志：仅桌面可创建 Ultra 任务（ADR-0007）。 */
-  desktopEdition: boolean;
-  /** 是否允许在设置界面写入模型配置（仅桌面端）。 */
-  configurableModel: boolean;
 };
 
 export type ResearchBackend = {
   engine: DeepResearchSystem;
-  /** 模型配置读写：桌面端由设置界面调用，其它运行面只读。 */
-  modelConfig: ResearchModelStore;
   /** 启动时收敛的 interrupted 任务 ID。 */
   recoveredTaskIds: string[];
   close(): Promise<void>;
@@ -45,8 +39,7 @@ export async function startResearchBackend(config: ResearchBackendConfig): Promi
   const releaseLock = await acquireDataDirLock(config.dataDir);
   try {
     const store = await openResearchStore(config.dataDir);
-    const zhihuConfigured = Boolean(config.zhihuAccessSecret);
-    // 模型配置由设置界面写入并即时生效；环境变量只作为首次启动的初始值。
+    // 凭证配置由设置界面写入并即时生效；环境变量只作为首次启动的初始值。
     const modelConfig = openResearchModelStore(config.dataDir, config.model === null
       ? null
       : {
@@ -60,13 +53,15 @@ export async function startResearchBackend(config: ResearchBackendConfig): Promi
       store,
       zhihu: createZhihuSearchGateway(config),
       zhida: createZhidaQuickAnswerGateway(config),
-      desktopEdition: config.desktopEdition,
       clock: () => new Date(),
       modelInfo: () => {
         const current = modelConfig.read();
         return current === null ? null : { provider: current.providerLabel, modelId: current.modelId };
       },
-      zhihuConfigured,
+      zhihuConfigured: () => {
+        const secret = config.zhihuAccessSecret();
+        return secret !== null && secret.trim() !== "";
+      },
       trace: createRunTrace(config.dataDir),
     });
 
@@ -98,7 +93,6 @@ export async function startResearchBackend(config: ResearchBackendConfig): Promi
 
     return {
       engine,
-      modelConfig,
       recoveredTaskIds,
       async close() {
         await agentRuntime.close();
@@ -138,14 +132,16 @@ async function acquireDataDirLock(dataDir: string): Promise<() => Promise<void>>
   }
 }
 
-/** 知乎直答快答网关：三档模型透传（ADR-0007）；未配置时不会被执行（创建入口已拦截）。 */
+/** 知乎直答快答网关：三档模型透传（ADR-0007）；未配置时不会被执行（创建入口已拦截）。
+ *  凭证每次调用时读取，用户在设置里改完对新任务立即生效，无需重启后端。 */
 function createZhidaQuickAnswerGateway(config: ResearchBackendConfig) {
-  if (!config.zhihuAccessSecret) return null;
-  const identity: RequestIdentity = { caller: callerFromSecret(config.zhihuAccessSecret) };
-  const client = createOpenPlatformClient({ baseUrl: OPEN_PLATFORM_BASE_URL });
-  const zhida = createZhidaGateway(client, identity);
   return {
     async answer(input: { model: string; prompt: string }) {
+      const accessSecret = config.zhihuAccessSecret()?.trim();
+      if (!accessSecret) throw new Error("知乎开放平台凭证未配置。");
+      const identity: RequestIdentity = { caller: callerFromSecret(accessSecret) };
+      const client = createOpenPlatformClient({ baseUrl: OPEN_PLATFORM_BASE_URL });
+      const zhida = createZhidaGateway(client, identity);
       const result = await zhida.answer({
         model: ZHIDA_MODELS.includes(input.model as ZhidaModel) ? (input.model as ZhidaModel) : "zhida-fast-1p5",
         prompt: input.prompt,
@@ -155,27 +151,23 @@ function createZhidaQuickAnswerGateway(config: ResearchBackendConfig) {
   };
 }
 
-/** 知乎搜索网关：复用现有 client/content adapter；未配置时不会被执行（创建入口已拦截）。 */
+/** 知乎搜索网关：复用现有 client/content adapter；凭证每次调用时读取。 */
 function createZhihuSearchGateway(config: ResearchBackendConfig): ZhihuSearchGateway {
-  if (!config.zhihuAccessSecret) {
-    return {
-      searchZhihu: async () => {
-        throw new Error("知乎凭证未配置。");
-      },
-      searchGlobal: async () => {
-        throw new Error("知乎凭证未配置。");
-      },
-    };
-  }
-  const identity: RequestIdentity = { caller: callerFromSecret(config.zhihuAccessSecret) };
-  const client = createOpenPlatformClient({ baseUrl: OPEN_PLATFORM_BASE_URL });
-  const content = createContentGateway(client, identity);
+  const requireSecret = (): { identity: RequestIdentity; content: ReturnType<typeof createContentGateway> } => {
+    const accessSecret = config.zhihuAccessSecret()?.trim();
+    if (!accessSecret) throw new Error("知乎开放平台凭证未配置。");
+    const identity: RequestIdentity = { caller: callerFromSecret(accessSecret) };
+    const client = createOpenPlatformClient({ baseUrl: OPEN_PLATFORM_BASE_URL });
+    return { identity, content: createContentGateway(client, identity) };
+  };
   return {
     async searchZhihu(input) {
+      const { content } = requireSecret();
       const result = await content.searchZhihu({ query: input.query, count: input.count, signal: input.signal });
       return { items: result.items };
     },
     async searchGlobal(input) {
+      const { content } = requireSecret();
       const result = await content.searchGlobal({ query: input.query, count: input.count, signal: input.signal });
       return { items: result.items };
     },

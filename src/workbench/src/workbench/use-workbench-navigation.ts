@@ -5,14 +5,14 @@ import {
   type WorkbenchNavigationState,
   type WorkbenchView,
 } from "./navigation-state";
-import { consumeZhihuLoginReturnToMine } from "./zhihu-auth-navigation";
+import { consumeZhihuLoginReturn } from "./zhihu-auth-navigation";
 
 export type WorkbenchNavigationController = {
   readonly state: WorkbenchNavigationState;
   readonly navigate: (target: WorkbenchView, researchTaskId?: string | null) => void;
-  readonly setBrainSelection: (id: string | null) => void;
-  readonly setMineNoteSelection: (id: string | null) => void;
   readonly focusHomeInput: () => void;
+  /** 带着议题进入众声：跨板块衔接要保留用户刚才在读的问题。 */
+  readonly openVoices: (issue: string) => void;
 };
 
 export function useWorkbenchNavigation(): WorkbenchNavigationController {
@@ -25,11 +25,8 @@ export function useWorkbenchNavigation(): WorkbenchNavigationController {
   const navigate = useCallback((target: WorkbenchView, researchTaskId?: string | null) => {
     dispatch({ type: "navigate", target, researchTaskId });
   }, []);
-  const setBrainSelection = useCallback((id: string | null) => {
-    dispatch({ type: "set-brain-selection", id });
-  }, []);
-  const setMineNoteSelection = useCallback((id: string | null) => {
-    dispatch({ type: "set-mine-note-selection", id });
+  const openVoices = useCallback((issue: string) => {
+    dispatch({ type: "open-voices", issue });
   }, []);
   const focusHomeInput = useCallback(() => {
     dispatch({ type: "focus-home-input" });
@@ -38,14 +35,14 @@ export function useWorkbenchNavigation(): WorkbenchNavigationController {
   return {
     state,
     navigate,
-    setBrainSelection,
-    setMineNoteSelection,
+    openVoices,
     focusHomeInput,
   };
 }
 
 function createInitialNavigationState(): WorkbenchNavigationState {
   const initial = createInitialWorkbenchNavigationState();
-  if (!consumeZhihuLoginReturnToMine()) return initial;
-  return { ...initial, view: "mine", previousView: "mine" };
+  const restored = consumeZhihuLoginReturn(["home", "explore", "mine", "ask", "voices"]);
+  if (restored === undefined) return initial;
+  return { ...initial, view: restored as WorkbenchView };
 }

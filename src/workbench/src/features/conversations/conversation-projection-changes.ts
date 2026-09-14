@@ -3,7 +3,6 @@ import type React from "react";
 import type { WorkbenchProjectionChange } from "@api-contracts/workbench";
 import { getJson } from "../../api";
 import { subscribeWorkbenchProjectionChanges } from "../../workbench/projection-changes";
-import { invalidateUsageStatistics } from "../../workbench/usage-statistics-query";
 import type { AppState } from "../../workbench/state";
 import type { LiveRunSubscription } from "./run/live-run-updates";
 import type { ConversationSummary } from "../../contracts/conversation";
@@ -62,8 +61,6 @@ export function useConversationProjectionChanges(input: {
         applyConversations: (conversations) => {
           if (disposed || !input.mountedRef.current) return;
           input.setApp((previous) => ({ ...previous, conversations }));
-          // 外部 run 同样消耗模型用量，与本地提交后的列表刷新保持同一失效行为。
-          invalidateUsageStatistics();
         },
         openConversationId: () =>
           disposed || !input.mountedRef.current ? undefined : input.appRef.current.conversation?.conversationId,

@@ -2,14 +2,16 @@ import { readLocalPreference, writeLocalPreference } from "../../shell/local-pre
 
 /**
  * 研究偏好的本地默认值：只决定研究入口的初始选择，单次研究仍可在入口覆盖。
- * Ultra 仅在桌面端可用，网页端选到 Ultra 时由提交后的后端响应给出锁定提示。
+ * Ultra 只在本机运行面承接；网页端即使本地存过 Ultra 也回退 Pro，
+ * 避免入口默认选中一个本侧不承接的档位。
  */
 export type ResearchDefaultTier = "pro" | "ultra";
 
 const RESEARCH_TIER_STORAGE_KEY = "research.default-tier";
 const RESEARCH_WEB_SUPPLEMENT_STORAGE_KEY = "research.default-web-supplement";
 
-export function getDefaultResearchTier(): ResearchDefaultTier {
+export function getDefaultResearchTier(ultraAvailable: boolean): ResearchDefaultTier {
+  if (!ultraAvailable) return "pro";
   return readLocalPreference(RESEARCH_TIER_STORAGE_KEY) === "ultra" ? "ultra" : "pro";
 }
 

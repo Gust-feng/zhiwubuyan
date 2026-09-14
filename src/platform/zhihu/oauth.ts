@@ -5,6 +5,13 @@ import type { FetchLike } from "./client.ts";
 export const OAUTH_BASE_URL = "https://openapi.zhihu.com";
 const DEFAULT_EXPIRES_IN_SECONDS = 3600;
 
+/**
+ * 授权回调的固定路径。必须落在 /api/ 之下：网页端部署只把 /api/* 交给服务端函数，
+ * 其余路径回退到前端页面，回调落在别处就拿不到 authorization_code。
+ * 登记到开放平台的完整地址是 `${公开来源}${OAUTH_CALLBACK_PATH}`。
+ */
+export const OAUTH_CALLBACK_PATH = "/api/auth/callback";
+
 export type OAuthAppConfig = {
   appId: string;
   appKey: string;
@@ -23,12 +30,62 @@ export type ExchangeOptions = {
   now?: () => number;
 };
 
+/**
+ * 公开来源：优先 PUBLIC_ORIGIN；也接受把完整回调地址写在 ZHIHU_OAUTH_REDIRECT_URI 里，
+ * 只取其中的来源部分。都未配置时返回 undefined，登录能力不启用。
+ */
+export function readPublicOrigin(env: Record<string, string | undefined>): string | undefined {
+  return normalizeOrigin(env.PUBLIC_ORIGIN) ?? normalizeOriginFromUri(env.ZHIHU_OAUTH_REDIRECT_URI);
+}
+
+/** 登记到开放平台的完整回调地址；未配置公开来源时为 undefined。 */
+export function oauthRedirectUri(env: Record<string, string | undefined>): string | undefined {
+  const origin = readPublicOrigin(env);
+  return origin === undefined ? undefined : `${origin}${OAUTH_CALLBACK_PATH}`;
+}
+
 export function readOAuthAppConfig(env: Record<string, string | undefined>): OAuthAppConfig | undefined {
   const appId = env.ZHIHU_OAUTH_APP_ID?.trim();
   const appKey = env.ZHIHU_OAUTH_APP_KEY?.trim();
-  const redirectUri = env.ZHIHU_OAUTH_REDIRECT_URI?.trim();
+  // 回调路径由应用固定，避免登记地址与实际路由不一致；配置里只决定来源。
+  const redirectUri = oauthRedirectUri(env);
   if (!appId || !appKey || !redirectUri) return undefined;
   return { appId, appKey, redirectUri };
+}
+
+/**
+ * 登录所需配置项的名称清单。未接通时前端据此如实说明缺哪一项；
+ * 只回配置项名称，绝不回传任何值。
+ */
+export function missingOAuthConfig(env: Record<string, string | undefined>): string[] {
+  const missing: string[] = [];
+  if (!env.ZHIHU_OAUTH_APP_ID?.trim()) missing.push("ZHIHU_OAUTH_APP_ID");
+  if (!env.ZHIHU_OAUTH_APP_KEY?.trim()) missing.push("ZHIHU_OAUTH_APP_KEY");
+  // 公开来源决定回调地址；也接受从 ZHIHU_OAUTH_REDIRECT_URI 反推。
+  if (readPublicOrigin(env) === undefined) missing.push("PUBLIC_ORIGIN");
+  return missing;
+}
+
+/** 接受带协议或裸主机名（裸主机名按 https 处理），只保留来源部分。 */
+function normalizeOrigin(value: string | undefined): string | undefined {
+  const trimmed = value?.trim();
+  if (!trimmed) return undefined;
+  const withScheme = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+  try {
+    return new URL(withScheme).origin;
+  } catch {
+    return undefined;
+  }
+}
+
+function normalizeOriginFromUri(value: string | undefined): string | undefined {
+  const trimmed = value?.trim();
+  if (!trimmed) return undefined;
+  try {
+    return new URL(trimmed).origin;
+  } catch {
+    return undefined;
+  }
 }
 
 export function buildAuthorizeUrl(config: OAuthAppConfig): string {

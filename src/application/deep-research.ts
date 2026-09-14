@@ -25,25 +25,11 @@ import { isProductError } from "../platform/zhihu/errors.ts";
 import { toResearchSourceDraft } from "../platform/zhihu/research-sources.ts";
 import { StorageError, type ResearchStore, type TaskRow } from "../storage/research-store.ts";
 import type { RunTrace, RunTraceEvent } from "../storage/run-trace.ts";
+import { DEFAULT_LIMITS, TIER_ZHIDA_MODEL } from "./research-baseline.ts";
 
-/**
- * 服务端固定默认值（开发方案第 7 节）；创建时冻结快照。
- * 全部角色共用一份任务额度；并发与单元上限由同一账本控制。
- */
-export const DEFAULT_LIMITS: LimitsType = {
-  maxConcurrentUnits: 3,
-  maxConcurrentSearches: 4,
-  maxSearchRequests: 160,
-  maxModelRequests: 200,
-  maxSources: 800,
-  timeoutMs: 2_700_000,
-  synthesisModelReserve: 12,
-  synthesisTimeReserveMs: 600_000,
-  unitMaxSteps: 12,
-  unitMaxSearchRequests: 8,
-  unitTimeoutMs: 300_000,
-  maxRepairPasses: 1,
-};
+// 档位映射与预算默认值由 research-baseline 拥有：它不依赖本机存储，
+// 网页端快答也能安全引用。这里重导出，保持既有引用路径不变。
+export { DEFAULT_LIMITS, TIER_ZHIDA_MODEL };
 
 /** 单元内每次搜索的默认条数与文本预算。 */
 export const SEARCH_DEFAULT_COUNT = 5;
@@ -63,7 +49,6 @@ export type ResearchApiErrorCode =
   | "REPORT_NOT_READY"
   | "MODEL_NOT_CONFIGURED"
   | "ZHIHU_NOT_CONFIGURED"
-  | "ULTRA_DESKTOP_ONLY"
   | "AUTH_INVALID"
   | "RATE_LIMITED"
   | "QUOTA_EXHAUSTED"
@@ -154,24 +139,16 @@ export type ZhidaQuickAnswerGateway = {
   answer(input: { model: string; prompt: string }): Promise<ZhidaAnswer>;
 };
 
-/** 直答档位 → 直答模型（ADR-0007：fast/thinking 为首页问答模式，pro 为深度研究 Pro）。 */
-export const TIER_ZHIDA_MODEL: Record<Exclude<ResearchTier, "ultra">, string> = {
-  fast: "zhida-fast-1p5",
-  thinking: "zhida-thinking-1p5",
-  pro: "zhida-agent",
-};
-
 export type DeepResearchConfig = {
   store: ResearchStore;
   zhihu: ZhihuSearchGateway;
   /** 知乎直答快答网关；缺失时快答档返回 ZHIHU_NOT_CONFIGURED。 */
   zhida: ZhidaQuickAnswerGateway | null;
-  /** 桌面版运行标志：仅桌面可创建 Ultra 任务（ADR-0007）。 */
-  desktopEdition: boolean;
   clock: () => Date;
   /** 当前研究模型信息；创建任务时读取，配置变更后对新任务立即生效。 */
   modelInfo: () => ModelInfoType | null;
-  zhihuConfigured: boolean;
+  /** 是否已配置知乎调用凭证；创建任务时读取，凭证变更后对新任务立即生效。 */
+  zhihuConfigured: () => boolean;
   limits?: Partial<LimitsType>;
   trace: RunTrace;
 };
@@ -350,17 +327,12 @@ export function createDeepResearchSystem(config: DeepResearchConfig) {
       return await runQuickAnswer(rawInput, question, inputHash, tier);
     }
 
-    // Ultra 仅桌面版可用（ADR-0007）；判定来自后端启动配置。
-    if (!config.desktopEdition) {
-      throw new ResearchApiError("ULTRA_DESKTOP_ONLY", 403, "深度研究 Ultra 仅在桌面版可用。");
-    }
-
-    // 创建任务时读取当前模型配置：设置里改完对新任务立即生效，无需重启后端。
+    // 创建任务时读取当前模型配置：改完配置对新任务立即生效，无需重启后端。
     const modelInfo = config.modelInfo();
     if (!modelInfo) {
       throw new ResearchApiError("MODEL_NOT_CONFIGURED", 503, "模型尚未配置，无法执行研究。");
     }
-    if (!config.zhihuConfigured) {
+    if (!config.zhihuConfigured()) {
       throw new ResearchApiError("ZHIHU_NOT_CONFIGURED", 503, "知乎开放平台凭证尚未配置，无法检索来源。");
     }
     const taskId = `task-${shortId()}`;

@@ -163,39 +163,34 @@ li[data-state="active"] .dr-plan__check > span { width: 5px; height: 5px; border
 .dr-completed-plan summary { display: flex; align-items: center; gap: 7px; color: var(--ui-text-2); list-style: none; font-size: 12px; }
 .dr-completed-plan summary > svg:last-child { margin-left: auto; }
 .dr-completed-plan .dr-plan__items { padding-bottom: 0; }
-/* 启动页：居中的「图标 + 提问」入口，版心与运行态共用 --dr-track / --dr-pad-x。
-   纵向刻意靠上而不是几何居中，下方留白承接后续内容；内容过高时退回顶部并滚动。 */
-.dr-start { display: grid; align-content: start; justify-items: center; flex: 1; min-height: 0; padding: clamp(56px, 13vh, 112px) 0 48px; overflow-y: auto; }
-.dr-start__content { width: 100%; max-width: var(--dr-shell); padding: 0 var(--dr-pad-x); }
-.dr-start__head { display: flex; flex-direction: column; align-items: center; gap: 22px; margin-bottom: 28px; text-align: center; }
-.dr-start__emblem { display: inline-flex; color: var(--ui-accent); }
-.dr-start h1 { margin: 0; font-size: 35px; font-weight: 650; letter-spacing: 0; line-height: 1.35; }
 /* 提问卡片：输入区 + 底部参数条，中间用整宽分隔线断开。焦点态用组合器专属阴影，而不只是换边框色。 */
 .dr-composer { position: relative; padding: 20px 22px 16px; border: 1px solid var(--ui-border-strong); border-radius: var(--dr-radius-card); background: var(--ui-composer); box-shadow: var(--ui-composer-shadow); transition: border-color var(--motion-duration-quick), box-shadow var(--motion-duration-interaction); }
 .dr-composer:focus-within { border-color: var(--ui-accent); box-shadow: var(--ui-composer-shadow-focus); }
-/* 刘看山趴在输入卡片右上沿：盒底压进卡片，让双爪搭住上沿。 */
-.dr-composer__mascot { position: absolute; right: 26px; bottom: calc(100% - 14px); z-index: 2; width: 108px; height: 108px; overflow: hidden; pointer-events: none; }
+/* 刘看山栖位由共享入口外壳持有，见 entry-surface.css；这里不再自带定位。 */
 /* 关掉拖拽把手：它会长在卡片内部，被当成游离的瑕疵；改用 field-sizing 让高度随内容增长。
    起始高度按单行给足，问题写长了再自己长高，不预留空行。 */
 .dr-composer textarea { display: block; width: 100%; min-height: 32px; max-height: 200px; padding: 0; resize: none; field-sizing: content; border: 0; outline: none; background: transparent; color: var(--ui-text-1); font-size: 18px; line-height: 1.6; }
 .dr-composer textarea::placeholder { color: var(--ui-text-2); }
 .dr-composer__bar { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; margin-top: 14px; padding-top: 13px; border-top: 1px solid var(--ui-border); }
-/* 研究深度属于提交参数，和主按钮一起靠右成组；左侧留白由它的 auto 外边距吸收。
-   两个 auto 外边距会平分空白把控件拆开，所以主按钮不再自带 auto。
-   内距比一般控件松一点，让「✦ 研究深度 Pro」读起来是一段说明而不是一个窄标签。 */
-.dr-mode-select { display: inline-flex; align-items: center; gap: 8px; min-height: 36px; margin-left: auto; padding: 4px 14px; border: 1px solid var(--ui-border); border-radius: var(--dr-radius-control); background: var(--ui-canvas); color: var(--ui-text-2); font-size: 13px; }
+/* 研究深度属于提交参数，和主按钮一起靠右成组；左侧留白由外层容器的 auto 外边距吸收。
+   两个 auto 外边距会平分空白把控件拆开，所以主按钮不再自带 auto。 */
+.dr-tier-select { position: relative; margin-left: auto; }
+/* 触发器：去边框、柔和灰底的胶囊，和输入栏融为一体；打开时箭头翻转。 */
+.dr-mode-select { display: inline-flex; align-items: center; gap: 7px; min-height: 34px; padding: 3px 12px 3px 13px; border: 0; border-radius: 999px; background: var(--ui-surface-hover); color: var(--ui-text-2); font-size: 13px; line-height: 1; transition: background var(--motion-duration-quick); }
+.dr-mode-select:hover { background: var(--ui-border); }
+.dr-mode-select:focus-visible { outline: 2px solid var(--ui-accent); outline-offset: 2px; }
 .dr-mode-select > svg:first-child { color: var(--ui-accent); }
-.dr-mode-select > svg:last-child { color: var(--ui-text-3); }
-/* 原生下拉箭头会和自定义 ChevronDown 叠成双箭头，必须关掉原生外观；
-   同时限宽，否则控件宽度被最长的选项文字撑开，看起来是一段空框。 */
-.dr-mode-select select { appearance: none; -webkit-appearance: none; max-width: 5em; border: 0; outline: none; background: transparent; color: var(--ui-text-1); font-family: inherit; font-size: 13px; font-weight: 600; }
-/* 参数开关（全网补证）：默认是安静的图标按钮，打开时用强调色表态，不让状态藏起来。
-   它夹在「研究深度」和后一个提交参数之间，两侧留白对称，才不会读成属于左边那一个。
-   颜色必须带 !important：`.dr-live button` 的 color: inherit 权重更高，否则它拿到 --ui-text-1，
-   在这里会黑得像个主操作。 */
-.dr-options-toggle { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; width: 36px; height: 36px; margin: 0 12px; border: 1px solid transparent; border-radius: var(--dr-radius-control); background: transparent; color: var(--ui-text-2) !important; transition: background var(--motion-duration-quick), color var(--motion-duration-quick); }
-.dr-options-toggle:hover { background: var(--ui-surface-hover); color: var(--ui-text-1); }
-.dr-options-toggle[aria-pressed="true"] { background: var(--ui-accent-bg); color: var(--ui-accent); }
+.dr-mode-select > svg:last-child { color: var(--ui-text-3); transition: transform var(--motion-duration-quick) ease; }
+.dr-mode-select[aria-expanded='true'] > svg:last-child { transform: rotate(180deg); }
+.dr-mode-select__value { color: var(--ui-text-1); font-weight: 600; }
+/* 档位菜单：大圆角气泡卡片挂在触发器右下方，行高给足呼吸感，选中项右侧打勾；
+   进场做轻微上浮 + 缩放，锚点在右上角，感觉像从触发器里长出来。 */
+.dr-tier-menu { position: absolute; top: calc(100% + 8px); right: 0; z-index: 20; min-width: 220px; margin: 0; padding: 6px; list-style: none; border: 1px solid var(--ui-border); border-radius: 16px; background: var(--ui-surface); box-shadow: 0 2px 8px rgba(20, 18, 15, 0.05), 0 16px 44px rgba(20, 18, 15, 0.13); transform-origin: top right; animation: dr-tier-menu-in 150ms cubic-bezier(0.22, 1, 0.36, 1) both; }
+@keyframes dr-tier-menu-in { from { opacity: 0; transform: translateY(-4px) scale(0.97); } to { opacity: 1; transform: translateY(0) scale(1); } }
+.dr-tier-menu li[aria-selected='true'] > button { font-weight: 600; }
+.dr-tier-menu button { display: flex; align-items: center; justify-content: space-between; gap: 16px; width: 100%; min-height: 42px; padding: 9px 12px 9px 14px; border: 0; border-radius: 10px; background: transparent; color: var(--ui-text-1); font-size: 14px; text-align: left; transition: background var(--motion-duration-quick); }
+.dr-tier-menu button:hover { background: var(--ui-surface-hover); }
+.dr-tier-menu button > svg { flex-shrink: 0; color: var(--ui-accent); }
 .dr-primary-button { min-height: 42px; padding: 9px 22px; border: 0; border-radius: 10px; background: var(--ui-accent); color: var(--ui-accent-fg) !important; font-size: 16px !important; font-weight: 600 !important; }
 .dr-live__error { flex-shrink: 0; margin: 10px 26px 0; padding: 9px 13px; border-left: 2px solid var(--ui-status-error); border-radius: 5px; background: var(--ui-surface); color: var(--ui-text-1); font-size: 12px; line-height: 1.7; }
 @container research (max-width: 880px) {
@@ -224,18 +219,10 @@ li[data-state="active"] .dr-plan__check > span { width: 5px; height: 5px; border
   .dr-main__note { align-items: flex-start; font-size: 10px; }
   .dr-main__note svg { flex-shrink: 0; margin-top: 2px; }
   .dr-report h1 { font-size: 24px; }
-  .dr-start { padding: 32px 0 40px; }
-  .dr-start__content { padding: 0 20px; }
-  .dr-start__head { gap: 16px; margin-bottom: 22px; }
-  .dr-start__emblem > svg { width: 40px; height: 40px; }
-  .dr-start h1 { font-size: 25px; }
   .dr-composer { padding: 15px; }
-  .dr-composer__mascot { width: 80px; height: 80px; right: 14px; }
   .dr-composer textarea { min-height: 48px; font-size: 16px; }
   .dr-composer__bar { gap: 8px; }
-  /* 窄容器里参数条会折行，主按钮独占下一行并顶到右边缘；
-     图标按钮如果保留右侧外边距，就会比它短 12px，看起来是没对齐。 */
-  .dr-options-toggle { margin-right: 0; }
+  /* 窄容器里参数条会折行，主按钮独占下一行并顶到右边缘。 */
   .dr-primary-button { flex: 1 1 100%; }
 }
 @media (prefers-reduced-motion: reduce) { .dr-indeterminate > span { animation: none; } }

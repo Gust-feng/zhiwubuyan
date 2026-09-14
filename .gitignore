@@ -52,7 +52,5 @@ release/
 # Temporary OAuth demo, regenerable from the local skill snapshot
 /hackathon-hello-world/
 
-# Product documentation kept locally, not part of the source tree
-/docs/
-/README.md
+# 早期设计草稿仅保存在本地，不纳入版本控制。
 /设计思路.md

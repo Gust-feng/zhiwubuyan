@@ -2,14 +2,11 @@ import { useCallback, useEffect, useMemo, useRef } from "react";
 import type { CurrentRunProjection } from "../../features/conversations/run/projection";
 import { projectChatActiveView } from "../../features/conversations/transcript/live-view";
 import type { ChatInputProps } from "../../contracts/composer";
-import { WorkbenchSettingsDialog, type WorkbenchSettingsDialogProps } from "../../features/settings/components/workbench-dialog";
 import { WorkbenchBootstrapLoading } from "../../components/workbench-bootstrap-loading";
 import type { Conversation, ConversationSummary } from "../../contracts/conversation";
 import type { PendingConfirmation } from "../../contracts/run";
 
 import { SurfaceErrorBoundary } from "./app/components/SurfaceErrorBoundary";
-import { kanshanDirector } from "@ui/components/kanshan-mascot/kanshan-director";
-import { KanshanFlightLayer } from "@ui/components/kanshan-mascot/KanshanFlightLayer";
 
 
 
@@ -27,6 +24,9 @@ import { useWorkbenchNavigation } from "../../workbench/use-workbench-navigation
 import { useConversationMode } from "../../workbench/use-conversation-mode";
 import { useWorkbenchEnvironment } from "../../workbench/use-workbench-environment";
 import { useWorkbenchLayout, type WorkbenchLayoutMode } from "../../workbench/use-workbench-layout";
+import { useWorkbenchSurface, WorkbenchSurfaceProvider } from "../../workbench/surface";
+import { ZhihuSessionProvider } from "../../workbench/zhihu-account";
+import { ZhihuLoginProvider } from "../../features/auth/login-request";
 import { PreviewLayoutContext } from "../../workbench/preview-layout";
 
 export type PersonalWorkbenchProps = {
@@ -42,8 +42,6 @@ export type PersonalWorkbenchProps = {
   readonly conversations: readonly ConversationSummary[];
   readonly currentRun: CurrentRunProjection;
   readonly inputProps: ChatInputProps;
-  readonly showModelUsage: boolean;
-  readonly developerModeEnabled: boolean;
   readonly error?: string;
   readonly onDismissError?: () => void;
   readonly pendingConfirmation?: PendingConfirmation | NonNullable<CurrentRunProjection["workView"]>["pendingConfirmation"];
@@ -56,8 +54,6 @@ export type PersonalWorkbenchProps = {
   readonly onRenameConversation: (conversationId: string, title: string) => void | Promise<void>;
   readonly onToggleConversationPinned: (conversationId: string, pinned: boolean) => void | Promise<void>;
   readonly onDeleteConversation: (conversationId: string) => void | Promise<void>;
-  readonly onOpenSettings: () => void;
-  readonly settingsDialogProps?: WorkbenchSettingsDialogProps;
 };
 
 /** Reading navigation and the canonical conversation share one stable workbench layout. */
@@ -67,17 +63,14 @@ export function PersonalWorkbench(props: PersonalWorkbenchProps) {
   const {
     state: navigationState,
     navigate: reduceNavigation,
-    setBrainSelection,
-    setMineNoteSelection,
+    openVoices,
     focusHomeInput,
   } = navigation;
   const {
     view,
-    previousView,
-    brainSelectedId,
-    mineSelectedNoteId,
     researchTaskId,
     homeFocusRequest,
+    voicesIssue,
   } = navigationState;
   const navigationIntentRef = useRef(0);
   const viewRef = useRef(view);
@@ -94,12 +87,13 @@ export function PersonalWorkbench(props: PersonalWorkbenchProps) {
   const { knowledgeLoadState, knowledgeError, retryKnowledge, refreshKnowledge, dismissKnowledgeError } = useWorkbenchEnvironment({
     rootRef,
     personalKnowledgePersistenceEnabled: props.personalKnowledgePersistenceEnabled === true,
-    view,
   });
   const layout = useWorkbenchLayout();
-  // 首页、我的知乎、深度研究、简报库、圈子都是单一阅读表面，不带右侧对话分栏。
-  const singleSurfaceView = view === "home" || view === "mine" || view === "ask" || view === "briefs" || view === "circles";
-  const layoutMode = singleSurfaceView ? "reading" : layout.mode;
+  const { surface } = useWorkbenchSurface();
+  // 一级内容页与个人档案都是单一阅读表面，不带右侧对话分栏。
+  const singleSurfaceView = view === "home" || view === "explore" || view === "mine" || view === "ask";
+  // 网页端没有本地会话，右侧对话分栏无从加载，整站按单一阅读面呈现。
+  const layoutMode = surface === "web" || singleSurfaceView ? "reading" : layout.mode;
   const conversationItems = props.conversations;
   const { mode: conversationMode, setMode: setConversationMode } = useConversationMode(rootRef);
 
@@ -115,12 +109,6 @@ export function PersonalWorkbench(props: PersonalWorkbenchProps) {
   const openReadingPreview = useCallback(() => {
     activateReading();
   }, [activateReading]);
-
-  const selectKnowledge = useCallback((id: string | null) => {
-    setBrainSelection(id);
-    if (id === null) activateReading();
-    else openReadingPreview();
-  }, [activateReading, openReadingPreview, setBrainSelection]);
 
   // 启动恢复只在挂载后执行一次；没有可恢复的表面时，工作台停留在首页。
   const startupRecoveryAttemptedRef = useRef(false);
@@ -148,24 +136,6 @@ export function PersonalWorkbench(props: PersonalWorkbenchProps) {
     }
     updateNavigation();
   };
-
-  useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent): void => {
-      if (event.defaultPrevented) return;
-      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
-        event.preventDefault();
-        navigate("search");
-      }
-      if (event.key === "Escape" && view === "search") navigate(previousView);
-    };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [conversationMode, previousView, view]);
-
-  // 刘看山全局只有一只：视图决定它应在的栖位（深度研究=输入框，其余=侧栏）。
-  useEffect(() => {
-    kanshanDirector.setView(view);
-  }, [view]);
 
   const homeInput = useMemo<ChatInputProps>(() => ({
     ...props.inputProps,
@@ -272,12 +242,9 @@ export function PersonalWorkbench(props: PersonalWorkbenchProps) {
     refreshKnowledge,
     retryKnowledge,
   ]);
-  const showLoadingFallback = (
-    props.bootstrapState.status === "loading" && view !== "home"
-  ) || (
-    isKnowledgeView(view) && (knowledgeLoadState.status === "loading" || knowledgeLoadState.status === "retrying")
-  );
+  const showLoadingFallback = props.bootstrapState.status === "loading" && view !== "home";
   return (
+    <WorkbenchSurfaceProvider>
     <div
       ref={rootRef}
       className="ui-workbench-root flex h-screen min-h-0 w-full overflow-hidden"
@@ -288,6 +255,8 @@ export function PersonalWorkbench(props: PersonalWorkbenchProps) {
         fontFamily: '"Noto Sans SC", Inter, system-ui, -apple-system, sans-serif',
       }}
     >
+      <ZhihuSessionProvider>
+      <ZhihuLoginProvider>
       <style>{`
         @keyframes viewFadeIn {
           from { opacity: 0; }
@@ -299,7 +268,6 @@ export function PersonalWorkbench(props: PersonalWorkbenchProps) {
         view={view}
         collapsed={props.sidebarCollapsed}
         onNavigate={navigate}
-        onOpenSettings={props.onOpenSettings}
       />
 
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
@@ -327,11 +295,9 @@ export function PersonalWorkbench(props: PersonalWorkbenchProps) {
                     onOpenPreview={openReadingPreview}
                     homeInput={homeInput}
                     homeFocusRequest={homeFocusRequest}
-                    brainSelectedId={brainSelectedId}
-                    mineSelectedNoteId={mineSelectedNoteId}
-                    onMineNoteSelect={setMineNoteSelection}
-                    onBrainSelect={selectKnowledge}
                     researchTaskId={researchTaskId}
+                    voicesIssue={voicesIssue}
+                    onOpenVoices={openVoices}
                     navigate={navigate}
                   />
               </SurfaceErrorBoundary>
@@ -357,8 +323,6 @@ export function PersonalWorkbench(props: PersonalWorkbenchProps) {
                 state={conversationState}
                 input={conversationInput}
                 currentRun={props.currentRun}
-                showModelUsage={props.showModelUsage}
-                developerModeEnabled={props.developerModeEnabled}
                 confirmationBusy={props.confirmationBusy}
                 onDecision={props.onDecision}
                 focus={conversationMode === "focus"}
@@ -371,24 +335,20 @@ export function PersonalWorkbench(props: PersonalWorkbenchProps) {
 
       <WorkbenchStatusCenter notices={statusNotices} />
 
-      {/* 刘看山跨栖位迁移的飞行层，全局唯一、不拦截指针。 */}
-      <KanshanFlightLayer />
-
-      {props.settingsDialogProps?.open === true && <WorkbenchSettingsDialog {...props.settingsDialogProps} />}
+      </ZhihuLoginProvider>
+      </ZhihuSessionProvider>
     </div>
+    </WorkbenchSurfaceProvider>
   );
 }
 
 function viewLabel(view: WorkbenchView): string {
   switch (view) {
     case "home": return "首页";
+    case "explore": return "探索";
     case "ask": return "深度研究";
     case "voices": return "众声";
-    case "circles": return "圈子";
-    case "briefs": return "简报库";
     case "mine": return "我的知乎";
-    case "brain": return "资料库";
-    case "search": return "搜索";
   }
 }
 
@@ -408,10 +368,6 @@ function projectConversationSurface(
     error: conversation === undefined ? undefined : props.error,
     pendingConfirmation: conversation === undefined ? undefined : props.pendingConfirmation,
   });
-}
-
-function isKnowledgeView(view: WorkbenchView): boolean {
-  return view === "brain" || view === "search";
 }
 
 function requiresImmediateConversationView(props: Pick<PersonalWorkbenchProps, "currentRun" | "pendingConfirmation">): boolean {

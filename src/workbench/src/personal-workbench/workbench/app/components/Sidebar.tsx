@@ -1,13 +1,10 @@
 import {
+  Compass,
   Home,
-  Library,
-  FileText,
   Scale,
   Sparkles,
-  User as UserIcon,
-  Users,
 } from 'lucide-react'
-import { SidebarBrand } from './SidebarBrand'
+import { SidebarAccount } from './SidebarAccount'
 import { SidebarResearchPrompt } from './SidebarResearchPrompt'
 import { SidebarFooter } from './SidebarFooter'
 import {
@@ -21,7 +18,6 @@ export type View = WorkbenchView
 interface SidebarProps {
   view: View
   onNavigate: (v: View) => void
-  onOpenSettings: () => void
   collapsed: boolean
 }
 
@@ -32,7 +28,6 @@ const SIDEBAR_COLLAPSED_W = 0
 export function Sidebar({
   view,
   onNavigate,
-  onOpenSettings,
   collapsed,
 }: SidebarProps) {
   // Structural state changes are intentionally atomic. The previous staged
@@ -68,7 +63,7 @@ export function Sidebar({
         className="relative flex flex-col h-full"
         style={{ width: SIDEBAR_W, minWidth: SIDEBAR_W }}
       >
-      <SidebarBrand />
+      <SidebarAccount onOpenMine={() => onNavigate('mine')} />
 
       {/* ── Navigation ── */}
       {/* Collapsed: the whole nav column is hidden (fade out). Kept mounted so
@@ -95,12 +90,12 @@ export function Sidebar({
             label="首页"
           />
           <SidebarNavRow
-            active={view === 'mine'}
-            onClick={() => onNavigate('mine')}
+            active={view === 'explore'}
+            onClick={() => onNavigate('explore')}
             labelsVisible={labelsVisible}
             collapsed={collapsed}
-            icon={<UserIcon size={14}/>}
-            label="我的知乎"
+            icon={<Compass size={14}/>}
+            label="探索"
           />
           <SidebarNavRow
             active={view === 'ask'}
@@ -118,39 +113,11 @@ export function Sidebar({
             icon={<Scale size={14}/>}
             label="众声"
           />
-          <SidebarNavRow
-            active={view === 'circles'}
-            onClick={() => onNavigate('circles')}
-            labelsVisible={labelsVisible}
-            collapsed={collapsed}
-            icon={<Users size={14}/>}
-            label="圈子"
-          />
-          <SidebarNavRow
-            active={view === 'briefs'}
-            onClick={() => onNavigate('briefs')}
-            labelsVisible={labelsVisible}
-            collapsed={collapsed}
-            icon={<FileText size={14}/>}
-            label="简报库"
-          />
-        </div>
-
-        {/* 资料库 */}
-        <div className="space-y-0.5 mt-4">
-          <SidebarNavRow
-            active={view === 'brain'}
-            onClick={() => onNavigate('brain')}
-            labelsVisible={labelsVisible}
-            collapsed={collapsed}
-            icon={<Library size={14}/>}
-            label="资料库"
-          />
         </div>
       </nav>
 
       <SidebarResearchPrompt collapsed={collapsed} onStartResearch={() => onNavigate('ask')} />
-      <SidebarFooter onOpenSettings={onOpenSettings} />
+      <SidebarFooter />
       </div>
 
     </aside>

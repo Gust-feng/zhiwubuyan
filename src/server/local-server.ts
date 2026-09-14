@@ -2,13 +2,17 @@ import { createReadStream, existsSync, statSync } from "node:fs";
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { extname, join, normalize } from "node:path";
 import { createRuntime } from "../application/runtime.ts";
+import { createMemorySharedCache } from "../application/shared-cache.ts";
 import { isProductError, ProductError } from "../platform/zhihu/errors.ts";
-import { readOAuthAppConfig } from "../platform/zhihu/oauth.ts";
+import { readOAuthAppConfig, missingOAuthConfig, oauthRedirectUri } from "../platform/zhihu/oauth.ts";
 import { startResearchBackend, type ResearchBackend } from "../backend/index.ts";
 import { CreateResearchTaskInput, type CreateResearchTaskInput as CreateResearchTaskInputType } from "../contracts/research.ts";
 import { ResearchApiError } from "../application/deep-research.ts";
+import { openZhihuCredentialStore } from "../storage/zhihu-credential-store.ts";
 import { createMemorySessionStore } from "./session-store.ts";
 import { createZhihuApiHandler } from "./zhihu-api.ts";
+import { createFileHomeFeedCacheStore, homeFeedCachePath } from "../storage/home-feed-cache.ts";
+import { createFilePersonalArchiveStore, personalArchiveDir } from "../storage/personal-archive-store.ts";
 import {
   asRequest,
   readJson,
@@ -40,24 +44,42 @@ export type LocalServer = {
  */
 export async function startLocalServer(options: LocalServerOptions): Promise<LocalServer> {
   const { host, dataDir, webRoot } = options;
-  const accessSecret = process.env.ZHIHU_ACCESS_SECRET?.trim();
-  const runtime = accessSecret ? createRuntime({ accessSecret }) : undefined;
+  const desktopEdition = process.env.KANSHAN_EDITION?.trim() === "desktop";
+  // 知乎调用凭证由本机数据目录中的配置文件或环境变量提供，进程启动时解析一次。
+  const credentials = openZhihuCredentialStore(dataDir, process.env.ZHIHU_ACCESS_SECRET ?? null);
+  const hotCacheStore = createFileHomeFeedCacheStore(homeFeedCachePath(dataDir));
+  const personalArchiveStore = createFilePersonalArchiveStore(personalArchiveDir(dataDir));
+  // 单进程运行面：单飞用进程内实现即可；档案落盘由文件实现承担。
+  const archiveLock = createMemorySharedCache();
+  const sessions = createMemorySessionStore();
+  const developerUserDataEnabled =
+    process.env.NODE_ENV === "development"
+    && process.env.ZHIHU_DEV_USER_DATA?.trim() === "1"
+    && !desktopEdition;
+
+  // 调用凭证在网关创建时固化在 identity 里；进程启动时读取一次即可。
+  const accessSecret = credentials.read();
+  const runtime = accessSecret === null || accessSecret === ""
+    ? undefined
+    : createRuntime({ accessSecret, hotCacheStore, personalArchiveStore, archiveLock });
   const handleZhihuApi = createZhihuApiHandler({
     runtime,
     oauthConfig: readOAuthAppConfig(process.env),
-    sessions: createMemorySessionStore(),
-    developerUserDataEnabled:
-      process.env.NODE_ENV === "development"
-      && process.env.ZHIHU_DEV_USER_DATA?.trim() === "1"
-      && process.env.KANSHAN_EDITION?.trim() !== "desktop",
-    capabilities: ["zhihu_search", "global_search", "hot_list", "user_data", "research_brief", "voices", "circles"],
+    oauthMissingConfig: missingOAuthConfig(process.env),
+    oauthRedirectUri: oauthRedirectUri(process.env),
+    sessions,
+    developerUserDataEnabled,
+    // 本机运行面同时承接 Pro 与自研 Ultra 引擎，因此额外声明 research_ultra；
+    // 网页端只声明 research（Pro 单次直答），档位菜单据此不列出 Ultra。
+    capabilities: ["zhihu_search", "global_search", "hot_list", "user_data", "research_brief", "voices", "research", "research_ultra"],
+    // 运行面同时决定登录形态：桌面端独立窗口，网页端应用内弹窗。
+    surface: desktopEdition ? "desktop" : "web",
   });
 
   // 深度研究后端：目录独占 + 产品库 + 启动收敛。无模型凭证时仅本地读取可用。
-  const desktopEdition = process.env.KANSHAN_EDITION?.trim() === "desktop";
   const research = await startResearchBackend({
     dataDir,
-    zhihuAccessSecret: accessSecret ?? null,
+    zhihuAccessSecret: () => credentials.read(),
     model:
       process.env.MODEL_API_KEY?.trim() && process.env.MODEL_API_BASE_URL?.trim() && process.env.MODEL_PROFILE_MODEL_ID?.trim()
         ? {
@@ -67,9 +89,6 @@ export async function startLocalServer(options: LocalServerOptions): Promise<Loc
           }
         : null,
     modelProviderLabel: process.env.MODEL_PROVIDER?.trim() || "openai-compatible",
-    desktopEdition,
-    // 模型服务只在桌面端可配置：凭证留在本机数据目录，不经网页端下发。
-    configurableModel: desktopEdition,
   });
   if (research.recoveredTaskIds.length > 0) {
     console.log(`[research] 重启收敛：${research.recoveredTaskIds.length} 个未完成任务标记为 interrupted。`);
@@ -84,9 +103,6 @@ export async function startLocalServer(options: LocalServerOptions): Promise<Loc
     try {
       const url = new URL(request.url ?? "/", `http://${request.headers.host ?? host}`);
       if (await handleResearchRoutes(research, url, request, response)) {
-        return;
-      }
-      if (await handleResearchModelRoutes(research, url, request, response, desktopEdition)) {
         return;
       }
       if (await handleZhihuApi(url, request, response)) {
@@ -236,65 +252,16 @@ async function handleResearchRoutes(
   }
 }
 
-// ---------------------------------------------------------------------------
-// 深度研究模型配置路由：仅桌面端可写；其它运行面只读并声明不可配置。
-// ---------------------------------------------------------------------------
-
-const RESEARCH_MODEL_PATH = "/api/research-model";
-
-async function handleResearchModelRoutes(
-  research: ResearchBackend,
-  url: URL,
-  request: IncomingMessage,
-  response: ServerResponse,
-  configurable: boolean,
-): Promise<boolean> {
-  if (url.pathname !== RESEARCH_MODEL_PATH) return false;
-  if (request.method === "GET") {
-    return writeJson(response, 200, {
-      ok: true,
-      data: { configurable, model: research.modelConfig.view() },
-    });
-  }
-  if (request.method !== "POST") return false;
-  if (!configurable) {
-    return writeJson(response, 403, {
-      ok: false,
-      error: { code: "MODEL_CONFIG_DESKTOP_ONLY", message: "模型服务仅在桌面版可配置。" },
-    });
-  }
-  const body = asRequest(await readJsonLimited(request, 16 * 1024)) as Record<string, unknown>;
-  const baseUrl = readRequiredString(body.baseUrl, "请填写模型接口地址。").trim();
-  const modelId = readRequiredString(body.modelId, "请填写模型 ID。").trim();
-  // keepApiKey：留空沿用已保存密钥（前端不掌握旧密钥，无法回填）。
-  const keepApiKey = body.keepApiKey === true && research.modelConfig.view().apiKeyConfigured;
-  const apiKey = keepApiKey
-    ? (research.modelConfig.read()?.apiKey ?? "")
-    : readRequiredString(body.apiKey, "请填写模型 API 密钥。").trim();
-  if (!/^https?:\/\//u.test(baseUrl)) {
-    return writeJson(response, 400, {
-      ok: false,
-      error: { code: "INVALID_INPUT", message: "模型接口地址需要以 http(s):// 开头。" },
-    });
-  }
-  const providerLabel = typeof body.providerLabel === "string" ? body.providerLabel : "";
-  research.modelConfig.write({ baseUrl, modelId, apiKey, providerLabel });
-  return writeJson(response, 200, {
-    ok: true,
-    data: { configurable, model: research.modelConfig.view() },
-  });
-}
-
-function serveWeb(webRoot: string, pathname: string, response: ServerResponse): void {
+function serveWeb(webRoot: string, pathname: string, response: ServerResponse, label = "前端"): void {
   if (!existsSync(webRoot)) {
-    return void writeJson(response, 503, { code: "WEB_NOT_BUILT", message: "前端尚未构建，请运行 pnpm build。" });
+    return void writeJson(response, 503, { code: "WEB_NOT_BUILT", message: `${label}尚未构建，请运行 pnpm build。` });
   }
   const requested = pathname === "/" ? "index.html" : pathname.replace(/^\/+/, "");
   const safe = normalize(requested).replace(/^(\.\.[/\\])+/, "");
   let file = join(webRoot, safe);
   if (!file.startsWith(webRoot) || !isFile(file)) file = join(webRoot, "index.html");
   if (!isFile(file)) {
-    return void writeJson(response, 503, { code: "WEB_NOT_BUILT", message: "前端尚未构建，请运行 pnpm build。" });
+    return void writeJson(response, 503, { code: "WEB_NOT_BUILT", message: `${label}尚未构建，请运行 pnpm build。` });
   }
   // 构建中产物可能被整体替换（emptyOutDir），stat 与流打开之间存在竞态，流错误必须兜底而非打挂进程。
   const stream = createReadStream(file);

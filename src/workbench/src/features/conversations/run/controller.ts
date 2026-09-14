@@ -1,7 +1,6 @@
 import type React from "react";
 import { getJson, postJson } from "../../../api";
 import { decideRunConfirmation } from "./confirmation-decisions";
-import { type ComposerReasoningEffort, type VisibleAiMode } from "../../settings/config-projection";
 import { createLiveRunUpdateController, type LiveRunSubscription } from "./live-run-updates";
 import {
   appStateWithSettledRunProjection,
@@ -10,7 +9,6 @@ import {
 import { shouldKeepRefreshing, stopLiveUpdates } from "./runtime-controls";
 import { loadConversationSession, resetConversationSession } from "../conversation-session";
 import { submitPanelTask } from "./task-submission";
-import { invalidateUsageStatistics } from "../../../workbench/usage-statistics-query";
 import type { AppState } from "../../../workbench/state";
 import type { ContextAttachment } from "../../../contracts/context";
 import type { ConversationSummary } from "../../../contracts/conversation";
@@ -37,10 +35,6 @@ export type AppRunControllerOptions = {
   readonly attachments: readonly ContextAttachment[];
   readonly setAttachments: React.Dispatch<React.SetStateAction<readonly ContextAttachment[]>>;
   readonly goal: string;
-  readonly aiMode: VisibleAiMode;
-  readonly composerReasoningEffort: ComposerReasoningEffort;
-  readonly selectedModelId: string;
-  readonly selectedModelSupportsReasoningEffort: boolean;
   readonly confirmationBusy: boolean;
   readonly setConfirmationBusy: React.Dispatch<React.SetStateAction<boolean>>;
   readonly mountedRef: React.MutableRefObject<boolean>;
@@ -111,7 +105,6 @@ export function createAppRunController(options: AppRunControllerOptions): AppRun
   async function refreshConversations(): Promise<void> {
     const response = await getJson<{ readonly conversations: readonly ConversationSummary[] }>("/api/conversations");
     options.setApp((previous) => ({ ...previous, conversations: response.conversations ?? [] }));
-    invalidateUsageStatistics();
   }
 
   async function cancelRun(): Promise<void> {

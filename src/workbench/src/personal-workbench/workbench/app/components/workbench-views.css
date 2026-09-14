@@ -1,4 +1,4 @@
-/* 首页 / 深度研究 / 简报库 三视图共用的知乎式版面。
+/* 首页 / 深度研究 两视图共用的知乎式版面。
    全部走 --ui-* 令牌，跟随明/暗主题切换；发丝线、白卡、蓝做标点。 */
 
 .ui-view {
@@ -343,61 +343,3 @@
   font-size: 12.5px;
   line-height: 1.6;
 }
-
-/* ── 简报库：已完成研究的报告卡片 ───────────────────────────── */
-
-.ui-briefs__grid {
-  display: grid;
-  gap: 14px;
-}
-
-.ui-brief {
-  display: block;
-  width: 100%;
-  padding: 18px 20px;
-  border: 1px solid var(--ui-border);
-  border-radius: 12px;
-  background: var(--ui-surface);
-  text-align: left;
-  cursor: pointer;
-  transition: border-color 140ms ease, box-shadow 140ms ease;
-}
-.ui-brief:hover {
-  border-color: color-mix(in srgb, var(--ui-accent) 24%, transparent);
-  box-shadow: 0 2px 10px rgba(24,26,30,0.05);
-}
-
-.ui-brief__top {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 8px;
-}
-.ui-brief__date {
-  margin-left: auto;
-  color: var(--ui-text-3);
-  font-size: 12px;
-}
-
-.ui-brief__title {
-  margin: 0 0 8px;
-  color: var(--ui-text-1);
-  font-size: 16px;
-  font-weight: 600;
-  line-height: 1.5;
-}
-
-.ui-brief__foot {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-  padding-top: 12px;
-  border-top: 1px solid var(--ui-border);
-}
-.ui-brief__foot-meta {
-  margin-left: auto;
-  color: var(--ui-text-3);
-  font-size: 12px;
-}
-

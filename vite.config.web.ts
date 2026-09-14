@@ -1,13 +1,21 @@
 import path from "node:path";
+import { readFileSync } from "node:fs";
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 
-// 网页端（Vercel）独立构建：最小壳，只用知乎 API；不装 demo 传输层，无凭证时如实报错。
+const projectPackage = JSON.parse(readFileSync(new URL("./package.json", import.meta.url), "utf8")) as { version: string };
+
+// 网页端（Vercel）构建：产品唯一的交付形态，工作台源码与本地预览共用同一份。
+// 服务端承接的能力由前端按 /api/status 声明的能力集启用，未声明时如实显示未接通。
 export default defineConfig({
-  root: "src/web",
+  root: "src/workbench",
   envDir: import.meta.dirname,
   base: "./",
+  define: {
+    __PRODUCT_VERSION__: JSON.stringify(projectPackage.version),
+    __WORKBENCH_SURFACE__: JSON.stringify("web"),
+  },
   plugins: [react(), tailwindcss()],
   resolve: {
     alias: {

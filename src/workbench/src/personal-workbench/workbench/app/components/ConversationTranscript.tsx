@@ -1,16 +1,15 @@
 /**
  * Conversation workbench 的对话转录渲染器。
  *
- * 消费 ConversationDisplayItem[] 与 canonical tool result 数据，使用
- * 使用工作台的 --ui-* token 渲染，不依赖旧 Transcript 组件和主题。
+ * 消费 ConversationDisplayItem[] 数据，使用工作台的 --ui-* token 渲染，
+ * 不依赖旧 Transcript 组件和主题。
  *
  * 数据权威不变：projectConversationDisplayList 产出什么，这里就渲染什么。
  * 全量可见性不变：工具活动、确认流、失败归因、Sub-Agent 嵌套全部保留。
  */
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import {
-  Brain,
   Check,
   ChevronDown,
   ChevronRight,
@@ -29,15 +28,11 @@ import type { OrdinaryRun, OrdinaryWorkView, TranscriptNode } from "@ui/contract
 import type { PanelToolCallResult as ToolCallResult } from "@api-contracts/ordinary-agent";
 import type { LiveRunBuffer } from "@api-contracts/ui-read-model";
 import type { WorklineProjectedTurn } from "@api-contracts/ui-read-model";
-import type { ChatModelOption } from "@ui/contracts/composer";
 import { RichText, StreamingRichText } from "@ui/components/rich-text";
-import { useStreamingText } from "@ui/features/conversations/transcript/use-streaming-text";
 import { CopyActionButton } from "@ui/components/copy-action-button";
 import { ActivityEvidencePanel } from "./ActivityEvidence";
-import { toolResultForActivity } from "@ui/features/conversations/transcript/tool-result-association";
 import { MOTION_EASING, MOTION_TIMING, useMotionEnabled } from "@ui/shell/motion-system";
 import { ConfirmationCard, type ConfirmationProjection } from "./ConfirmationCard";
-import type { ConversationDisplayItem } from "@api-contracts/ui-read-model";
 import type { AssistantWorkflowDisplay } from "@api-contracts/ui-read-model";
 import { useConversationTranscriptProjection, type ConversationStandaloneRun } from "./use-conversation-transcript-projection";
 import {
@@ -51,11 +46,6 @@ import {
   type AssistantFailureParts,
   type AssistantTerminalStatus,
 } from "@api-contracts/ui-read-model";
-import {
-  assistantModelForTurn,
-  selectedComposerModel,
-  type ConversationModelBadge,
-} from "./conversation-model-badge";
 
 /* ─── 主入口 ─── */
 
@@ -70,17 +60,13 @@ export type ConversationTranscriptProps = {
   readonly live?: LiveRunBuffer;
   readonly workView?: OrdinaryWorkView;
   readonly pending?: ConfirmationProjection;
-  readonly showModelUsage: boolean;
-  readonly developerModeEnabled: boolean;
   readonly standaloneRun?: ConversationStandaloneRun;
-  readonly models: readonly ChatModelOption[];
-  readonly selectedModelId: string;
   readonly onDecision: (decision: "approve_once" | "deny" | "guidance", guidance?: string) => void;
   readonly confirmationBusy: boolean;
 };
 
 export function ConversationTranscript(props: ConversationTranscriptProps): React.ReactElement | null {
-  const { conversationDisplay, toolResultsByRunId } = useConversationTranscriptProjection(props);
+  const { conversationDisplay } = useConversationTranscriptProjection(props);
   const items = conversationDisplay.items;
   if (items.length === 0) return null;
 
@@ -96,10 +82,7 @@ export function ConversationTranscript(props: ConversationTranscriptProps): Reac
               key={item.key}
               failure={item.failure}
               terminalStatus={item.terminalStatus}
-              model={modelBadgeForItem(item, props.models, props.selectedModelId)}
               workflow={item.workflow}
-              toolResultsByRunId={toolResultsByRunId}
-              developerModeEnabled={props.developerModeEnabled}
               onDecision={props.onDecision}
               confirmationBusy={props.confirmationBusy}
             />
@@ -109,10 +92,7 @@ export function ConversationTranscript(props: ConversationTranscriptProps): Reac
           <ConversationAssistantMessage
             key={item.key}
             live={item.live}
-            model={modelBadgeForItem(item, props.models, props.selectedModelId)}
             workflow={item.workflow}
-            toolResultsByRunId={toolResultsByRunId}
-            developerModeEnabled={props.developerModeEnabled}
             onDecision={props.onDecision}
             confirmationBusy={item.hasPendingConfirmation && props.confirmationBusy}
           />
@@ -161,23 +141,9 @@ const ConversationUserMessage = React.memo(function ConversationUserMessage(prop
 
 /* ─── 助手消息 ─── */
 
-function modelBadgeForItem(
-  item: Extract<ConversationDisplayItem<ConversationTurn, TranscriptNode, ConfirmationProjection>, { readonly kind: "assistant" }>,
-  models: readonly ChatModelOption[],
-  selectedModelId: string,
-): ConversationModelBadge | undefined {
-  if (item.source === "turn" && item.turn !== undefined) {
-    return assistantModelForTurn(item.turn, models, selectedModelId);
-  }
-  return selectedComposerModel(models, selectedModelId);
-}
-
 function ConversationAssistantMessage(props: {
   readonly live?: boolean;
-  readonly model?: ConversationModelBadge;
   readonly workflow?: AssistantWorkflowDisplay<TranscriptNode, ConfirmationProjection>;
-  readonly toolResultsByRunId: Readonly<Record<string, readonly ToolCallResult[]>>;
-  readonly developerModeEnabled: boolean;
   readonly onDecision?: (decision: "approve_once" | "deny" | "guidance", guidance?: string) => void;
   readonly confirmationBusy?: boolean;
 }) {
@@ -187,7 +153,6 @@ function ConversationAssistantMessage(props: {
   }
   return (
     <div className="ui-conversation-turn ui-conversation-turn--assistant space-y-3">
-      <ConversationModelLabel model={props.model} />
       {workflow.segments.map((segment, index) => {
         if (segment.kind === "activity") {
           return (
@@ -196,8 +161,6 @@ function ConversationAssistantMessage(props: {
               segment={segment}
               onDecision={props.onDecision}
               confirmationBusy={props.confirmationBusy === true}
-              toolResultsByRunId={props.toolResultsByRunId}
-              developerModeEnabled={props.developerModeEnabled}
             />
           );
         }
@@ -222,10 +185,7 @@ function ConversationAssistantMessage(props: {
 function ConversationFailureMessage(props: {
   readonly failure: AssistantFailureParts;
   readonly terminalStatus?: AssistantTerminalStatus;
-  readonly model?: ConversationModelBadge;
   readonly workflow?: AssistantWorkflowDisplay<TranscriptNode, ConfirmationProjection>;
-  readonly toolResultsByRunId: Readonly<Record<string, readonly ToolCallResult[]>>;
-  readonly developerModeEnabled: boolean;
   readonly onDecision?: (decision: "approve_once" | "deny" | "guidance", guidance?: string) => void;
   readonly confirmationBusy: boolean;
 }) {
@@ -234,7 +194,6 @@ function ConversationFailureMessage(props: {
   const activitySegments = workflow?.segments.filter((s) => s.kind === "activity") ?? [];
   return (
     <div className="ui-conversation-turn ui-conversation-turn--assistant space-y-3">
-      <ConversationModelLabel model={props.model} />
       {bodySegments.map((segment, index) => {
         if (segment.kind === "awaiting") return <ConversationPendingDots key={`a-${index}`} />;
         return <ConversationAnswerBlock key={segment.segmentKey} text={segment.text} live={false} />;
@@ -262,29 +221,9 @@ function ConversationFailureMessage(props: {
             segment={segment}
             onDecision={props.onDecision}
             confirmationBusy={props.confirmationBusy}
-            toolResultsByRunId={props.toolResultsByRunId}
-            developerModeEnabled={props.developerModeEnabled}
           />
         ) : null
       ))}
-    </div>
-  );
-}
-
-/* ─── 模型徽标 ─── */
-
-function ConversationModelLabel(props: { readonly model?: ConversationModelBadge }): React.ReactElement | null {
-  if (props.model === undefined) return null;
-  return (
-    <div className="ui-model-badge">
-      {props.model.iconSvg !== undefined && (
-        <span
-          className="ui-model-badge__icon"
-          aria-hidden="true"
-          dangerouslySetInnerHTML={{ __html: props.model.iconSvg }}
-        />
-      )}
-      <span className="ui-model-badge__name">{props.model.modelName}</span>
     </div>
   );
 }
@@ -345,35 +284,25 @@ function ConversationActivitySegment(props: {
   >;
   readonly onDecision?: (decision: "approve_once" | "deny" | "guidance", guidance?: string) => void;
   readonly confirmationBusy: boolean;
-  readonly developerModeEnabled: boolean;
-  readonly toolResultsByRunId: Readonly<Record<string, readonly ToolCallResult[]>>;
 }) {
-  const { thinkingItems, processTimeline } = splitThinkingTimeline(props.segment.timeline);
+  const { processTimeline } = splitThinkingTimeline(props.segment.timeline);
   return (
-    <>
-      {props.developerModeEnabled && thinkingItems.length > 0 && <ConversationThinkingBlock items={thinkingItems} />}
-      <ConversationActivityTimeline
-        timeline={processTimeline}
-        collapsed={props.segment.collapsed}
-        lifecycle={props.segment.lifecycle}
-        onDecision={props.onDecision}
-        confirmationBusy={props.confirmationBusy}
-        toolResultsByRunId={props.toolResultsByRunId}
-        developerModeEnabled={props.developerModeEnabled}
-      />
-    </>
+    <ConversationActivityTimeline
+      timeline={processTimeline}
+      collapsed={props.segment.collapsed}
+      lifecycle={props.segment.lifecycle}
+      onDecision={props.onDecision}
+      confirmationBusy={props.confirmationBusy}
+    />
   );
 }
 
 function splitThinkingTimeline(timeline: AgentWorkTimelineView<TranscriptNode, ConfirmationProjection>): {
-  readonly thinkingItems: readonly ActivityItem[];
   readonly processTimeline: AgentWorkTimelineView<TranscriptNode, ConfirmationProjection>;
 } {
   const visibleItems = timeline.items.filter(isVisibleOrdinaryActivityItem);
-  const thinkingItems = visibleItems.filter((item) => item.tone === "thinking");
   const processItems = visibleItems.filter((item) => item.tone !== "thinking");
   return {
-    thinkingItems,
     processTimeline: {
       ...timeline,
       items: processItems,
@@ -382,62 +311,12 @@ function splitThinkingTimeline(timeline: AgentWorkTimelineView<TranscriptNode, C
   };
 }
 
-/* ─── 思考块 ─── */
-
-/**
- * 模型推理过程的专门展示：独立于工具工作流。思考进行中保持展开以实时显示
- * 推理内容；思考一旦完成（终态条目），自动收起为「思考」标题行。
- */
-function ConversationThinkingBlock(props: { readonly items: readonly ActivityItem[] }) {
-  const thinkingInProgress = props.items.some((item) => item.phase !== "completed");
-  const [open, setOpen] = useState(thinkingInProgress);
-  useEffect(() => {
-    // 只在思考阶段切换时自动开合，不覆盖用户手动展开/收起。
-    setOpen(thinkingInProgress);
-  }, [thinkingInProgress]);
-  const text = props.items
-    .map((item) => item.copy.expandedDetail ?? item.copy.detail)
-    .filter((value): value is string => value !== undefined && value.trim().length > 0)
-    .join("\n\n");
-  // reasoning 流平滑逐字显示；终态内容到达时立即结算为权威内容。
-  const displayed = useStreamingText(text, thinkingInProgress);
-  if (displayed.length === 0) return null;
-  return (
-    <div className="ui-thinking-block">
-      <button
-        type="button"
-        onClick={() => setOpen((value) => !value)}
-        aria-expanded={open}
-        aria-label={open ? "收起思考" : "展开思考"}
-        className="flex w-full items-center gap-2 text-left"
-        style={{ color: "var(--ui-text-2)" }}
-      >
-        <Brain size={12} className="shrink-0" style={{ color: "var(--ui-text-3)" }} />
-        <span className="text-[12px] font-medium tracking-wide">过程</span>
-        <span className="ml-auto" style={{ color: "var(--ui-text-3)" }}>
-          {open ? <ChevronDown size={11} /> : <ChevronRight size={11} />}
-        </span>
-      </button>
-      {open && (
-        <div
-          className="ui-thinking-content mt-1.5 border-l-2 pl-3 text-[12px] leading-[1.75]"
-          style={{ borderColor: "var(--ui-border)", color: "var(--ui-text-2)", whiteSpace: "pre-wrap" }}
-        >
-          {displayed}
-        </div>
-      )}
-    </div>
-  );
-}
-
 function ConversationActivityTimeline(props: {
   readonly timeline: AgentWorkTimelineView<TranscriptNode, ConfirmationProjection>;
   readonly collapsed?: boolean;
   readonly lifecycle?: "open" | "settled" | "attention";
   readonly onDecision?: (decision: "approve_once" | "deny" | "guidance", guidance?: string) => void;
   readonly confirmationBusy: boolean;
-  readonly toolResultsByRunId: Readonly<Record<string, readonly ToolCallResult[]>>;
-  readonly developerModeEnabled: boolean;
 }) {
   const { confirmation, items, hasContent } = props.timeline;
   // Hooks 必须在任何 early return 之前无条件调用：该组件被父级无条件渲染，
@@ -520,12 +399,7 @@ function ConversationActivityTimeline(props: {
                     ease: MOTION_EASING.premium,
                   }}
                 >
-                  <ConversationActivityItem
-                    item={item}
-                    toolResult={toolResultForActivity(item, props.timeline.nodes, props.toolResultsByRunId)}
-                    resolveChildResult={(child) => toolResultForActivity(child, props.timeline.nodes, props.toolResultsByRunId)}
-                    showCanonicalToolResult={props.developerModeEnabled}
-                  />
+                  <ConversationActivityItem item={item} />
                 </motion.div>
               ))}
             </AnimatePresence>
@@ -566,9 +440,6 @@ const TOOL_ICONS: Record<string, React.ReactNode> = {
 
 function ConversationActivityItem(props: {
   readonly item: ActivityItem;
-  readonly toolResult?: ToolCallResult;
-  readonly resolveChildResult: (item: ActivityItem) => ToolCallResult | undefined;
-  readonly showCanonicalToolResult: boolean;
 }) {
   const { item } = props;
   const toolKind = item.toolKind ?? resolveActivityToolKind(item);
@@ -578,8 +449,7 @@ function ConversationActivityItem(props: {
   const displayText = item.lead !== undefined ? `${item.lead.action} ${item.lead.subject}` : item.copy.detail;
   const badgeLabel = item.badges?.[0]?.label;
   const hasEvidence = (item.expandedSections?.length ?? 0) > 0 ||
-    item.copy.expandedDetail !== undefined ||
-    (props.toolResult !== undefined && props.showCanonicalToolResult);
+    item.copy.expandedDetail !== undefined;
   const [open, setOpen] = useState(false);
 
   return (
@@ -618,23 +488,13 @@ function ConversationActivityItem(props: {
       </button>
       {open && hasEvidence && (
         <div className="min-w-0 pb-1 pl-[34px] pt-2">
-          <ActivityEvidencePanel
-            item={item}
-            toolResult={props.toolResult}
-            showCanonicalToolResult={props.showCanonicalToolResult}
-          />
+          <ActivityEvidencePanel item={item} />
         </div>
       )}
       {item.children !== undefined && item.children.length > 0 && (
         <div className="ml-3 mt-1 space-y-1 border-l pl-3" style={{ borderColor: "var(--ui-border)" }}>
           {item.children.map((child) => (
-            <ConversationActivityItem
-              key={child.key}
-              item={child}
-              toolResult={props.resolveChildResult(child)}
-              resolveChildResult={props.resolveChildResult}
-              showCanonicalToolResult={props.showCanonicalToolResult}
-            />
+            <ConversationActivityItem key={child.key} item={child} />
           ))}
         </div>
       )}

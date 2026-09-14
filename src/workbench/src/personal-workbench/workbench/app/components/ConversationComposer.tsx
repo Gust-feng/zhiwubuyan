@@ -1,9 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
-import { ArrowUp, ChevronDown, FileText, Plus, X } from 'lucide-react'
+import { ArrowUp, FileText, Plus, X } from 'lucide-react'
 import type { ChatInputProps } from '@ui/contracts/composer'
 import { formatCompactTokenCount, formatContextUsagePercent } from '@ui/features/conversations/context-window-usage'
-import { ModelOptionPicker } from '@ui/features/settings/model/option-picker'
 import { composerSurface } from './tokens'
 import { QueuedMessageList } from './QueuedMessageList'
 import { MOTION_EASING, MOTION_TIMING, useMotionEnabled } from '@ui/shell/motion-system'
@@ -123,7 +122,6 @@ export function ConversationComposer({ input, onCompositionChange }: Conversatio
         </div>
         <div className="ui-conversation-composer__toolbar-right">
           {input.contextUsage !== undefined && <ComposerContextUsage usage={input.contextUsage} />}
-          <ComposerModelSelect input={input} />
           {input.running && input.onCancel !== undefined && (
             <button
               type="button"
@@ -153,21 +151,6 @@ export function ConversationComposer({ input, onCompositionChange }: Conversatio
 function runningPlaceholder(input: ChatInputProps): string {
   if (!input.running) return '继续对话…';
   return '运行中，继续输入…';
-}
-
-function ComposerModelSelect({ input }: { readonly input: ChatInputProps }) {
-  return (
-    <ModelOptionPicker
-      options={input.models}
-      selectedId={input.selectedModelId}
-      onSelect={input.onModelSelect}
-      emptyLabel="配置模型"
-      onEmptyAction={input.onOpenSettings}
-      ariaLabel="选择模型"
-      variant="composer"
-      placement="top"
-    />
-  )
 }
 
 function ComposerContextUsage({ usage }: { readonly usage: NonNullable<ChatInputProps['contextUsage']> }) {
@@ -306,27 +289,6 @@ function ContextUsageRing({ progress, color }: { readonly progress: number; read
         transform="rotate(-90 8 8)"
       />
     </svg>
-  )
-}
-
-function ComposerReasoningSelect({ input }: { readonly input: ChatInputProps }) {
-  return (
-    <label className="relative shrink-0">
-      <span className="sr-only">推理力度</span>
-      <select
-        aria-label="推理力度"
-        value={input.reasoningEffort}
-        onChange={(event) => input.onReasoningEffortChange(event.target.value as ChatInputProps['reasoningEffort'])}
-        className="h-6 appearance-none rounded-md bg-transparent py-0 pl-2 pr-6 text-[11px] outline-none transition-colors hover:bg-[var(--ui-hover-tint)] focus-visible:ring-1 focus-visible:ring-[var(--ui-accent)]"
-        style={{ color: 'var(--ui-text-2)' }}
-      >
-        <option value="">自动</option>
-        <option value="low">轻量</option>
-        <option value="medium">标准</option>
-        <option value="high">深入</option>
-      </select>
-      <ChevronDown size={10} className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2" style={{ color: 'var(--ui-text-3)' }} aria-hidden="true" />
-    </label>
   )
 }
 

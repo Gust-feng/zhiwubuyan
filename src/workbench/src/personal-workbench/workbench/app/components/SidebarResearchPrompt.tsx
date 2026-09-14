@@ -1,8 +1,7 @@
 import { useCallback, useRef, useState } from "react";
 import { ArrowUpRight } from "lucide-react";
 import { KanshanPerch } from "@ui/components/kanshan-mascot/KanshanPerch";
-import type { KanshanMascotHandle } from "@ui/components/kanshan-mascot/KanshanMascot";
-import type { KanshanGesture } from "@ui/components/kanshan-mascot/kanshan-clips";
+import { kanshanDirector } from "@ui/components/kanshan-mascot/kanshan-director";
 
 interface SidebarResearchPromptProps {
   readonly collapsed: boolean;
@@ -13,7 +12,6 @@ interface SidebarResearchPromptProps {
 const ATTENTION_COOLDOWN_MS = 8000;
 
 export function SidebarResearchPrompt({ collapsed, onStartResearch }: SidebarResearchPromptProps) {
-  const mascotRef = useRef<KanshanMascotHandle>(null);
   const [hovered, setHovered] = useState(false);
   const attentionLockRef = useRef(0);
 
@@ -21,7 +19,7 @@ export function SidebarResearchPrompt({ collapsed, onStartResearch }: SidebarRes
     const now = Date.now();
     if (now < attentionLockRef.current) return;
     attentionLockRef.current = now + ATTENTION_COOLDOWN_MS;
-    mascotRef.current?.gesture("attention" satisfies KanshanGesture);
+    kanshanDirector.gesture("attention");
   }, []);
 
   // 收起时栖位卸载，由全局导演负责隐藏；展开重新挂载后会试探着出现。
@@ -36,11 +34,7 @@ export function SidebarResearchPrompt({ collapsed, onStartResearch }: SidebarRes
       }}
       onMouseLeave={() => setHovered(false)}
     >
-      <KanshanPerch
-        ref={mascotRef}
-        perchId="sidebar"
-        className="ui-sidebar-research-prompt__mascot"
-      />
+      <KanshanPerch perchId="sidebar" className="ui-sidebar-research-prompt__mascot" />
       <button
         type="button"
         className="ui-sidebar-research-prompt__card"

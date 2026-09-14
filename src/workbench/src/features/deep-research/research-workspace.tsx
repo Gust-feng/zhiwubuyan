@@ -1,53 +1,26 @@
-import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
-import { ArrowLeft, ArrowUp, BookOpen, Check, ChevronDown, ListChecks, Lock, PanelRight, Plus, Search, SlidersHorizontal, Sparkles, Square, Telescope } from 'lucide-react';
-import { KanshanPerch } from '@ui/components/kanshan-mascot/KanshanPerch';
-import type { KanshanMascotHandle } from '@ui/components/kanshan-mascot/KanshanMascot';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { ArrowLeft, ArrowUp, BookOpen, Check, ChevronDown, ListChecks, Lock, PanelRight, Plus, Search, SlidersHorizontal, Sparkles, Square } from 'lucide-react';
+import { kanshanDirector } from '@ui/components/kanshan-mascot/kanshan-director';
 import { ResearchInspector, type ResearchInspectorTab } from './research-inspector';
 import { ResearchReport } from './research-report';
 import type { ResearchViewModel } from './research-view-model';
 import './research-workspace.css';
 
-export function ResearchWorkspace({ research, draft, allowWeb, tier, ultraLocked, onTierChange, submitting, onDraftChange, onWebChange, onStart, onStop, onNew, reportMarkdownUrl, seedPanel, startError = null }: {
+/** 深度研究结果态：进行中的计划、报告、快答与详情面板。
+ *  提问入口不在这里——它由共享入口外壳的输入卡格承载，见 ResearchEntryComposer。 */
+export function ResearchWorkspace({ research, submitting, onStop, onNew, reportMarkdownUrl }: {
   research: ResearchViewModel;
-  draft: string;
-  allowWeb: boolean;
-  tier: 'pro' | 'ultra';
-  ultraLocked: boolean;
-  onTierChange: (value: 'pro' | 'ultra') => void;
   submitting: boolean;
-  onDraftChange: (value: string) => void;
-  onWebChange: (value: boolean) => void;
-  onStart: () => void;
   onStop: () => void;
   onNew: (keepQuestion?: boolean) => void;
   reportMarkdownUrl?: string;
-  /** 提问入口上方的种子内容：由页面层注入，工作区只负责排在标题与提问卡片之间。
-   *  用函数形式注入，是因为「填入之后把焦点交给输入框」只有工作区知道怎么做。 */
-  seedPanel?: (pick: (question: string) => void) => ReactNode;
-  /** 提交 / 服务错误信号：非空时刘看山播放一次困惑反馈。 */
-  startError?: string | null;
 }) {
   const [inspector, setInspector] = useState<'auto' | 'open' | 'closed'>('auto');
   const [tab, setTab] = useState<ResearchInspectorTab>('activity');
   const [selectedSourceId, setSelectedSourceId] = useState<string | null>(null);
   const detailsButtonRef = useRef<HTMLButtonElement>(null);
   const inspectorRef = useRef<HTMLDivElement>(null);
-  const topicRef = useRef<HTMLTextAreaElement>(null);
   const active = research.scene === 'researching' || research.scene === 'writing';
-  const idle = research.scene === 'idle';
-
-  const mascotRef = useRef<KanshanMascotHandle>(null);
-  const attentionCooldownUntil = useRef(0);
-  const triggerAttention = useCallback(() => {
-    const now = Date.now();
-    if (now < attentionCooldownUntil.current) return;
-    attentionCooldownUntil.current = now + 8_000;
-    mascotRef.current?.gesture('attention');
-  }, []);
-  // 提交或服务报错时给一次困惑反馈（仅在起始输入区仍显示时可见）。
-  useEffect(() => {
-    if (startError) mascotRef.current?.gesture('error');
-  }, [startError]);
 
   function openInspector(nextTab: ResearchInspectorTab = 'activity', sourceId: string | null = null) {
     setTab(nextTab);
@@ -62,93 +35,148 @@ export function ResearchWorkspace({ research, draft, allowWeb, tier, ultraLocked
     requestAnimationFrame(() => detailsButtonRef.current?.focus());
   }
 
-  /** 从种子内容里挑一条：填入提问框，并把焦点交给它——下一步是补充或直接提交，不该再点一次。 */
-  function pickSeed(question: string) {
-    onDraftChange(question);
-    requestAnimationFrame(() => topicRef.current?.focus());
-  }
-
   return (
     <section className="dr-workspace" aria-label="深度研究工作区">
-      {!idle && (
-        <header className="dr-toolbar">
-          <div className="dr-toolbar__actions">
-            <button type="button" className="dr-button" onClick={() => onNew()}><Plus size={14} /><span>新研究</span></button>
-            <button type="button" className="dr-icon-button" ref={detailsButtonRef} onClick={() => openInspector(tab, selectedSourceId)} aria-label="查看研究活动与来源" title="研究活动与来源"><PanelRight size={18} /></button>
-          </div>
-        </header>
-      )}
-      {idle ? (
-        <div className="dr-start">
-          <div className="dr-start__content">
-            <div className="dr-start__head">
-              <span className="dr-start__emblem" aria-hidden><Telescope size={54} /></span>
-              <h1>你想深入了解什么？</h1>
-            </div>
-            {seedPanel?.(pickSeed)}
-            <form className="dr-composer" onSubmit={(event) => {
-              event.preventDefault();
-              // 输入为空时主按钮仍可点：把焦点交还输入框，比让主操作沉默更清楚。
-              if (!draft.trim()) {
-                topicRef.current?.focus();
-                return;
-              }
-              onStart();
-            }}>
-              <KanshanPerch ref={mascotRef} perchId="composer" className="dr-composer__mascot" />
-              <textarea ref={topicRef} id="dr-topic" aria-label="深度研究主题" placeholder="写下一个问题，或补充你在意的背景与范围。" rows={1} value={draft} onChange={(event) => onDraftChange(event.target.value)} onFocus={triggerAttention} onKeyDown={(event) => {
-                if (event.key === 'Enter' && (event.ctrlKey || event.metaKey) && !event.nativeEvent.isComposing) {
-                  event.preventDefault();
-                  onStart();
-                }
-              }} />
-              <div className="dr-composer__bar">
-                <label className="dr-mode-select" title="Ultra 档仅在桌面版可用">
-                  <Sparkles size={14} aria-hidden />
-                  <span>研究深度</span>
-                  <select value={tier} onChange={(event) => onTierChange(event.target.value as 'pro' | 'ultra')} aria-label="研究深度">
-                    <option value="pro">Pro</option>
-                    <option value="ultra">Ultra</option>
-                  </select>
-                  <ChevronDown size={13} aria-hidden />
-                </label>
-                <button type="button" className="dr-options-toggle" aria-pressed={allowWeb} aria-label="全网补证" title="全网补证：在知乎公开讨论之外补充可核查的全网来源" onClick={() => onWebChange(!allowWeb)}><SlidersHorizontal size={22} aria-hidden /></button>
-                <button type="submit" className="dr-primary-button" disabled={submitting}><span>{submitting ? (tier === 'pro' ? '正在研究…' : '提交中…') : '开始研究'}</span><ArrowUp size={16} aria-hidden /></button>
-              </div>
-              {ultraLocked && tier === 'ultra' ? (
-                <p className="dr-tier__lock" role="alert"><Lock size={12} />深度研究 Ultra 仅在桌面版可用；请下载桌面版，或先使用 Pro。</p>
-              ) : null}
-            </form>
-          </div>
+      <header className="dr-toolbar">
+        <div className="dr-toolbar__actions">
+          <button type="button" className="dr-button" onClick={() => onNew()}><Plus size={14} /><span>新研究</span></button>
+          <button type="button" className="dr-icon-button" ref={detailsButtonRef} onClick={() => openInspector(tab, selectedSourceId)} aria-label="查看研究活动与来源" title="研究活动与来源"><PanelRight size={18} /></button>
         </div>
-      ) : (
-        <div className="dr-layout" data-inspector={inspector}>
-          <div className="dr-main">
-            <div className="dr-main__content">
-              <div className="dr-question"><span className="dr-kicker">研究问题</span><p>{research.question}</p></div>
-              {research.scene === 'completed' && research.answer ? (
-                <QuickAnswerBlock answer={research.answer} />
-              ) : research.scene === 'completed' ? (
-                reportMarkdownUrl ? (
-                  <>
-                    <ResearchReport research={research} markdownUrl={reportMarkdownUrl} onSelectSource={(id) => openInspector('sources', id)} />
-                    <details className="dr-completed-plan"><summary><ListChecks size={15} />查看研究计划<ChevronDown size={14} /></summary><PlanItems research={research} /></details>
-                  </>
-                ) : <p className="dr-plan__outcome">{research.outcomeNote ?? '报告尚未保存。'}</p>
-              ) : (
-                <ResearchPlan research={research} active={active} submitting={submitting} onStop={onStop} onOpenActivity={() => openInspector('activity')} onOpenSources={() => openInspector('sources')} onNew={() => onNew(true)} />
-              )}
-              <p className="dr-main__note"><BookOpen size={13} />研究不止于一种观点，也保留结论成立的条件。</p>
-            </div>
-            <div className="dr-main__footer"><span>每个判断，都有来路。</span><button type="button" className="dr-text-button" onClick={() => openInspector('sources')}>查看 {research.sources.length} 个来源<ArrowUp size={12} /></button></div>
+      </header>
+      <div className="dr-layout" data-inspector={inspector}>
+        <div className="dr-main">
+          <div className="dr-main__content">
+            <div className="dr-question"><span className="dr-kicker">研究问题</span><p>{research.question}</p></div>
+            {research.scene === 'completed' && research.answer ? (
+              <QuickAnswerBlock answer={research.answer} />
+            ) : research.scene === 'completed' ? (
+              reportMarkdownUrl ? (
+                <>
+                  <ResearchReport research={research} markdownUrl={reportMarkdownUrl} onSelectSource={(id) => openInspector('sources', id)} />
+                  <details className="dr-completed-plan"><summary><ListChecks size={15} />查看研究计划<ChevronDown size={14} /></summary><PlanItems research={research} /></details>
+                </>
+              ) : <p className="dr-plan__outcome">{research.outcomeNote ?? '报告尚未保存。'}</p>
+            ) : (
+              <ResearchPlan research={research} active={active} submitting={submitting} onStop={onStop} onOpenActivity={() => openInspector('activity')} onOpenSources={() => openInspector('sources')} onNew={() => onNew(true)} />
+            )}
+            <p className="dr-main__note"><BookOpen size={13} />研究不止于一种观点，也保留结论成立的条件。</p>
           </div>
-          <div className="dr-inspector-slot" ref={inspectorRef} tabIndex={-1} aria-label="研究详情面板" onKeyDown={(event) => { if (event.key === 'Escape') { event.preventDefault(); closeInspector(); } }}>
-            <button type="button" className="dr-mobile-back dr-text-button" onClick={closeInspector}><ArrowLeft size={15} />返回研究</button>
-            <ResearchInspector activities={research.activities} sources={research.sources} tab={tab} selectedSourceId={selectedSourceId} running={active} onTabChange={(nextTab) => { setTab(nextTab); setSelectedSourceId(null); }} onSelectSource={(id) => { setTab('sources'); setSelectedSourceId(id); }} onClose={closeInspector} />
-          </div>
+          <div className="dr-main__footer"><span>每个判断，都有来路。</span><button type="button" className="dr-text-button" onClick={() => openInspector('sources')}>查看 {research.sources.length} 个来源<ArrowUp size={12} /></button></div>
         </div>
-      )}
+        <div className="dr-inspector-slot" ref={inspectorRef} tabIndex={-1} aria-label="研究详情面板" onKeyDown={(event) => { if (event.key === 'Escape') { event.preventDefault(); closeInspector(); } }}>
+          <button type="button" className="dr-mobile-back dr-text-button" onClick={closeInspector}><ArrowLeft size={15} />返回研究</button>
+          <ResearchInspector activities={research.activities} sources={research.sources} tab={tab} selectedSourceId={selectedSourceId} running={active} onTabChange={(nextTab) => { setTab(nextTab); setSelectedSourceId(null); }} onSelectSource={(id) => { setTab('sources'); setSelectedSourceId(id); }} onClose={closeInspector} />
+        </div>
+      </div>
     </section>
+  );
+}
+
+/** 深度研究的入口输入卡内容：输入区 + 参数条 + 不可用说明。
+ *  卡片外框由共享入口外壳持有，这里只渲染卡内对象，所以外壳不重建、只有卡内被替换。
+ *  聚焦与报错反馈交给常驻侧栏的看山，通过全局导演转发。 */
+export function ResearchEntryComposer({ draft, tier, tiers, unavailableMessage, submitting, startError, focusSignal, onDraftChange, onTierChange, onStart }: {
+  draft: string;
+  tier: 'pro' | 'ultra';
+  /** 本运行面可选的档位；网页端只有 Pro，本机面为 Pro 与 Ultra。 */
+  tiers: readonly ('pro' | 'ultra')[];
+  /** 研究服务端未就绪时的说明；为空表示可用。不可用时不发请求，先如实说明。 */
+  unavailableMessage?: string | null;
+  submitting: boolean;
+  /** 提交 / 服务错误信号：非空时刘看山播放一次困惑反馈。 */
+  startError?: string | null;
+  /** 从建议卡填入问题后，请求把焦点交回输入框。 */
+  focusSignal: number;
+  onDraftChange: (value: string) => void;
+  onTierChange: (value: 'pro' | 'ultra') => void;
+  onStart: () => void;
+}) {
+  const [tierMenuOpen, setTierMenuOpen] = useState(false);
+  const topicRef = useRef<HTMLTextAreaElement>(null);
+  const tierSelectRef = useRef<HTMLDivElement>(null);
+  const attentionCooldownUntil = useRef(0);
+  const unavailable = typeof unavailableMessage === 'string' && unavailableMessage !== '';
+  const triggerAttention = useCallback(() => {
+    const now = Date.now();
+    if (now < attentionCooldownUntil.current) return;
+    attentionCooldownUntil.current = now + 8_000;
+    kanshanDirector.gesture('attention');
+  }, []);
+
+  // 档位菜单：点外部或按 Esc 关闭，选择即生效并收起。
+  useEffect(() => {
+    if (!tierMenuOpen) return;
+    const onPointerDown = (event: PointerEvent) => {
+      if (!tierSelectRef.current?.contains(event.target as Node)) setTierMenuOpen(false);
+    };
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setTierMenuOpen(false);
+    };
+    window.addEventListener('pointerdown', onPointerDown);
+    window.addEventListener('keydown', onKeyDown);
+    return () => {
+      window.removeEventListener('pointerdown', onPointerDown);
+      window.removeEventListener('keydown', onKeyDown);
+    };
+  }, [tierMenuOpen]);
+
+  // 提交或服务报错时给一次困惑反馈。
+  useEffect(() => {
+    if (startError) kanshanDirector.gesture('error');
+  }, [startError]);
+  useEffect(() => {
+    if (focusSignal > 0) requestAnimationFrame(() => topicRef.current?.focus());
+  }, [focusSignal]);
+
+  return (
+    <form onSubmit={(event) => {
+      event.preventDefault();
+      // 输入为空时主按钮仍可点：把焦点交还输入框，比让主操作沉默更清楚。
+      if (!draft.trim()) {
+        topicRef.current?.focus();
+        return;
+      }
+      // 研究服务端未就绪时不发请求：说明已经可见，再打一次只会换回同样的结论。
+      if (unavailable) return;
+      onStart();
+    }}>
+      <textarea ref={topicRef} id="dr-topic" aria-label="深度研究主题" placeholder="写下一个问题，或补充你在意的背景与范围。" rows={1} value={draft} onChange={(event) => onDraftChange(event.target.value)} onFocus={triggerAttention} onKeyDown={(event) => {
+        // 回车即开始研究；Shift+Enter 保留换行，输入法组词中不触发。
+        if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) {
+          event.preventDefault();
+          onStart();
+        }
+      }} />
+      <div className="dr-composer__bar">
+        <div className="dr-tier-select" ref={tierSelectRef}>
+          <button type="button" className="dr-mode-select" aria-haspopup="listbox" aria-expanded={tierMenuOpen} aria-label="研究深度" onClick={() => setTierMenuOpen((open) => !open)}>
+            <Sparkles size={14} aria-hidden />
+            <span>研究深度</span>
+            <span className="dr-mode-select__value">{tier === 'pro' ? 'Pro' : 'Ultra'}</span>
+            <ChevronDown size={13} aria-hidden />
+          </button>
+          {tierMenuOpen && (
+            <ul className="dr-tier-menu" role="listbox" aria-label="研究深度">
+              {tiers.map((value) => (
+                <li key={value} role="option" aria-selected={tier === value}>
+                  <button type="button" onClick={() => { onTierChange(value); setTierMenuOpen(false); }}>
+                    <span>{value === 'pro' ? 'Pro' : 'Ultra'}</span>
+                    {tier === value && <Check size={14} aria-hidden />}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+        <button type="submit" className="dr-primary-button" disabled={submitting || unavailable}><span>{submitting ? (tier === 'pro' ? '正在研究…' : '提交中…') : '开始研究'}</span><ArrowUp size={16} aria-hidden /></button>
+      </div>
+      {unavailable ? (
+        <p className="dr-tier__lock" role="alert">
+          <Lock size={12} aria-hidden />
+          <span>{unavailableMessage}</span>
+        </p>
+      ) : null}
+    </form>
   );
 }
 

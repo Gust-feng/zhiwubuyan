@@ -1,7 +1,6 @@
 import { useCallback, useMemo, useSyncExternalStore } from 'react'
 import type { ConversationTurn } from '@ui/contracts/conversation'
 import type { AgentDeliverable, OrdinaryRun, OrdinaryWorkView, TranscriptNode } from '@ui/contracts/run'
-import type { ChatModelOption } from '@ui/contracts/composer'
 import type { PanelToolCallResult as ToolCallResult } from '@api-contracts/ordinary-agent'
 import type { LiveRunBuffer, LiveRunTranscriptProjection, WorklineProjectedTurn } from '@api-contracts/ui-read-model'
 import { projectConversationDisplayList, shouldCollapseStandaloneTimeline } from '@api-contracts/ui-read-model'

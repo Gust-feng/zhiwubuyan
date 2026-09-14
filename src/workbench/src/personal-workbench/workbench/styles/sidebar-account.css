@@ -1,0 +1,178 @@
+/* 左上角账号区：这里只呈现当前知乎账号，不重复产品标志与品牌文案。 */
+.ui-sidebar-account {
+  position: relative;
+  flex: 0 0 auto;
+  min-width: 0;
+  border-bottom: 1px solid var(--ui-border);
+  padding: 12px 10px;
+}
+
+.ui-sidebar-account__trigger {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: transparent;
+  padding: 8px 10px;
+  color: var(--ui-text-1);
+  cursor: pointer;
+  text-align: left;
+  transition:
+    background-color 140ms ease,
+    border-color 140ms ease;
+}
+
+.ui-sidebar-account__trigger:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--ui-text-1) 4%, transparent);
+}
+
+.ui-sidebar-account__trigger[aria-expanded='true'] {
+  background: var(--ui-accent-bg);
+}
+
+.ui-sidebar-account__trigger:disabled {
+  cursor: default;
+}
+
+.ui-sidebar-account__trigger:focus-visible {
+  border-color: color-mix(in srgb, var(--ui-accent) 46%, var(--ui-border));
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--ui-accent) 14%, transparent);
+  outline: none;
+}
+
+.ui-sidebar-account__avatar {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  flex: 0 0 36px;
+  place-items: center;
+  border-radius: 50%;
+  object-fit: cover;
+  background: var(--ui-surface-hover);
+  color: var(--ui-text-2);
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.ui-sidebar-account__avatar--initial,
+.ui-sidebar-account__avatar--icon {
+  line-height: 1;
+}
+
+/* 身份文案容器：宽度贴合文字本身，让悬浮下划线只覆盖名字而不是整行。 */
+.ui-sidebar-account__identity {
+  position: relative;
+  display: inline-flex;
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+.ui-sidebar-account__name {
+  display: inline-block;
+  max-width: 100%;
+  overflow: hidden;
+  color: var(--ui-text-1);
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 每个字独立承载位移，字与字之间的空格仍按原样排版。 */
+.ui-sidebar-account__char {
+  display: inline-block;
+  white-space: pre;
+}
+
+.ui-sidebar-account__underline {
+  position: absolute;
+  right: 0;
+  bottom: -3px;
+  left: 0;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--ui-accent);
+  opacity: 0;
+  transform: scaleX(0);
+  transform-origin: left center;
+}
+
+.ui-sidebar-account__error {
+  margin: 6px 4px 0;
+  color: var(--ui-danger-text);
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.ui-sidebar-account__menu {
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  top: calc(100% - 6px);
+  z-index: 90;
+  display: grid;
+  gap: 2px;
+  border: 1px solid var(--ui-border);
+  border-radius: 8px;
+  background: var(--ui-surface);
+  padding: 6px;
+  box-shadow: 0 10px 24px rgba(5, 5, 7, 0.14);
+  animation: ui-sidebar-account-menu-enter 140ms ease both;
+}
+
+.ui-sidebar-account__menu-item {
+  display: grid;
+  min-width: 0;
+  min-height: 32px;
+  grid-template-columns: 18px minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background: transparent;
+  padding: 0 8px;
+  color: var(--ui-text-2);
+  cursor: pointer;
+  font-size: var(--ui-font-ui);
+  text-align: left;
+  transition:
+    background-color 140ms ease,
+    border-color 140ms ease,
+    color 140ms ease;
+}
+
+.ui-sidebar-account__menu-item:hover {
+  background: var(--ui-surface-hover);
+  color: var(--ui-text-1);
+}
+
+.ui-sidebar-account__menu-item:focus-visible {
+  border-color: color-mix(in srgb, var(--ui-accent) 46%, var(--ui-border));
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--ui-accent) 14%, transparent);
+  outline: none;
+}
+
+.ui-sidebar-account__menu-item--danger {
+  color: var(--ui-danger-text);
+}
+
+@keyframes ui-sidebar-account-menu-enter {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ui-sidebar-account__menu {
+    animation: none;
+  }
+}

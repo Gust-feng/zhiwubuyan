@@ -53,6 +53,16 @@ const CURIOUS_POOL: readonly KanshanGesture[] = ['attention', 'success', 'error'
 const randomBetween = (min: number, max: number) => min + Math.random() * (max - min)
 
 /**
+ * 页面不可见（切标签、最小化）或系统省电时，浏览器会瞬时中断纯视频媒体的
+ * play()，抛 AbortError。这类中断重试即可恢复，不能当成永久失败把角色藏起来，
+ * 否则用户切一次标签回来，看山就再也不会出现。重试到上限仍失败才放弃。
+ */
+const PLAY_MAX_ATTEMPTS = 4
+const PLAY_RETRY_DELAY_MS = 350
+const isRecoverablePlayFailure = (error: unknown): boolean =>
+  typeof error === 'object' && error !== null && (error as { name?: unknown }).name === 'AbortError'
+
+/**
  * 刘看山趴伏动画播放器。idle 作为常驻底层但不机械循环：一轮呼吸/眨眼后在
  * anchor 安静一段随机时长，偶尔探头张望；entry / 手势作为一次性上层，所有
  * 交接点都落在同一 anchor 帧，并用极短交叉淡化消除亚像素跳变。
@@ -66,7 +76,6 @@ export const KanshanMascot = forwardRef<KanshanMascotHandle, KanshanMascotProps>
     const runIdRef = useRef(0)
     const activeOneShotRef = useRef<OneShotId | null>(null)
     const idleTimerRef = useRef<number | undefined>(undefined)
-    const idleEndedHandlerRef = useRef<(() => void) | null>(null)
     const lastCuriousRef = useRef<KanshanGesture | null>(null)
     const idleVideoRef = useRef<HTMLVideoElement | null>(null)
     const oneShotVideoRefs = useRef<Partial<Record<OneShotId, HTMLVideoElement>>>({})
@@ -126,60 +135,58 @@ export const KanshanMascot = forwardRef<KanshanMascotHandle, KanshanMascotProps>
           if (isStale(token)) return
           video.addEventListener('timeupdate', onTimeUpdate)
           video.addEventListener('ended', onEnded)
+          video.playbackRate = 1
           video.currentTime = from
-          try {
-            await video.play()
-          } catch {
-            video.removeEventListener('timeupdate', onTimeUpdate)
-            video.removeEventListener('ended', onEnded)
-            if (isStale(token)) return
-            setLayer({ kind: 'none' })
-            phaseRef.current = 'hidden'
+          for (let attempt = 1; ; attempt += 1) {
+            try {
+              await video.play()
+              return
+            } catch (error) {
+              if (isStale(token)) return
+              if (attempt < PLAY_MAX_ATTEMPTS && isRecoverablePlayFailure(error)) {
+                await new Promise((resolve) => window.setTimeout(resolve, PLAY_RETRY_DELAY_MS))
+                if (isStale(token)) return
+                continue
+              }
+              // 放不出来也要收束：leave() 的 Promise 依赖这里 resolve，否则导演会永久
+              // 卡在 busy，之后任何栖位都不会再出现角色。
+              settle()
+              return
+            }
           }
         })()
       },
       [isStale, waitForVideoReady],
     )
 
-    /** 待机排程：在 anchor 安静一段随机时长后，来一轮呼吸或偶尔探头张望。 */
-    const scheduleIdleRest = useCallback(
+    /** 待机手势排程：待机一直循环在播，这里只按间隔偶尔叠一次轻量关注手势打破规律。 */
+    const scheduleIdleGesture = useCallback(
       (token: number) => {
         idleTimerRef.current = window.setTimeout(() => {
           if (isStale(token)) return
-          if (Math.random() < KANSHAN_TIMING.idleVariationChance) {
-            // 用一次轻量「张望」打破规律，结束后回到正常待机排程。
-            phaseRef.current = 'gesturing'
-            playOneShot(token, 'attention', 0, KANSHAN_TIMING.gestureEnd.attention, () => {
-              settleIntoIdle(token)
-            })
+          if (Math.random() >= KANSHAN_TIMING.idleGestureChance) {
+            // 这一轮不打断，继续待机，稍后再掷一次。
+            scheduleIdleGesture(token)
             return
           }
-          const idle = idleVideoRef.current
-          if (idle) {
-            idle.currentTime = 0
-            void idle.play().catch(() => undefined)
-          }
-        }, randomBetween(KANSHAN_TIMING.idleRestMinMs, KANSHAN_TIMING.idleRestMaxMs))
+          phaseRef.current = 'gesturing'
+          playOneShot(token, 'attention', 0, KANSHAN_TIMING.gestureEnd.attention, () => {
+            settleIntoIdle(token)
+          })
+        }, randomBetween(KANSHAN_TIMING.idleGestureMinMs, KANSHAN_TIMING.idleGestureMaxMs))
       },
-      // settleIntoIdle 在下方声明，通过 ref 风格闭包引用，依赖在组件内稳定。
+      // settleIntoIdle 在下方声明，通过闭包引用，调用发生在定时器回调里。
       [isStale, playOneShot],
     )
 
-    /** 进入待机：一次性片段在 anchor 处交还给 idle，并安排间歇呼吸。 */
+    /** 进入待机：一次性片段收束后交还给 idle，并安排下一次关注手势。 */
     const settleIntoIdle = useCallback(
       (token: number) => {
         const idle = idleVideoRef.current
         const leavingClip = activeOneShotRef.current
-        if (idle) {
-          if (idleEndedHandlerRef.current) idle.removeEventListener('ended', idleEndedHandlerRef.current)
-          const onIdleEnded = () => {
-            if (isStale(token)) return
-            idle.pause()
-            idle.currentTime = 0 // 停在 anchor
-            scheduleIdleRest(token)
-          }
-          idleEndedHandlerRef.current = onIdleEnded
-          idle.addEventListener('ended', onIdleEnded)
+        // 待机是常驻底层且可无缝循环：手势只是盖在它上面，它本身持续在播，只有被显式
+        // 停下（入场 / 降级）时才需要重新起播；这样交接处不会抖动。
+        if (idle && idle.paused) {
           void (async () => {
             await waitForVideoReady(idle)
             if (isStale(token)) return
@@ -196,7 +203,7 @@ export const KanshanMascot = forwardRef<KanshanMascotHandle, KanshanMascotProps>
           phaseRef.current = 'idle'
         }, KANSHAN_TIMING.crossfadeMs)
       },
-      [isStale, pauseVideo, scheduleIdleRest, waitForVideoReady],
+      [isStale, pauseVideo, scheduleIdleGesture, waitForVideoReady],
     )
 
     const enter = useCallback(() => {
@@ -297,14 +304,28 @@ export const KanshanMascot = forwardRef<KanshanMascotHandle, KanshanMascotProps>
       return () => document.removeEventListener('visibilitychange', onVisible)
     }, [motionEnabled, autoEnter, enter, nextToken, pauseVideo])
 
+    // 页面重新可见时把待机接回来：切走标签或系统省电会暂停纯视频媒体，回来后若
+    // 继续停在原帧不动，角色看起来就是死的。
+    useEffect(() => {
+      if (!motionEnabled) return undefined
+      const onVisible = () => {
+        if (document.visibilityState !== 'visible') return
+        if (phaseRef.current !== 'idle') return
+        const idle = idleVideoRef.current
+        if (idle && idle.paused) {
+          idle.currentTime = 0
+          void idle.play().catch(() => undefined)
+        }
+      }
+      document.addEventListener('visibilitychange', onVisible)
+      return () => document.removeEventListener('visibilitychange', onVisible)
+    }, [motionEnabled])
+
     // 卸载时作废播放序列并清理定时器与监听。
     useEffect(
       () => () => {
         runIdRef.current += 1
         if (idleTimerRef.current !== undefined) window.clearTimeout(idleTimerRef.current)
-        if (idleEndedHandlerRef.current && idleVideoRef.current) {
-          idleVideoRef.current.removeEventListener('ended', idleEndedHandlerRef.current)
-        }
       },
       [],
     )
@@ -336,6 +357,7 @@ export const KanshanMascot = forwardRef<KanshanMascotHandle, KanshanMascotProps>
               muted
               playsInline
               preload="auto"
+              loop
             />
             {KANSHAN_ONESHOT_IDS.map((clip) => {
               const isActive = layer.kind === 'oneshot' && layer.clip === clip

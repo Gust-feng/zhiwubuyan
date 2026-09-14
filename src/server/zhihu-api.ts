@@ -6,8 +6,12 @@ import {
   readAuthorizationCode,
 } from "../platform/zhihu/oauth.ts";
 import type { OAuthAppConfig, OAuthToken } from "../platform/zhihu/oauth.ts";
+import { fetchAuthorizedUserProfile, type AuthorizedUserProfile } from "../platform/zhihu/user-profile.ts";
 import type { UserDataGateway } from "../platform/zhihu/user-data.ts";
+import { buildPersonalArchiveViews } from "../application/personal-archive-views.ts";
 import type { createRuntime } from "../application/runtime.ts";
+import type { RateLimiter } from "./rate-limit.ts";
+import { rateLimitKey } from "./rate-limit.ts";
 import type { SessionStore } from "./session-store.ts";
 import {
   clearedSessionCookie,
@@ -31,8 +35,21 @@ export type ZhihuApiDeps = {
   developerUserDataEnabled?: boolean;
   /** /api/status 对外声明的能力集，按运行面（本地/网页）传入。 */
   capabilities: readonly string[];
+  /** 运行面：网页端要求登录知乎账号，本地预览不要求。 */
+  surface?: "desktop" | "web";
   /** 网页端热榜走 CDN 共享缓存（如 "public, s-maxage=3600"）；本地不传。 */
   hotCacheControl?: string;
+  /** 网页端额度保护：登录后消耗额度的接口计数；不传则不限流。 */
+  rateLimiter?: RateLimiter;
+  /** 登录尚未接通时缺少的配置项名称（只回名称）；无则登录可用。 */
+  oauthMissingConfig?: readonly string[];
+  /** 应用固定回调地址；只要公开来源可推导就给，用于未接通时展示待登记地址。 */
+  oauthRedirectUri?: string;
+  /**
+   * 是否承接深度研究 Pro（单次知乎直答）。网页端开启：Pro 不依赖长驻引擎，
+   * 是次秒级单次调用。自研 Ultra 引擎仍只在本地/桌面运行面承接。
+   */
+  researchProEnabled?: boolean;
 };
 
 /**
@@ -40,11 +57,61 @@ export type ZhihuApiDeps = {
  * 只依赖知乎开放平台，不触碰深度研究后端；命中返回 true，未命中返回 false。
  */
 export function createZhihuApiHandler(deps: ZhihuApiDeps) {
-  const { runtime, oauthConfig, sessions, developerUserDataEnabled = false } = deps;
+  const { runtime, oauthConfig, sessions, developerUserDataEnabled = false, surface = "web" } = deps;
   const oauthCallback = oauthConfig ? callbackUrl(oauthConfig) : undefined;
+
+  const profileCache = new Map<string, { profile: AuthorizedUserProfile | undefined; expiresAt: number }>();
+  const PROFILE_TTL_MS = 5 * 60 * 1000;
+  // 会话已解析出的快照身份键：登出时据此清理该用户的档案，不必再打一次上游换资料。
+  const sessionArchiveKeys = new Map<string, string>();
+  // 长驻进程的上限：键按 token/会话增长，不设上限会随使用时长一路涨。
+  const PROFILE_CACHE_MAX_ENTRIES = 500;
+  const SESSION_ARCHIVE_KEYS_MAX_ENTRIES = 500;
+
+  /** 写入带容量上限的缓存；超出时淘汰最早插入的条目。 */
+  function remember<K, V>(map: Map<K, V>, key: K, value: V, maxEntries: number): void {
+    map.delete(key);
+    map.set(key, value);
+    while (map.size > maxEntries) {
+      const oldest = map.keys().next();
+      if (oldest.done === true) break;
+      map.delete(oldest.value);
+    }
+  }
+
+  /** 顺带回收已过期的档案键，避免登出后长期不用时残留。 */
+  function pruneProfileCache(now: number): void {
+    for (const [key, entry] of profileCache) {
+      if (entry.expiresAt > now) break;
+      profileCache.delete(key);
+    }
+  }
 
   async function activeSession(request: IncomingMessage): Promise<OAuthToken | undefined> {
     return sessions.read(readSessionId(request), Date.now());
+  }
+
+  /**
+   * 展示用的昵称与头像来自没有正式契约的基础信息端点；读取失败或字段缺失时
+   * 返回 undefined，让界面回退到无资料形态，绝不因此中断会话或用户数据接口。
+   */
+  async function loadProfile(token: OAuthToken): Promise<AuthorizedUserProfile | undefined> {
+    const now = Date.now();
+    pruneProfileCache(now);
+    const cached = profileCache.get(token.accessToken);
+    if (cached !== undefined && cached.expiresAt > now) return cached.profile;
+    let profile: AuthorizedUserProfile | undefined;
+    try {
+      profile = await fetchAuthorizedUserProfile(token.accessToken);
+    } catch {
+      profile = undefined;
+    }
+    // 失败也缓存，避免侧栏与个人页在短时间各打一次上游。
+    remember(profileCache, token.accessToken, {
+      profile,
+      expiresAt: Math.min(now + PROFILE_TTL_MS, token.expiresAt),
+    }, PROFILE_CACHE_MAX_ENTRIES);
+    return profile;
   }
 
   async function withAuthorizedUser<T>(
@@ -76,11 +143,81 @@ export function createZhihuApiHandler(deps: ZhihuApiDeps) {
     return runtime;
   }
 
-  /** 圈子社区走独立的 app_key/app_secret 签名，与开放平台凭证不共用。 */
-  function requireCircles() {
+  /**
+   * 个人档案：一次同步采集登录用户自己的创作/关注/收藏，再派生组装视图。
+   * 快照的身份键取 `/user` 的 `hash_id`；取不到时降级为会话内临时档案（不落盘），
+   * 并如实告诉前端本次档案不跨会话保存，而不是编一个键把它写进磁盘。
+   */
+  async function loadPersonalArchive(request: IncomingMessage, response: ServerResponse, force = false) {
     const active = requireRuntime();
-    if (!active.circles) throw new ProductError("AUTH_REQUIRED", "尚未配置知乎社区 API 凭证。");
-    return active.circles;
+    const session = await activeSession(request);
+    if (!session && !developerUserDataEnabled) {
+      throw new ProductError("AUTH_REQUIRED", "请先使用知乎账号登录。");
+    }
+    const profile = session ? await loadProfile(session) : undefined;
+    const userIdHash = profile?.hashId;
+    const persistent = userIdHash !== undefined;
+    // 没有稳定身份键时用会话/开发者身份做进程内键；persist=false 保证不落盘也不跨用户复用。
+    const cacheKey = userIdHash ?? (session ? `session:${session.accessToken.slice(0, 12)}` : "caller");
+    const sessionId = readSessionId(request);
+    if (session !== undefined && sessionId !== undefined) {
+      remember(sessionArchiveKeys, sessionId, cacheKey, SESSION_ARCHIVE_KEYS_MAX_ENTRIES);
+    }
+
+    const snapshot = await active.personalArchive.load({
+      userIdHash: cacheKey,
+      gateway: session
+        ? active.userDataFor({ kind: "authorized_user", accessToken: session.accessToken })
+        : active.userData,
+      profile,
+      persist: persistent,
+      force,
+    }).catch(async (error: unknown) => {
+      // 与既有用户数据路由一致：令牌失效时销毁会话并要求重新登录，不回退到凭证所属账号。
+      if (session && isProductError(error) && error.code === "AUTH_INVALID") {
+        await sessions.drop(readSessionId(request));
+        response.setHeader("Set-Cookie", clearedSessionCookie(isSecureRequest(request)));
+        throw new ProductError("AUTH_REQUIRED", "登录已过期，请重新登录。");
+      }
+      throw error;
+    });
+
+    return {
+      syncedAt: snapshot.snapshot.syncedAt,
+      persistent,
+      // 上游不可用时复用上一份快照：如实告诉前端这是旧的，不冒充刚同步的数据。
+      stale: snapshot.stale,
+      truncated: snapshot.snapshot.truncated,
+      profile: snapshot.snapshot.profile,
+      counts: {
+        creations: snapshot.snapshot.creations.length,
+        followees: snapshot.snapshot.followees.length,
+        favlists: snapshot.snapshot.favlists.length,
+        collections: snapshot.snapshot.collections.length,
+      },
+      views: buildPersonalArchiveViews(snapshot.snapshot),
+    };
+  }
+
+  /**
+   * 网页端消耗调用方额度的功能一律要求登录：额度挂在部署方账号上，不能让匿名访客直接消耗。
+   * 桌面端用用户自己填写的调用凭证，不强制 OAuth（登录仍可用，个人数据走授权用户身份）。
+   * 本地开发预览（developerUserDataEnabled）保持免登录，与用户数据接口的既有约定一致。
+   */
+  async function requireWebLogin(request: IncomingMessage): Promise<void> {
+    if (surface !== "web") return;
+    if (developerUserDataEnabled && runtime !== undefined) return;
+    const session = await activeSession(request);
+    if (!session) throw new ProductError("AUTH_REQUIRED", "请先使用知乎账号登录。");
+  }
+
+  /** 额度保护：超过窗口上限时返回 429，由前端如实提示而不是静默重试。 */
+  async function enforceRateLimit(request: IncomingMessage, response: ServerResponse, scope: string): Promise<void> {
+    if (!deps.rateLimiter) return;
+    const decision = await deps.rateLimiter.check(rateLimitKey(scope, readSessionId(request), request));
+    if (decision.allowed) return;
+    response.setHeader("Retry-After", String(decision.retryAfterSeconds));
+    throw new ProductError("RATE_LIMITED", "请求过于频繁，请稍后再试。");
   }
 
   async function handleOAuthCallback(url: URL, request: IncomingMessage, response: ServerResponse): Promise<void> {
@@ -113,8 +250,18 @@ export function createZhihuApiHandler(deps: ZhihuApiDeps) {
       if (url.pathname === "/api/status" && request.method === "GET") {
         return writeJson(response, 200, {
           configured: runtime !== undefined,
+          // 能力集同时是前端判定服务端承接能力的依据：声明了才启用，未声明时如实显示未接通。
           capabilities: deps.capabilities,
-          auth: { oauthEnabled: oauthConfig !== undefined },
+          // 登录形态按运行面区分：网页端走应用内弹窗，本地/桌面预览走独立登录窗口。
+          surface,
+          auth: {
+            oauthEnabled: oauthConfig !== undefined,
+            loginRequired: surface === "desktop",
+            // 未接通时列出缺少的配置项名称，前端据此如实说明；不回传任何值。
+            missingConfig: deps.oauthMissingConfig ?? [],
+            // 应用固定的回调地址；已配置公开来源时就能给出，未接通也如实展示待登记地址。
+            redirectUri: oauthConfig?.redirectUri ?? deps.oauthRedirectUri,
+          },
         });
       }
       if (url.pathname === "/api/auth/session" && request.method === "GET") {
@@ -124,6 +271,8 @@ export function createZhihuApiHandler(deps: ZhihuApiDeps) {
           authenticated: session !== undefined || (developerUserDataEnabled && runtime !== undefined),
           developerMode: developerUserDataEnabled && runtime !== undefined,
           expiresAt: session ? new Date(session.expiresAt).toISOString() : undefined,
+          profile: session ? await loadProfile(session) : undefined,
+          surface,
         });
       }
       if (url.pathname === "/api/auth/authorize" && request.method === "GET") {
@@ -132,7 +281,15 @@ export function createZhihuApiHandler(deps: ZhihuApiDeps) {
         return true;
       }
       if (url.pathname === "/api/auth/logout" && request.method === "POST") {
-        await sessions.drop(readSessionId(request));
+        const sessionId = readSessionId(request);
+        if (sessionId !== undefined) {
+          const archiveKey = sessionArchiveKeys.get(sessionId);
+          if (archiveKey !== undefined) {
+            await runtime?.personalArchive.clear(archiveKey);
+            sessionArchiveKeys.delete(sessionId);
+          }
+        }
+        await sessions.drop(sessionId);
         response.setHeader("Set-Cookie", clearedSessionCookie(isSecureRequest(request)));
         return writeJson(response, 200, { ok: true });
       }
@@ -155,8 +312,12 @@ export function createZhihuApiHandler(deps: ZhihuApiDeps) {
       // 首页内容流：不带 topic 时是热榜种子；带 topic 时是用户主动发起的主题检索。
       if (url.pathname === "/api/home/feed" && request.method === "GET") {
         const active = requireRuntime();
+        const topic = readOptionalString(url.searchParams.get("topic"));
+        // 热榜是公开内容且匿名响应才能被 CDN 共享缓存，不要求登录；
+        // 主题检索由用户主动发起、逐次消耗搜索额度，网页端要求登录。
+        if (topic !== undefined) await requireWebLogin(request);
         const feed = await active.homeFeed.feed({
-          topic: readOptionalString(url.searchParams.get("topic")),
+          topic,
           scope: url.searchParams.get("scope") === "web" ? "web" : "zhihu",
           type: readHomeFeedType(url.searchParams.get("type")),
           limit: readOptionalInt(url.searchParams.get("limit"), 20),
@@ -169,6 +330,8 @@ export function createZhihuApiHandler(deps: ZhihuApiDeps) {
       }
       // 首页问答：直答快答（fast/thinking），不取证、不产生来源引用。
       if (url.pathname === "/api/home/answer" && request.method === "POST") {
+        await requireWebLogin(request);
+        await enforceRateLimit(request, response, "home-answer");
         const active = requireRuntime();
         const body = asRequest(await readJson(request));
         const answer = await active.homeAnswer.execute({
@@ -190,11 +353,28 @@ export function createZhihuApiHandler(deps: ZhihuApiDeps) {
         return writeJson(response, 200, result);
       }
       // 官方「问题路由」：按当前账号画像推荐适合回答的问题（creator 额度组，每日有限）。
+      // 推荐按账号画像生成且额度有限，短时缓存半小时：刷新页面拿到同一批，也不重复消耗额度。
       if (url.pathname === "/api/user/recommendations" && request.method === "GET") {
-        const result = await withAuthorizedUser(request, response, (userData) => userData.questionRecommendations({ count: 10 }));
+        const active = requireRuntime();
+        const session = await activeSession(request);
+        const cacheKey = session?.accessToken ?? "caller";
+        const result = await withAuthorizedUser(request, response, (userData) =>
+          active.recommendations.recommendations({
+            cacheKey,
+            load: () => userData.questionRecommendations({ count: 10 }),
+          }));
         return writeJson(response, 200, result);
       }
+      if (url.pathname === "/api/user/archive" && request.method === "GET") {
+        // 一次同步会翻页取全创作/关注/收藏，是额度最重的入口；网页端必须先过限流。
+        await enforceRateLimit(request, response, "user-archive");
+        // `refresh=1` 是用户显式要求重新同步：跳过服务端 TTL，其余情况一律走缓存。
+        const force = url.searchParams.get("refresh") === "1";
+        return writeJson(response, 200, await loadPersonalArchive(request, response, force));
+      }
       if (url.pathname === "/api/research/voices" && request.method === "POST") {
+        await requireWebLogin(request);
+        await enforceRateLimit(request, response, "voices");
         const active = requireRuntime();
         const body = asRequest(await readJson(request));
         const voices = await active.voices.execute({
@@ -208,6 +388,7 @@ export function createZhihuApiHandler(deps: ZhihuApiDeps) {
       // 主题由前端传入（就是它屏幕上正在展示的那几条收藏标题）：
       // 后端不再读一次用户数据，路由本身只做「主题 → 研究问题」这一步提炼。
       if (url.pathname === "/api/research/seed-questions" && request.method === "POST") {
+        await requireWebLogin(request);
         const active = requireRuntime();
         const body = asRequest(await readJson(request));
         const raw = Array.isArray(body.topics) ? body.topics : [];
@@ -216,26 +397,32 @@ export function createZhihuApiHandler(deps: ZhihuApiDeps) {
         });
         return writeJson(response, 200, seeds);
       }
-      // 圈子社区：只读浏览白名单圈子的内容流与黑客松故事；写操作不在本路由范围内。
-      if (url.pathname === "/api/circles" && request.method === "GET") {
-        return writeJson(response, 200, { rings: requireCircles().listRings() });
-      }
-      if (url.pathname === "/api/circles/posts" && request.method === "GET") {
-        const feed = await requireCircles().readRing({
-          ringId: readRequiredString(url.searchParams.get("ringId"), "请指定要查看的圈子。"),
-          page: readOptionalInt(url.searchParams.get("page"), 1),
-          pageSize: readOptionalInt(url.searchParams.get("pageSize"), 20),
+      // 深度研究（网页端）：只承接 Pro 单次直答。Ultra 由自研引擎在本机运行面执行，
+      // 本侧不承接时如实拒绝，而不是静默降级成 Pro 或返回注定失败的 202。
+      if (deps.researchProEnabled === true && url.pathname === "/api/research-tasks" && request.method === "POST") {
+        await requireWebLogin(request);
+        await enforceRateLimit(request, response, "research-pro");
+        const active = requireRuntime();
+        const body = asRequest(await readJson(request));
+        const tier = readResearchTier(body.tier);
+        if (tier !== "pro") {
+          throw new ProductError(
+            "RESEARCH_TIER_UNAVAILABLE",
+            tier === "ultra"
+              ? "Ultra 研究不在网页端运行，请改用 Pro。"
+              : "该研究档位不可用，请改用 Pro。",
+          );
+        }
+        const result = await active.researchPro.execute({
+          requestId: readRequiredString(body.requestId, "缺少请求标识。"),
+          question: readRequiredString(body.question, "研究问题不能为空。"),
         });
-        return writeJson(response, 200, feed);
+        return writeJson(response, 200, { ok: true, data: result.detail });
       }
-      if (url.pathname === "/api/circles/stories" && request.method === "GET") {
-        return writeJson(response, 200, { stories: await requireCircles().listStories() });
-      }
-      if (url.pathname === "/api/circles/story" && request.method === "GET") {
-        const story = await requireCircles().readStory({
-          workId: readRequiredString(url.searchParams.get("workId"), "请指定要阅读的故事。"),
-        });
-        return writeJson(response, 200, story);
+      // 网页端任务列表：服务端不落库，因此没有可恢复的历史。
+      // 返回空列表而不是 404——前端刷新时会用它尝试恢复上一次研究，404 会被当成错误展示。
+      if (deps.researchProEnabled === true && url.pathname === "/api/research-tasks" && request.method === "GET") {
+        return writeJson(response, 200, { ok: true, data: { items: [], hasMore: false } });
       }
       return false;
     } catch (error) {
@@ -256,11 +443,15 @@ function callbackUrl(config: OAuthAppConfig): URL {
   }
 }
 
+/** 研究档位：非法值按不可用处理，交给调用方如实拒绝，不猜一个默认档位。 */
+function readResearchTier(value: unknown): string {
+  return typeof value === "string" ? value.trim() : "";
+}
+
 /** 众声的检索范围与时间范围是预置选项，非法值一律按默认处理，不做自由填写。 */
 function readVoicesScope(value: unknown): "zhihu" | "web" {
   return value === "web" ? "web" : "zhihu";
 }
-
 /** 首页内容流的类型筛选项，非法值按「全部」。 */
 function readHomeFeedType(value: string | null): "all" | "answer" | "article" {
   return value === "answer" || value === "article" ? value : "all";

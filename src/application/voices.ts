@@ -43,7 +43,8 @@ export type VoiceCluster = {
 
 export type VoicesAnchor = {
   questionId: string;
-  title: string;
+  /** 问题标题；用户直接给链接时可能取不到，此时留空，界面改显链接。 */
+  title?: string;
   /** 知乎问题页地址，由平台适配层提供，界面不自行拼接。 */
   url: string;
   /** 从该问题下实际读取到的回答条数。 */
@@ -57,7 +58,10 @@ export type VoicesAnchorCandidate = {
 };
 
 export type Voices = {
-  /** 用户输入的议题原文。 */
+  /**
+   * 这次整理的对象，用于界面展示：议题文本时是原文；
+   * 直接给了知乎链接时，取到标题就用标题，取不到退回链接本身。
+   */
   issue: string;
   generatedAt: string;
   model: string;
@@ -75,6 +79,7 @@ export type Voices = {
 };
 
 export type VoicesInput = {
+  /** 用户输入：议题文本，或知乎问题/回答链接。 */
   issue: string;
   model?: ZhidaModel;
   /** 指定落点问题；不传时由检索结果自动判定。 */
@@ -95,11 +100,19 @@ export function createVoicesCommand(input: {
   const inFlight = new Map<string, Promise<Voices>>();
 
   async function compose(request: VoicesInput): Promise<Voices> {
-    const issue = request.issue.trim();
-    if (!issue) throw new ProductError("INVALID_INPUT", "议题不能为空。");
+    const raw = request.issue.trim();
+    if (!raw) throw new ProductError("INVALID_INPUT", "议题不能为空。");
 
     const scope = request.scope ?? "zhihu";
     const recency = request.recency ?? "any";
+    // 用户直接给知乎链接、或从结果里指定了落点问题，目标都是那个问题本身：
+    // 跳过锚定判定，直接读它下面的回答。
+    const fixedQuestionId = questionIdFromZhihuUrl(raw) ?? request.anchorQuestionId?.trim();
+    if (fixedQuestionId !== undefined && fixedQuestionId !== "") {
+      return composeFromLink(raw, fixedQuestionId, scope, recency);
+    }
+
+    const issue = raw;
     const zhihuSearch = await input.content.searchZhihu({ query: issue, count: SEARCH_COUNT });
     // 全网是站内之外的补充；站内搜索没有时间过滤，时间范围只作用于全网。
     const webSearch = scope === "web"
@@ -116,7 +129,7 @@ export function createVoicesCommand(input: {
     }
 
     // 落点只在站内结果里判定：全网结果带不带知乎链接都不该影响「同一问题」的判定。
-    const anchor = resolveAnchor(zhihuFound, request.anchorQuestionId);
+    const anchor = resolveAnchor(zhihuFound);
     const candidates = anchorCandidates(zhihuFound, anchor);
     const answers = anchor
       ? (await input.content.listQuestionAnswers({
@@ -141,14 +154,63 @@ export function createVoicesCommand(input: {
         ? { questionId: anchor.questionId, title: anchor.title, url: questionUrl(anchor.questionId), answerCount: answersKept.length }
         : undefined;
 
-    const model = request.model ?? CLUSTER_MODEL;
+    return cluster(issue, resolvedAnchor, candidates, all, request.model);
+  }
+
+  /**
+   * 直读用户给定的问题链接：不猜落点，答案就在那个问题下。
+   * 问题标题这里拿不到（问题回答接口不返回标题），用首条回答的片段反查一次站内搜索补齐，
+   * 顺带得到该问题之外的讨论作为补充；反查失败也不影响主体。
+   */
+  async function composeFromLink(
+    link: string,
+    questionId: string,
+    scope: VoicesScope,
+    recency: VoicesRecency,
+  ): Promise<Voices> {
+    const answers = (await input.content.listQuestionAnswers({ questionId, count: ANSWER_COUNT })).items;
+    const sample = answers[0];
+    if (sample === undefined) {
+      throw new ProductError("INVALID_INPUT", "这个知乎问题下暂时读不到回答，换一个问题或改用议题描述试试。");
+    }
+    // 问题回答接口不返回问题标题，用首条回答的片段反查一次站内搜索：既补标题，也拿到该问题之外的讨论。
+    const probe = await input.content.searchZhihu({ query: sample.summary.slice(0, 40), count: SEARCH_COUNT });
+    const found = probe.items.find((source) => source.questionId === questionId)?.title;
+    const title = found === undefined ? undefined : questionTitle(found);
+    const zhihuRelated = probe.items.filter((source) => source.questionId !== questionId);
+    const webFound = scope === "web"
+      ? (await input.content.searchGlobal({
+          query: sample.summary.slice(0, 40),
+          count: WEB_COUNT,
+          filter: recencyFilter(recency, clock()),
+        })).items
+      : [];
+    const webTake = Math.min(webFound.length, WEB_RELATED_LIMIT, RELATED_LIMIT);
+    const relatedKept = zhihuRelated.slice(0, RELATED_LIMIT - webTake);
+    const answersKept = answers.slice(0, CLUSTER_SOURCE_LIMIT - relatedKept.length - webTake);
+    const all = [...answersKept, ...relatedKept, ...webFound.slice(0, webTake)].slice(0, CLUSTER_SOURCE_LIMIT);
+    const anchor: VoicesAnchor = { questionId, title, url: questionUrl(questionId), answerCount: answersKept.length };
+    // 反查得到的其它问题顺带成为可切换的落点候选。
+    const candidates = anchorCandidates(probe.items, { questionId });
+    return cluster(title !== undefined && title !== "" ? title : link, anchor, candidates, all, undefined);
+  }
+
+  /** 把来源交给看山聚类并收敛成最终结果；三条路径（议题/链接/降级）共用这一段。 */
+  async function cluster(
+    issue: string,
+    anchor: VoicesAnchor | undefined,
+    candidates: VoicesAnchorCandidate[],
+    all: ContentSource[],
+    model?: ZhidaModel,
+  ): Promise<Voices> {
+    const useModel = model ?? CLUSTER_MODEL;
     const prompt = buildPrompt(issue, all);
     // 直答偶尔会返回不可解析的内容（自我介绍式退化或残缺 JSON）。这里只对这条幂等的
     // 生成请求重试一次；仍失败才如实报错，不无限重试。
-    const raw = await input.zhida.answer({ model, prompt });
-    let parsed = safeParseClusters(raw.content);
+    const answer = await input.zhida.answer({ model: useModel, prompt });
+    let parsed = safeParseClusters(answer.content);
     if (parsed === undefined || parsed.clusters.length === 0) {
-      const retry = await input.zhida.answer({ model, prompt });
+      const retry = await input.zhida.answer({ model: useModel, prompt });
       parsed = safeParseClusters(retry.content);
     }
     if (parsed === undefined || parsed.clusters.length === 0) {
@@ -157,8 +219,8 @@ export function createVoicesCommand(input: {
     return finalize({
       issue,
       generatedAt: clock().toISOString(),
-      model: raw.model,
-      anchor: resolvedAnchor,
+      model: answer.model,
+      anchor,
       candidates,
       all,
       parsed,
@@ -224,19 +286,12 @@ const RECENCY_DAYS: Readonly<Record<VoicesRecency, number | undefined>> = {
 
 /**
  * 判定议题的聚焦落点：统计检索结果分别落在哪些知乎问题上，取命中最多且达到阈值的问题。
- * 指定了 anchorQuestionId 时优先使用它，但仍要求该问题在本次检索里出现过，避免凭空锚定。
+ * 用户显式指定的落点（链接、换落点）在这之前就已直接取用，不经过这里。
  */
 function resolveAnchor(
   sources: ContentSource[],
-  requestedQuestionId?: string,
 ): { questionId: string; title: string; answerCount: number } | undefined {
   const hits = countQuestionHits(sources);
-  const requested = requestedQuestionId?.trim();
-  if (requested) {
-    const entry = hits.get(requested);
-    if (!entry) return undefined;
-    return { questionId: requested, title: entry.title, answerCount: entry.count };
-  }
   let best: { questionId: string; title: string; answerCount: number } | undefined;
   for (const [questionId, entry] of hits) {
     if (entry.count < ANCHOR_MIN_HITS) continue;

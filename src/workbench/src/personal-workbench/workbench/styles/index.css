@@ -1,16 +1,9 @@
 @import './tailwind.css';
 @import './theme.css';
 @import '../../../styles/ui-shared.css';
-@import '../../../features/settings/components/settings.css';
-@import '../../../features/settings/model/provider.css';
-@import '../../../features/settings/model/model-list.css';
-@import '../../../features/settings/components/forms.css';
-@import '../../../features/settings/components/appearance.css';
-@import '../../../features/settings/components/runtime.css';
-@import './sidebar-brand.css';
+@import './sidebar-account.css';
 @import './sidebar-research-prompt.css';
 @import './sidebar-footer.css';
-@import './editor.css';
 @import './recovery.css';
 @import './workbench-shell.css';
 @import './workbench-status.css';

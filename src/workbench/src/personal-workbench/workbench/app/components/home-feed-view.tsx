@@ -28,14 +28,8 @@ export type HomeFeedViewProps = {
   readonly feed: HomeFeedState
   /** 当前生效的检索词；空字符串表示热榜频道。 */
   readonly topic: string
-  /** 检索框里的草稿词。 */
-  readonly draft: string
-  readonly onDraftChange: (value: string) => void
-  readonly scope: HomeFeedScope
-  readonly onScopeChange: (scope: HomeFeedScope) => void
   readonly type: HomeFeedType
   readonly onTypeChange: (type: HomeFeedType) => void
-  readonly onSubmitSearch: () => void
   readonly onRetry: () => void
   readonly onClearTopic: () => void
   /** 记入「今日想问」；缺省时不显示该动作。 */
@@ -90,8 +84,20 @@ export function HomeFeedView(props: HomeFeedViewProps) {
 
       {feed.status === 'error' && (
         <div className="uhf__notice" role="alert">
-          <p>{feed.error}</p>
-          <button type="button" onClick={props.onRetry}>重试</button>
+          {topicActive ? (
+            <>
+              <p>{feed.error}</p>
+              <button type="button" onClick={props.onRetry}>重试</button>
+            </>
+          ) : (
+            // 热榜额度是全站最紧的一项（100 次/天）。这里如实说明并给出可走的路，
+            // 不用空白或示例内容掩盖上游不可用。
+            <>
+              <p>热榜暂不可用：{feed.error}</p>
+              <p className="uhf__notice-hint">可以用上方搜索框直接找知乎内容，或点「问直答」快速问一句。</p>
+              <button type="button" onClick={props.onRetry}>重试</button>
+            </>
+          )}
         </div>
       )}
 
@@ -123,7 +129,7 @@ function FeedTime({ feed }: { readonly feed: HomeFeedState }) {
   return <span className="uhf__time">{feed.channel === 'hot' ? `${label} 获取` : `检索于 ${label}`}</span>
 }
 
-function FeedCard({ item, onRemember }: { readonly item: HomeFeedItem; readonly onRemember?: (question: string) => void }) {
+export function FeedCard({ item, onRemember }: { readonly item: HomeFeedItem; readonly onRemember?: (question: string) => void }) {
   const typeLabel = CONTENT_TYPE_LABELS[(item.contentType ?? '').toLowerCase()] ?? item.contentType
   const meta = formatMeta(item)
   return (
@@ -231,19 +237,18 @@ export type HomeAnswerPanelProps = {
 }
 
 /**
- * 首页问答面板。正文是知乎直答生成内容、不附原始来源，
- * 因此固定标注这一点，并引导需要引用时转入众声或深度研究。
+ * 首页问答面板。正文是知乎直答生成内容，界面只固定标注生成内容可能出错、
+ * 重要信息需自行核对，并给出转入众声看不同说法的入口。
  */
 export function HomeAnswerPanel(props: HomeAnswerPanelProps) {
   const { state } = props
   if (state.status === 'idle') return null
-  const question = state.answer?.question ?? ''
   return (
     <section className="uha-panel" aria-label="知乎直答">
       <div className="uha-panel__head">
         <Sparkles size={15} className="uha-panel__glyph" aria-hidden />
         <h2 className="uha-panel__name">知乎直答</h2>
-        <span className="uha-panel__role">快速答，不附原始来源</span>
+        <span className="uha-panel__role">直答生成，未附原始来源</span>
         <div className="uha-panel__tiers" role="group" aria-label="回答档位">
           {(['fast', 'thinking'] as const).map((tier) => (
             <button
@@ -279,12 +284,10 @@ export function HomeAnswerPanel(props: HomeAnswerPanelProps) {
           <div className="uha-panel__answer">
             <RichText text={state.answer.content} />
           </div>
-          <p className="uha-panel__note">
-            以上为知乎直答（{state.answer.model}）生成内容，未附原始来源；需要可核对的引用请转入众声或深度研究。
-          </p>
+          <p className="uha-panel__note">知无不言也可能会犯错，请核查重要信息。</p>
           <div className="uha-panel__foot">
             <button type="button" className="uha__ask" onClick={props.onExplore}>
-              看不同立场
+              众声
               <ArrowRight size={13} aria-hidden />
             </button>
             {props.children}

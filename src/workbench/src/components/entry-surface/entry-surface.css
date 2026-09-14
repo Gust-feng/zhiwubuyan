@@ -1,0 +1,94 @@
+/* 共享入口外壳的独立作用域。
+   深度研究与众声的入口版式相同，这里把两页共有的一套常量与基线收在一处，
+   外壳元素全程不重建、类名也不随视图变化，切换只发生在每一格的内部。 */
+.entry-live {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+  color: var(--ui-text-1);
+  background: var(--ui-canvas);
+  font-family: 'Noto Sans SC Variable', var(--reading-sans);
+  font-size: 13px;
+
+  /* 研究侧入口排版靠 @container research 的窄版规则。 */
+  container: research / inline-size;
+
+  /* 两侧入口原有的版式常量，合并在这里，child 的既有样式照常解析。 */
+  --dr-track: 820px;
+  --dr-pad-x: 42px;
+  --dr-shell: calc(var(--dr-track) + var(--dr-pad-x) * 2);
+  --dr-radius-card: 14px;
+  --dr-radius-control: 8px;
+  --vp-track: 820px;
+  --vp-pad-x: 42px;
+  --vp-shell: calc(var(--vp-track) + var(--vp-pad-x) * 2);
+  --vp-radius-card: 14px;
+  --vp-radius-control: 8px;
+}
+.entry-live *, .entry-live *::before, .entry-live *::after { box-sizing: border-box; }
+.entry-live button, .entry-live select, .entry-live textarea { font: inherit; }
+.entry-live button, .entry-live summary, .entry-live select { cursor: pointer; }
+.entry-live button { color: inherit; }
+.entry-live button:disabled { cursor: default; opacity: .4; }
+.entry-live button:focus-visible, .entry-live summary:focus-visible, .entry-live select:focus-visible, .entry-live a:focus-visible, .entry-live input:focus-visible {
+  outline: 2px solid var(--ui-accent);
+  outline-offset: 3px;
+}
+
+/* 入口版心：纵向靠上，内容过高时退回顶部并滚动。 */
+.entry-start {
+  display: grid;
+  align-content: start;
+  justify-items: center;
+  flex: 1;
+  min-height: 0;
+  padding: clamp(56px, 13vh, 112px) 0 48px;
+  overflow-y: auto;
+}
+.entry-start__content { width: 100%; max-width: var(--dr-shell); padding: 0 var(--dr-pad-x); }
+.entry-start__head {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 22px;
+  margin-bottom: 28px;
+  text-align: center;
+}
+/* 每一格的容器本身就是那张卡片：外框、高度与定位都在它身上，
+   换出的对象脱离文档流时以它为基准，不会窜到版心外。 */
+.entry-slot { position: relative; }
+
+/* 图标位：盒子常驻且尺寸由图标决定，两个图标在同一中心交替，
+   所以换场时图标的位置与大小都不动，只有内容淡换。 */
+.entry-emblem { display: flex; align-items: center; justify-content: center; }
+.entry-emblem__glyph { display: inline-flex; color: var(--ui-accent); }
+.entry-title { margin: 0; color: var(--ui-text-1); font-size: 35px; font-weight: 650; line-height: 1.35; }
+
+/* 建议卡外框也由外壳持有：切换时只有卡内的建议条目被换掉，外框不重画，不会出现双重描边。
+   观感与两侧原有的建议卡一致（有描边、无阴影，主角仍是下面的输入卡）。 */
+.entry-seeds {
+  margin: 0 0 26px;
+  padding: 12px 14px 9px;
+  border: 1px solid var(--ui-border);
+  border-radius: var(--dr-radius-card);
+  background: var(--ui-surface);
+}
+
+/* 输入卡外框由外壳持有，卡内内容由每一格替换；卡片外观由 .dr-composer / .voices-composer 提供。 */
+
+/* 窄容器：收窄版心与留白，观察对象是研究容器而不是视口。 */
+@container research (max-width: 520px) {
+  .entry-start { padding: 32px 0 40px; }
+  .entry-start__content { padding: 0 20px; }
+  .entry-start__head { gap: 16px; margin-bottom: 22px; }
+  .entry-emblem svg { width: 40px; height: 40px; }
+  .entry-title { font-size: 25px; }
+  .entry-seeds { margin-bottom: 20px; padding: 12px 12px 8px; }
+  .entry-seeds .dr-seed, .entry-seeds .voices-seed { font-size: 12px !important; }
+  /* 窄容器只留最新几条，避免把提问卡片顶到很下面。 */
+  .entry-seeds .dr-seeds__list li:nth-child(n + 4) { display: none; }
+}

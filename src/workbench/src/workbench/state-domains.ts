@@ -1,5 +1,4 @@
 import type { LiveRunBuffer } from "@api-contracts/ui-read-model";
-import type { ConfigResponse } from "@api-contracts/config";
 import type { Conversation, ConversationSummary } from "../contracts/conversation";
 import type {
   OrdinaryRun,
@@ -9,15 +8,6 @@ import type {
   RunEvent,
   TranscriptNode,
 } from "../contracts/run";
-import type { SkillDefinition } from "../contracts/skills";
-import type { SubAgentDefinition } from "../contracts/sub-agents";
-
-/** Data loaded before the active workbench can render its capabilities. */
-export type AppBootstrapState = {
-  readonly config?: ConfigResponse;
-  readonly skills: readonly SkillDefinition[];
-  readonly subAgents: readonly SubAgentDefinition[];
-};
 
 /** Conversation summaries and the currently opened Ordinary conversation. */
 export type AppConversationState = {

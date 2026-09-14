@@ -1,28 +1,24 @@
-export type WorkbenchView = "home" | "ask" | "voices" | "circles" | "briefs" | "mine" | "search" | "brain";
+export type WorkbenchView = "home" | "explore" | "ask" | "voices" | "mine";
 
 export type WorkbenchNavigationState = {
   readonly view: WorkbenchView;
-  readonly previousView: WorkbenchView;
-  readonly brainSelectedId: string | null;
-  readonly mineSelectedNoteId: string | null;
   readonly researchTaskId: string | null;
   readonly homeFocusRequest: number;
+  /** 从首页带进众声的议题；只在众声保留，作为跨板块衔接的上下文。 */
+  readonly voicesIssue: string | null;
 };
 
 export type WorkbenchNavigationAction =
   | { readonly type: "navigate"; readonly target: WorkbenchView; readonly researchTaskId?: string | null }
-  | { readonly type: "set-brain-selection"; readonly id: string | null }
-  | { readonly type: "set-mine-note-selection"; readonly id: string | null }
-  | { readonly type: "focus-home-input" };
+  | { readonly type: "focus-home-input" }
+  | { readonly type: "open-voices"; readonly issue: string };
 
 export function createInitialWorkbenchNavigationState(): WorkbenchNavigationState {
   return {
     view: "home",
-    previousView: "home",
-    brainSelectedId: null,
-    mineSelectedNoteId: null,
     researchTaskId: null,
     homeFocusRequest: 0,
+    voicesIssue: null,
   };
 }
 
@@ -35,13 +31,10 @@ export function reduceWorkbenchNavigation(
       return {
         ...state,
         view: action.target,
-        previousView: action.target === "search" ? state.view : state.previousView,
         researchTaskId: action.target === "ask" ? action.researchTaskId ?? null : state.researchTaskId,
       };
-    case "set-brain-selection":
-      return { ...state, brainSelectedId: action.id };
-    case "set-mine-note-selection":
-      return { ...state, mineSelectedNoteId: action.id };
+    case "open-voices":
+      return { ...state, view: "voices", voicesIssue: action.issue.trim() || null };
     case "focus-home-input":
       return { ...state, homeFocusRequest: state.homeFocusRequest + 1 };
   }

@@ -3,9 +3,7 @@ import { PersonalWorkbench } from "./personal-workbench/personal-workbench";
 import { useAppShellEffects } from "./shell/effects";
 import { persistSidebarCollapsedPreference, useAppShellState } from "./shell/state";
 import { useAppQueuedMessages } from "./features/conversations/queued-message-state";
-import { useAppWorkbenchConfigState } from "./features/settings/workbench-config-state";
 import { useAppWorkbenchRuntime } from "./workbench/runtime";
-import { workbenchSettingsDialogPropsFrom } from "./features/settings/controllers/dialog-props";
 import { useAppWorkbenchTaskState } from "./features/conversations/task-state";
 import { workbenchInputPropsFrom } from "./features/conversations/composer-input-props";
 import { createInitialAppState } from "./workbench/state";
@@ -19,57 +17,21 @@ export function App(): React.ReactElement {
     attachments,
     setAttachments,
   } = taskState;
-  const configState = useAppWorkbenchConfigState(app);
-  const {
-    aiMode,
-    modelForm,
-    setModelForm,
-    composerReasoningEffort,
-    setComposerReasoningEffort,
-    setComposerSelectedModelId,
-    modelCatalogs,
-    setModelCatalogs,
-    ordinaryAgentSystemPrompt,
-    setOrdinaryAgentSystemPrompt,
-    modelOptions,
-    selectedModelId,
-    selectedModelSupportsReasoningEffort,
-    selectedModelContextWindowTokens,
-  } = configState;
   const shellState = useAppShellState();
   const {
-    settingsOpen,
-    settingsGroup,
     sidebarCollapsed,
     setSidebarCollapsed,
-    modelUsageDisplayEnabled,
-    setModelUsageDisplayEnabled,
-    developerModeEnabled,
     conversationFollowUpMode,
     inputCloseSignal,
     setInputCloseSignal,
-    openSettings,
-    closeSettings,
-    changeModelUsageDisplay,
-    changeDeveloperMode,
   } = shellState;
   const runtime = useAppWorkbenchRuntime({
     app,
     setApp,
     setGoal,
     goal,
-    aiMode,
-    composerReasoningEffort,
-    setComposerSelectedModelId,
-    modelForm,
-    setModelForm,
-    setModelCatalogs,
-    setOrdinaryAgentSystemPrompt,
     attachments,
     setAttachments,
-    selectedModelId,
-    selectedModelSupportsReasoningEffort,
-    selectedModelContextWindowTokens,
     setInputCloseSignal,
   });
   const {
@@ -82,11 +44,8 @@ export function App(): React.ReactElement {
     confirmationBusy,
     contextBusy,
     pendingConversationIds,
-    savingModel,
-    savingOrdinaryAgentPrompt,
     runActions,
     sidebarActions,
-    settingsController,
     composerActions,
   } = runtime;
   const {
@@ -95,7 +54,6 @@ export function App(): React.ReactElement {
     decideConfirmation,
   } = runActions;
   const {
-    selectInputModel,
     selectAttachment,
     uploadAttachments,
     removeAttachment,
@@ -103,7 +61,6 @@ export function App(): React.ReactElement {
   useAppShellEffects({
     sidebarCollapsed,
     persistSidebarCollapsed: persistSidebarCollapsedPreference,
-    setModelUsageDisplayEnabled,
   });
   const {
     enqueueMessage,
@@ -127,15 +84,8 @@ export function App(): React.ReactElement {
     removeAttachment,
     contextBusy,
     busy: app.busy,
-    models: modelOptions,
-    selectedModelId,
     contextUsage,
-    reasoningEffort: composerReasoningEffort,
-    reasoningEffortEnabled: selectedModelSupportsReasoningEffort,
-    onReasoningEffortChange: setComposerReasoningEffort,
     closeSignal: inputCloseSignal,
-    onModelSelect: selectInputModel,
-    onOpenSettings: () => openSettings("models"),
     enqueueMessage,
     startTask,
     clearQueuedMessages,
@@ -163,24 +113,6 @@ export function App(): React.ReactElement {
     runActions.resetChat();
   }, [clearQueuedMessages, runActions.resetChat]);
 
-  const settingsDialogProps = workbenchSettingsDialogPropsFrom({
-    settingsOpen,
-    closeSettings,
-    settingsGroup,
-    app,
-    forms: {
-      ordinaryAgentSystemPrompt,
-      setOrdinaryAgentSystemPrompt,
-    },
-    preferences: {
-      developerModeEnabled,
-      onDeveloperModeChange: changeDeveloperMode,
-    },
-    saving: {
-      ordinaryAgent: savingOrdinaryAgentPrompt,
-    },
-    actions: settingsController,
-  });
   return (
     <PersonalWorkbench
       bootstrapState={{
@@ -194,8 +126,6 @@ export function App(): React.ReactElement {
       conversations={app.conversations}
       currentRun={currentRun}
       inputProps={inputProps}
-      showModelUsage={modelUsageDisplayEnabled}
-      developerModeEnabled={developerModeEnabled}
       error={app.error}
       onDismissError={() => setApp((previous) => ({ ...previous, error: undefined }))}
       pendingConfirmation={pendingConfirmation}
@@ -208,8 +138,6 @@ export function App(): React.ReactElement {
       onRenameConversation={sidebarActions.renameConversation}
       onToggleConversationPinned={sidebarActions.toggleConversationPinned}
       onDeleteConversation={sidebarActions.deleteConversation}
-      onOpenSettings={() => openSettings("models")}
-      settingsDialogProps={settingsDialogProps}
     />
   );
 }

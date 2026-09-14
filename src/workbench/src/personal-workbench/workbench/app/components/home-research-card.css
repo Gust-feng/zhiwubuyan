@@ -1,9 +1,3 @@
-.ui-home__content {
-  display: grid;
-  gap: 16px;
-  margin-top: 20px;
-}
-
 .ui-research-card {
   min-width: 0;
   border: 1px solid var(--ui-border);

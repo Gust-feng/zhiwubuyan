@@ -1,11 +1,6 @@
 import type React from "react";
 import { postJson } from "../../../api";
 import { conversationTurnAttachmentsFromContextAttachments, contextInputFromAttachments } from "../../../workbench/attachments";
-import {
-  runReasoningSettings,
-  type ComposerReasoningEffort,
-  type VisibleAiMode,
-} from "../../settings/config-projection";
 import { loadObservedRunReadModel } from "./observed-run-read-model";
 import {
   createRunReadModelPatch,
@@ -14,7 +9,6 @@ import { runIdsForConversation } from "@api-contracts/ui-read-model";
 import { resetTranscriptCache, updateTranscriptRunCache } from "../transcript/store";
 import type { PanelToolCallResult as ToolCallResult } from "@api-contracts/ordinary-agent";
 import { shouldKeepRefreshing, stopLiveUpdates } from "./runtime-controls";
-import { parseModelOptionId } from "../../settings/model/options";
 import type { AppState } from "../../../workbench/state";
 import type { ContextAttachment } from "../../../contracts/context";
 import type { Conversation } from "../../../contracts/conversation";
@@ -42,10 +36,6 @@ export type PanelTaskSubmissionOptions = {
   readonly attachments: readonly ContextAttachment[];
   readonly setAttachments: React.Dispatch<React.SetStateAction<readonly ContextAttachment[]>>;
   readonly goal: string;
-  readonly aiMode: VisibleAiMode;
-  readonly composerReasoningEffort: ComposerReasoningEffort;
-  readonly selectedModelId: string;
-  readonly selectedModelSupportsReasoningEffort: boolean;
   readonly mountedRef: React.MutableRefObject<boolean>;
   readonly pollTimer: React.MutableRefObject<number | undefined>;
   readonly streamRef: React.MutableRefObject<EventSource | undefined>;
@@ -87,10 +77,7 @@ export async function submitPanelTask(
     : `/api/conversations/${encodeURIComponent(conversationForSubmit.conversationId)}/messages`;
   const requestBody = {
     goal: trimmed,
-    aiMode: options.aiMode,
-    modelOverride: modelOverrideFromSelectedOption(options.selectedModelId),
     contextInput: contextInputFromAttachments(attachmentsBeforeSubmit),
-    ...runReasoningSettings(options.composerReasoningEffort, options.selectedModelSupportsReasoningEffort),
   };
   const requestKey = JSON.stringify({ path, requestBody });
   const existingSubmission = options.submissionAttemptRef.current;
@@ -342,13 +329,4 @@ export async function submitPanelTask(
     options.submissionAttemptRef.current = undefined;
   }
   return true;
-}
-
-function modelOverrideFromSelectedOption(
-  selectedModelId: string
-): { readonly profileId: string; readonly model: string } | undefined {
-  const parsed = parseModelOptionId(selectedModelId);
-  return parsed === undefined
-    ? undefined
-    : { profileId: parsed.profileId, model: parsed.modelId };
 }

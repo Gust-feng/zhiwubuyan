@@ -4,15 +4,15 @@ import { kanshanDirector, useKanshanDirector, type KanshanPerchApi, type Kanshan
 import './kanshan-perch.css'
 
 export interface KanshanPerchProps {
-  /** 栖位身份，全局唯一。 */
+  /** 栖位身份。 */
   readonly perchId: KanshanPerchId
-  /** 定位与尺寸类名（栖位根容器），由所在界面决定趴伏位置。 */
+  /** 定位与尺寸类名（栖位根容器），由所在界面决定角色所在位置。 */
   readonly className?: string
 }
 
 /**
  * 受控栖位：自身不决定何时出现，统一由全局导演编排。未激活时用
- * visibility:hidden 保留布局占位，激活时才显示并播放探出 / 缩起动画。
+ * visibility:hidden 保留布局占位，激活时才显示并播放入场 / 缩回动画。
  */
 export const KanshanPerch = forwardRef<KanshanMascotHandle, KanshanPerchProps>(
   function KanshanPerch({ perchId, className }, forwardedRef) {

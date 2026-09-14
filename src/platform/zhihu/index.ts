@@ -11,26 +11,5 @@ export type { Paging } from "./paging.ts";
 export { answerIdFromZhihuUrl, questionIdFromZhihuUrl, questionUrl } from "./urls.ts";
 export { OAUTH_BASE_URL, buildAuthorizeUrl, exchangeAuthorizationCode, readAuthorizationCode, readOAuthAppConfig } from "./oauth.ts";
 export type { ExchangeOptions, OAuthAppConfig, OAuthToken } from "./oauth.ts";
-export {
-  COMMUNITY_BASE_URL,
-  COMMUNITY_RINGS,
-  buildSignatureHeaders,
-  createCommunityClient,
-  createCommunityGateway,
-  readCommunityConfig,
-  readCommunityRing,
-  signCommunityRequest,
-} from "./community.ts";
-export type {
-  CommunityClient,
-  CommunityClientOptions,
-  CommunityComment,
-  CommunityConfig,
-  CommunityContent,
-  CommunityEnvelope,
-  CommunityGateway,
-  CommunityRing,
-  RingDetail,
-  StoryDetail,
-  StorySummary,
-} from "./community.ts";
+export { fetchAuthorizedUserProfile } from "./user-profile.ts";
+export type { AuthorizedUserProfile, FetchAuthorizedUserProfileOptions } from "./user-profile.ts";

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Check, ChevronUp, Monitor, Moon, Settings, Sun } from 'lucide-react'
+import { Check, ChevronUp, Monitor, Moon, Palette, Sun } from 'lucide-react'
 import {
   applyTheme,
   getInitialTheme,
@@ -21,10 +21,10 @@ const APPEARANCE_OPTIONS: readonly {
 ]
 
 /**
- * 侧边栏左下角沿用导航行语法，只承载已经可用的设置和主题入口。
+ * 侧边栏左下角沿用导航行语法，只承载已经可用的主题入口。
  * 账号、订阅等尚未存在的产品事实不在这里预留空菜单项。
  */
-export function SidebarFooter({ onOpenSettings }: { readonly onOpenSettings: () => void }) {
+export function SidebarFooter() {
   const [menuOpen, setMenuOpen] = useState(false)
   const [activeColorId, setActiveColorId] = useState<AppearanceColorId>(() => {
     const initialTheme = getInitialTheme()
@@ -76,26 +76,21 @@ export function SidebarFooter({ onOpenSettings }: { readonly onOpenSettings: () 
     setMenuOpen(false)
   }
 
-  function openSettings(): void {
-    setMenuOpen(false)
-    onOpenSettings()
-  }
-
   return (
     <footer className="ui-sidebar-footer">
       <div ref={menuRef} className="ui-sidebar-footer-menu">
         <button
           type="button"
           onClick={toggleMenu}
-          aria-label="设置与外观"
+          aria-label="外观"
           aria-haspopup="menu"
           aria-expanded={menuOpen}
           className="ui-sidebar-footer__trigger"
         >
           <span className="ui-sidebar-footer__icon" aria-hidden="true">
-            <Settings size={14} />
+            <Palette size={14} />
           </span>
-          <span className="ui-sidebar-footer__label">设置</span>
+          <span className="ui-sidebar-footer__label">外观</span>
           <ChevronUp
             className={`ui-sidebar-footer__chevron${menuOpen ? ' open' : ''}`}
             size={13}
@@ -104,7 +99,7 @@ export function SidebarFooter({ onOpenSettings }: { readonly onOpenSettings: () 
         </button>
 
         {menuOpen && (
-          <div className="ui-sidebar-footer-menu__popover" role="menu" aria-label="设置与外观">
+          <div className="ui-sidebar-footer-menu__popover" role="menu" aria-label="外观">
             <div className="ui-sidebar-footer-menu__heading">主题</div>
             {APPEARANCE_OPTIONS.map((option) => {
               const Icon = option.icon
@@ -124,18 +119,6 @@ export function SidebarFooter({ onOpenSettings }: { readonly onOpenSettings: () 
                 </button>
               )
             })}
-
-            <div role="separator" className="ui-sidebar-footer-menu__separator" />
-
-            <button
-              type="button"
-              role="menuitem"
-              onClick={openSettings}
-              className="ui-sidebar-footer-menu__item"
-            >
-              <Settings size={14} aria-hidden="true" />
-              <span>打开设置</span>
-            </button>
           </div>
         )}
       </div>

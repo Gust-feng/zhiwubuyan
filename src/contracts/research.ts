@@ -28,7 +28,6 @@ export const RESEARCH_TIER = ["ultra", "pro", "thinking", "fast"] as const;
 export type ResearchTier = (typeof RESEARCH_TIER)[number];
 
 export const TASK_ERROR_CODE = [
-  "ULTRA_DESKTOP_ONLY",
   "AUTH_INVALID",
   "RATE_LIMITED",
   "QUOTA_EXHAUSTED",

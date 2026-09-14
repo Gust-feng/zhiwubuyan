@@ -32,7 +32,8 @@ export type VoiceClusterView = {
 /** 这个议题在知乎上的聚焦落点；缺省表示讨论分散在多个问题。 */
 export type VoicesAnchorView = {
   readonly questionId: string;
-  readonly title: string;
+  /** 问题标题；用户直接给链接时可能取不到，此时缺省，界面改用链接展示。 */
+  readonly title?: string;
   /** 问题页地址由服务端给出，界面不自行拼接平台 URL。 */
   readonly url: string;
   readonly answerCount: number;

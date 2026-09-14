@@ -33,8 +33,6 @@
     "src/workbench/path-dependencies/**/*.ts",
     "src/workbench/memory/**/*.ts",
     "src/workbench/model-runtime/**/*.ts",
-    "src/web/**/*.ts",
-    "src/web/**/*.tsx",
     "vite.config.workbench.ts",
     "vite.config.web.ts"
   ]

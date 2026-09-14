@@ -5,54 +5,15 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import {
-  homeAmbientCopyIdentity,
-  type HomeAmbientCopyMemory,
-  selectHomeAmbientCopy,
-} from './home-ambient-copy'
-import {
   readNumberField,
   readStringField,
   type CoreFeed,
 } from './use-core-feed'
-import { localPreferenceKey } from '@ui/shell/local-preferences'
 import './home-page.css'
 
-const AMBIENT_COPY_MEMORY_KEY = localPreferenceKey('home.ambient-copy-memory')
-
-function readAmbientCopyMemory(): HomeAmbientCopyMemory | undefined {
-  if (typeof window === 'undefined') return undefined
-  const raw = window.localStorage.getItem(AMBIENT_COPY_MEMORY_KEY)
-  if (raw === null) return undefined
-  try {
-    const parsed = JSON.parse(raw) as Partial<HomeAmbientCopyMemory>
-    if (typeof parsed.key === 'string' && typeof parsed.copy === 'string') {
-      return { key: parsed.key, copy: parsed.copy }
-    }
-  } catch {
-    // 损坏的记忆直接忽略，重新选择
-  }
-  return undefined
-}
-
-function rememberAmbientCopyMemory(memory: HomeAmbientCopyMemory): void {
-  if (typeof window === 'undefined') return
-  window.localStorage.setItem(AMBIENT_COPY_MEMORY_KEY, JSON.stringify(memory))
-}
-
-/** 刊头问候：选中的文案跨会话记忆。 */
-export function useAmbientGreeting(): { lead: string; tail: string } {
-  const [copy] = useState(() => {
-    const selection = selectHomeAmbientCopy(new Date(), readAmbientCopyMemory())
-    rememberAmbientCopyMemory({ key: selection.key, copy: homeAmbientCopyIdentity(selection.copy) })
-    return selection.copy
-  })
-  return { lead: copy.lead, tail: copy.idleTail }
-}
-
-export function HomeMasthead({ lead, tail }: { lead: string; tail: string }) {
+export function HomeMasthead() {
   return (
     <header className="ui-home__masthead">
-      <p className="ui-home__greeting">{lead}{tail}</p>
       <span className="ui-home__date">{formatDateLabel()}</span>
     </header>
   )
@@ -196,10 +157,12 @@ interface CoreCardProps<T> {
   accent?: boolean
   feed: CoreFeed<T>
   limit: number
+  moreLabel?: string
+  onMore?: () => void
   renderItem: (item: T, index: number) => ReactNode
 }
 
-export function CoreCard<T>({ icon: Icon, name, role, accent = false, feed, limit, renderItem }: CoreCardProps<T>) {
+export function CoreCard<T>({ icon: Icon, name, role, accent = false, feed, limit, moreLabel, onMore, renderItem }: CoreCardProps<T>) {
   return (
     <section className="ui-home__core" aria-label={name}>
       <div className="ui-home__core-head">
@@ -207,6 +170,9 @@ export function CoreCard<T>({ icon: Icon, name, role, accent = false, feed, limi
         <h2 className="ui-home__core-name">{name}</h2>
         <span className="ui-home__core-role">{role}</span>
         <span className="ui-home__core-meta">{formatUpdatedLabel(feed)}</span>
+        {moreLabel !== undefined && onMore !== undefined && (
+          <button type="button" className="ui-home__core-more" onClick={onMore}>{moreLabel}</button>
+        )}
       </div>
 
       {feed.status === 'loading' && (

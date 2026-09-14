@@ -15,9 +15,12 @@ const POLL_INTERVAL_MS = 1_500;
 
 /**
  * 深度研究任务状态：提交、轮询进度、按需加载来源与报告、取消。
- * 只走真实本地 API；失败保持可见并允许用同一 requestId 重试，不静默回退示例数据。
+ * 只走真实研究 API；失败保持可见并允许用同一 requestId 重试，不静默回退示例数据。
+ *
+ * enabled=false 时不发任何请求：服务端未声明研究能力时入口只如实说明未接通，
+ * 而众声与它共用入口外壳，外壳常驻时不能顺带打一轮研究接口。
  */
-export function useDeepResearch(initialTaskId?: string | null) {
+export function useDeepResearch(initialTaskId?: string | null, enabled = true) {
   const [detail, setDetail] = useState<TaskDetail | null>(null);
   const [sources, setSources] = useState<readonly ResearchSource[]>([]);
   const [report, setReport] = useState<ResearchReport | null>(null);
@@ -35,9 +38,10 @@ export function useDeepResearch(initialTaskId?: string | null) {
     if (isTerminalStatus(next.status)) pendingRequestId.current = null;
   }, []);
 
-  // 进入页面时恢复研究：指定任务优先（从仪表盘或简报库点进来），否则恢复最近一次。
+  // 进入页面时恢复研究：指定任务优先（从首页或研究入口点进来），否则恢复最近一次。
   // 关闭页面不取消任务，回来应继续看同一条进度。
   useEffect(() => {
+    if (!enabled) return;
     let cancelled = false;
     const load = initialTaskId
       ? fetchResearchTask(initialTaskId)
@@ -52,14 +56,14 @@ export function useDeepResearch(initialTaskId?: string | null) {
     return () => {
       cancelled = true;
     };
-  }, [applyDetail, initialTaskId]);
+  }, [applyDetail, initialTaskId, enabled]);
 
   // 未进入终态时按固定间隔轮询；终态立即停止。
   const status = detail?.status ?? null;
   const taskId = detail?.id ?? null;
   const terminal = detail === null ? false : isTerminalStatus(detail.status);
   useEffect(() => {
-    if (taskId === null || terminal) return;
+    if (!enabled || taskId === null || terminal) return;
     let cancelled = false;
     let timer: ReturnType<typeof setTimeout> | undefined;
     const tick = async () => {
@@ -82,7 +86,7 @@ export function useDeepResearch(initialTaskId?: string | null) {
   // 来源只在数量变化时重新拉取，避免每次轮询都取回全部快照。
   const sourceCount = detail?.sourceCount ?? 0;
   useEffect(() => {
-    if (taskId === null || sourceCount === 0 || sourceCount === loadedSourceCount.current) return;
+    if (!enabled || taskId === null || sourceCount === 0 || sourceCount === loadedSourceCount.current) return;
     let cancelled = false;
     loadedSourceCount.current = sourceCount;
     void fetchResearchSources(taskId)
@@ -100,7 +104,7 @@ export function useDeepResearch(initialTaskId?: string | null) {
 
   const reportId = detail?.reportId ?? null;
   useEffect(() => {
-    if (taskId === null || reportId === null) return;
+    if (!enabled || taskId === null || reportId === null) return;
     let cancelled = false;
     void fetchResearchReport(taskId)
       .then((saved) => {

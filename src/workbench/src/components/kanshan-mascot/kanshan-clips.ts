@@ -57,9 +57,9 @@ export const KANSHAN_TIMING = {
   } satisfies Record<KanshanGesture, number>,
   // 一次性片段尾帧与 idle 首帧（严格 anchor）之间的交叉淡化，掩盖亚像素差。
   crossfadeMs: 130,
-  // 待机节奏：一轮呼吸结束后在 anchor 安静一段随机时长再动，避免一直循环，
-  // 也不会长期僵住；少量概率把下一轮换成「探头张望」手势。
-  idleRestMinMs: 13_000,
-  idleRestMaxMs: 28_000,
-  idleVariationChance: 0.28,
+  // 待机是一直在播的底层（idle 母片首尾同姿态，可无缝循环）；这里的间隔只用来偶尔
+  // 叠一次轻量关注手势打破规律，避免长时间只有一种节律。
+  idleGestureMinMs: 6_000,
+  idleGestureMaxMs: 14_000,
+  idleGestureChance: 0.7,
 } as const
