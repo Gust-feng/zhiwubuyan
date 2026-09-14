@@ -65,7 +65,7 @@ export function createRuntime(options: RuntimeOptions = {}) {
     homeFeed: createHomeFeedCommand({ content, clock: options.clock, cacheStore: options.hotCacheStore }),
     homeAnswer: createHomeAnswerCommand({ zhida, clock: options.clock }),
     /** 网页端的深度研究 Pro：单次直答，不落库。自研 Ultra 引擎由本机运行面单独承接。 */
-    researchPro: createResearchProCommand({ zhida, clock: options.clock }),
+    researchPro: createResearchProCommand({ zhida, content, clock: options.clock }),
     /** 入口种子：深度研究与众声共用，素材是登录用户自己的收藏标题。 */
     entrySeeds: createEntrySeedsCommand({ zhida, clock: options.clock }),
     personalArchive: createPersonalArchiveCommand({
