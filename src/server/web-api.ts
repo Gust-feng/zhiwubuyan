@@ -97,9 +97,15 @@ const handleZhihuApi = createZhihuApiHandler({
   oauthMissingConfig: missingOAuthConfig(process.env),
   oauthRedirectUri: oauthRedirectUri(process.env),
   sessions: createSessions(),
-  capabilities: ["zhihu_search", "global_search", "hot_list", "user_data", "voices", "research", "concept_animation"],
+  // 成象只在模型真的配好时才声明：否则前端会显示入口可用，点进去才拿到 503。
+  // 能力声明是前端判断"这一步通没通"的唯一依据，必须与真实可用状态一致。
+  capabilities: [
+    "zhihu_search", "global_search", "hot_list", "user_data", "voices", "research",
+    ...(conceptAnimationModel === null ? [] : ["concept_animation"]),
+  ],
   surface: "web",
   researchProEnabled: true,
+  researchProTimeoutMs: 290_000,
   // 成象路由由本处提供；登录门槛、限流与身份 scope 在 handler 内统一处理。
   conceptAnimation: { handle: handleConceptAnimation },
   // 线上显示 memory 即说明共享存储没接上（登录会在多实例间随机失效）。

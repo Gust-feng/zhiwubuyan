@@ -19,6 +19,7 @@ import { openZhihuCredentialStore } from "../storage/zhihu-credential-store.ts";
 import { createMemorySessionStore } from "./session-store.ts";
 import { createConceptAnimationApi } from "./concept-animation-api.ts";
 import { createZhihuApiHandler } from "./zhihu-api.ts";
+import { respondResearchPro } from "./research-pro-response.ts";
 import { createFileAnimationStore, animationStoreDir } from "../storage/animation-store.ts";
 import { createFileHomeFeedCacheStore, homeFeedCachePath } from "../storage/home-feed-cache.ts";
 import { createFilePersonalArchiveStore, personalArchiveDir } from "../storage/personal-archive-store.ts";
@@ -68,6 +69,8 @@ export async function startLocalServer(options: LocalServerOptions): Promise<Loc
 
   // 调用凭证在网关创建时固化在 identity 里；进程启动时读取一次即可。
   const accessSecret = credentials.read();
+  // 成象模型配置：能力声明要用到"有没有配"，所以在此处先解析一次。
+  const conceptAnimationModel = readConceptAnimationModel(process.env);
   const runtime = accessSecret === null || accessSecret === ""
     ? undefined
     : createRuntime({ accessSecret, hotCacheStore, personalArchiveStore, archiveLock });
@@ -80,7 +83,12 @@ export async function startLocalServer(options: LocalServerOptions): Promise<Loc
     developerUserDataEnabled,
     // 本机运行面同时承接 Pro 与自研 Ultra 引擎，因此额外声明 research_ultra；
     // 网页端只声明 research（Pro 单次直答），档位菜单据此不列出 Ultra。
-    capabilities: ["zhihu_search", "global_search", "hot_list", "user_data", "research_brief", "voices", "research", "research_ultra", "concept_animation"],
+    // 成象同样只在模型配好时声明（未配模型时入口不应显示可用）。
+    capabilities: [
+      "zhihu_search", "global_search", "hot_list", "user_data", "research_brief",
+      "voices", "research", "research_ultra",
+      ...(conceptAnimationModel === null ? [] : ["concept_animation"]),
+    ],
     // 运行面同时决定登录形态：桌面端独立窗口，网页端应用内弹窗。
     surface: desktopEdition ? "desktop" : "web",
   });
@@ -103,10 +111,10 @@ export async function startLocalServer(options: LocalServerOptions): Promise<Loc
     console.log(`[research] 重启收敛：${research.recoveredTaskIds.length} 个未完成任务标记为 interrupted。`);
   }
 
-  // 成象（概念动画）：模型配置在启动时解析一次；未配置则该路由返回明确的未接通说明，
-  // 不影响其他接口。每次请求新建命令，携带各自的超时信号。取料走 runtime 的检索能力，
-  // 同主题 15 分钟内只取一次（进程内有界缓存 + 单飞），保护按账号汇总的搜索额度。
-  const conceptAnimationModel = readConceptAnimationModel(process.env);
+  // 成象（概念动画）：模型配置在启动时解析一次（见上方与能力声明同源的解析）；
+  // 未配置则该路由返回明确的未接通说明，不影响其他接口。每次请求新建命令，
+  // 携带各自的超时信号。取料走 runtime 的检索能力，同主题 15 分钟内只取一次
+  // （进程内有界缓存 + 单飞），保护按账号汇总的搜索额度。
   const conceptAnimationTuning = readConceptAnimationTuning(process.env);
   // 本机运行面没有登录身份，成象记录统一落在一个固定 scope 下。
   const conceptAnimationScope = "local";
@@ -137,7 +145,7 @@ export async function startLocalServer(options: LocalServerOptions): Promise<Loc
   const server = createServer(async (request, response) => {
     try {
       const url = new URL(request.url ?? "/", `http://${request.headers.host ?? host}`);
-      if (await handleResearchRoutes(research, url, request, response)) {
+      if (await handleResearchRoutes(research, url, request, response, runtime?.researchPro)) {
         return;
       }
       if (await handleConceptAnimationApi(conceptAnimationScope, url, request, response)) {
@@ -220,6 +228,7 @@ async function handleResearchRoutes(
   url: URL,
   request: IncomingMessage,
   response: ServerResponse,
+  researchPro?: ReturnType<typeof createRuntime>["researchPro"],
 ): Promise<boolean> {
   const pathname = url.pathname;
   const engine = research.engine;
@@ -233,6 +242,10 @@ async function handleResearchRoutes(
           : (body as Record<string, unknown>).question,
       };
       const input: CreateResearchTaskInputType = CreateResearchTaskInput.parse(normalized);
+      if (input.tier === "pro" && request.headers.accept?.includes("text/event-stream")) {
+        if (!researchPro) throw new ProductError("AUTH_REQUIRED", "尚未配置知乎开放平台凭证。");
+        return await respondResearchPro(researchPro, input, request, response, 290_000);
+      }
       const { detail, accepted } = await engine.createResearchTask(input);
       // 202 表示已受理异步执行；同步完成的快答与幂等重放返回 200。
       const httpStatus = detail.status === "completed" || detail.status === "failed" ? 200 : accepted ? 202 : 200;
